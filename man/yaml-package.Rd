@@ -15,7 +15,7 @@ Package: \tab yaml\cr
 Type: \tab Package\cr
 Version: \tab 1.0\cr
 Date: \tab 2007-04-16\cr
-License: \tab GPL\cr
+License: \tab BSD\cr
 }
 Use \code{\link{as.yaml}} to convert R objects into YAML and \code{\link{yaml.load}} to parse
 YAML strings into R objects.

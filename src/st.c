@@ -44,7 +44,7 @@ static struct st_hash_type type_numhash = {
     numhash,
 };
 
-extern int strcmp();
+/* extern int strcmp(); */
 static int strhash();
 static struct st_hash_type type_strhash = {
     strcmp,

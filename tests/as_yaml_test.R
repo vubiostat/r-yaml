@@ -1,4 +1,4 @@
-source("test_helper.R")
+source("test_helper.r")
 
 test_should_convert_named_list_to_yaml <-
 function() {
@@ -30,4 +30,4 @@ function() {
   assert_equal(15,  y[[5]]$c)
 }
 
-source("test_runner.R")
+source("test_runner.r")

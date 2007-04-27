@@ -27,5 +27,5 @@ AC_SUBST(R_LIBPATH, [$RHOME/lib])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
-                 test/Makefile])
+                 tests/Makefile])
 AC_OUTPUT

@@ -49,4 +49,3 @@
 % R documentation directory.
 \keyword{ data }
 \keyword{ manip }
-\keyword{ yaml }

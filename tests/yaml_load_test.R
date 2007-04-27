@@ -1,4 +1,4 @@
-source("test_helper.R")
+source("test_helper.r")
 
 test_should_not_return_named_list <- function() {
   x <- yaml.load("hey: man\n123: 456\n", FALSE)
@@ -72,4 +72,4 @@ test_should_handle_syntax_errors <- function() {
   assert(inherits(x, "try-error"))
 }
 
-source("test_runner.R")
+source("test_runner.r")

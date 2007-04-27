@@ -47,4 +47,3 @@ yaml.load(string, as.named.list = TRUE)
 \keyword{ programming }
 \keyword{ data }
 \keyword{ manip }
-\keyword{ yaml }

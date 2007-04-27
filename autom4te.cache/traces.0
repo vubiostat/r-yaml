@@ -268,7 +268,7 @@ m4trace:configure.in:26: -1- AC_SUBST_TRACE([R_LIBPATH])
 m4trace:configure.in:26: -1- m4_pattern_allow([^R_LIBPATH$])
 m4trace:configure.in:28: -1- AC_CONFIG_FILES([Makefile
                  src/Makefile
-                 test/Makefile])
+                 tests/Makefile])
 m4trace:configure.in:31: -1- AC_SUBST([LIB@&t@OBJS], [$ac_libobjs])
 m4trace:configure.in:31: -1- AC_SUBST_TRACE([LIB@&t@OBJS])
 m4trace:configure.in:31: -1- m4_pattern_allow([^LIB@&t@OBJS$])

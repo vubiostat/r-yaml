@@ -1,0 +1,32 @@
+RHOME = @RHOME@
+R_PROG = @R_PROG@
+R_CC = @R_CC@
+R_CPPFLAGS = @R_CPPFLAGS@
+R_CFLAGS = @R_CFLAGS@
+R_CPICFLAGS = @R_CPICFLAGS@
+R_LDFLAGS = @R_LDFLAGS@
+R_LIBPATH = @R_LIBPATH@
+CPPFLAGS = -I.
+
+check: test_R test_C
+
+hash_test: hash_test.o ../src/st.o
+	$(R_CC) $(R_LDFLAGS) ../src/st.o hash_test.o -o hash_test -Wl,-rpath,$(R_LIBPATH)
+
+hash_test.o: hash_test.c
+	$(R_CC) $(R_CPPFLAGS) $(CPPFLAGS) -DRHOME="\"$(RHOME)\"" $(R_CFLAGS) -c hash_test.c -o hash_test.o
+
+../src/st.o:
+	$(MAKE) -C ../src st.o
+
+test_C: hash_test
+	@echo
+	@echo === Running hash test ===
+	@echo
+	./hash_test
+
+test_R:
+	@for i in *test.R; do echo; echo === Running $$i ===; echo; $(R_PROG) --vanilla < $$i; done
+
+clean:
+	rm -f *.o *.so hash_test

@@ -5,7 +5,7 @@
 #include "Rembedded.h"
 
 #define HASH_LOG
-#include "st.h"
+#include "../src/st.h"
 
 static char letters[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 
                          'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -167,7 +167,7 @@ main(argc, argv)
   setenv("R_SESSION_TMPDIR", tmpdir, 1);
 
   /* make sure R_HOME exists; initialize R engine */
-  setenv("R_HOME", "/home/stephej1/src/build/R-2.4.1", 0);
+  setenv("R_HOME", RHOME, 0);
   Rf_initEmbeddedR(R_argc, R_argv);
 
   test_should_handle_big_hash();

@@ -1,2 +1,0 @@
-PKG_CFLAGS=-I.
-PKG_LIBS=-lsyck

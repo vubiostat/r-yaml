@@ -1,0 +1,14 @@
+all: src/yaml.so
+
+src/yaml.so:
+	$(MAKE) -C src yaml.so
+
+check: src/yaml.so
+	$(MAKE) -C test check
+
+clean:
+	$(MAKE) -C src clean
+	$(MAKE) -C test clean
+
+distclean: clean
+	rm -fr Makefile src/Makefile test/Makefile config.log config.status

@@ -1,0 +1,23 @@
+LIBS = @LIBS@
+R_CC = @R_CC@
+R_CPPFLAGS = @R_CPPFLAGS@
+R_CFLAGS = @R_CFLAGS@
+R_CPICFLAGS = @R_CPICFLAGS@
+R_SHLIB_LD = @R_SHLIB_LD@
+R_SHLIB_LDFLAGS = @R_SHLIB_LDFLAGS@
+R_LDFLAGS = @R_LDFLAGS@
+CPPFLAGS = -I.
+
+all: yaml.so
+
+yaml.so: yaml.o st.o
+	$(R_SHLIB_LD) $(R_SHLIB_LDFLAGS) st.o yaml.o -o yaml.so $(R_LDFLAGS) $(LIBS)
+
+yaml.o: yaml.c
+	$(R_CC) $(R_CPPFLAGS) $(CPPFLAGS) $(R_CFLAGS) $(R_CPICFLAGS) -c yaml.c -o yaml.o
+
+st.o: st.h st.c
+	$(R_CC) $(R_CPPFLAGS) $(CPPFLAGS) $(R_CFLAGS) $(R_CPICFLAGS) -c st.c -o st.o
+
+clean:
+	rm -fr *.so *.o

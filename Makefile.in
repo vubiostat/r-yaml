@@ -11,4 +11,4 @@ clean:
 	$(MAKE) -C tests clean
 
 distclean: clean
-	rm -fr Makefile src/Makefile test/Makefile config.log config.status
+	rm -fr Makefile src/Makefile tests/Makefile config.log config.status

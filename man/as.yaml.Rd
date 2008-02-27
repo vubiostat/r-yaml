@@ -8,10 +8,9 @@
   Generic functions to convert R objects into YAML strings
 }
 \usage{
-  as.yaml(x, ...)
-  as.yaml.list(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...)
-  as.yaml.data.frame(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, column.major = TRUE, ...)
-  as.yaml.default(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...)
+  \method{as.yaml}{list}(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...)
+  \method{as.yaml}{data.frame}(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, column.major = TRUE, ...)
+  \method{as.yaml}{default}(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

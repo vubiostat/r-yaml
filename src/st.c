@@ -1,29 +1,12 @@
 /* This is a public domain general purpose hash table package written by Peter Moore @ UCB. */
 
-/* static char  sccsid[] = "@(#) st.c 5.1 89/12/14 Crucible"; */
+/* static	char	sccsid[] = "@(#) st.c 5.1 89/12/14 Crucible"; */
 
-/*
 #include <stdio.h>
 #include <stdlib.h>
-*/
+#include <string.h>
 #include "st.h"
 
-#ifdef NT
-#include <malloc.h>
-#endif
-
-#define SIZE32 4
-#if SIZEOF_LONG == SIZE32
-typedef long I32;
-typedef unsigned long U32;
-#define NUM2I32(x) NUM2LONG(x)
-#define NUM2U32(x) NUM2ULONG(x)
-#elif SIZEOF_INT == SIZE32
-typedef int I32;
-typedef unsigned int U32;
-#define NUM2I32(x) NUM2INT(x)
-#define NUM2U32(x) NUM2UINT(x)
-#endif
 
 #define ST_DEFAULT_MAX_DENSITY 5
 #define ST_DEFAULT_INIT_TABLE_SIZE 11
@@ -37,35 +20,28 @@ typedef unsigned int U32;
      * allocated initially
      *
      */
-static int numcmp();
-static int numhash();
+static int numcmp(long, long);
+static int numhash(long);
 static struct st_hash_type type_numhash = {
     numcmp,
     numhash,
 };
 
-/* extern int strcmp(); */
-static int strhash();
+/* extern int strcmp(const char *, const char *); */
 static struct st_hash_type type_strhash = {
     strcmp,
     strhash,
 };
 
-static int Rcmp();
-static struct st_hash_type type_Rhash = {
-    Rcmp,
-    Rhash,
-};
-
-static void rehash();
+static void rehash(st_table *);
 
 /*
 #define alloc(type) (type*)malloc((unsigned)sizeof(type))
 #define Calloc(n,s) (char*)calloc((n),(s))
 */
+
 // use R's Calloc
 #define alloc(type) Calloc(1, type)
-
 
 #define EQUAL(table,x,y) ((x)==(y) || (*table->type->compare)((x),(y)) == 0)
 
@@ -82,35 +58,35 @@ static void rehash();
 Table of prime numbers 2^n+a, 2<=n<=30.
 */
 static long primes[] = {
-  8 + 3,
-  16 + 3,
-  32 + 5,
-  64 + 3,
-  128 + 3,
-  256 + 27,
-  512 + 9,
-  1024 + 9,
-  2048 + 5,
-  4096 + 3,
-  8192 + 27,
-  16384 + 43,
-  32768 + 3,
-  65536 + 45,
-  131072 + 29,
-  262144 + 3,
-  524288 + 21,
-  1048576 + 7,
-  2097152 + 17,
-  4194304 + 15,
-  8388608 + 9,
-  16777216 + 43,
-  33554432 + 35,
-  67108864 + 15,
-  134217728 + 29,
-  268435456 + 3,
-  536870912 + 11,
-  1073741824 + 85,
-  0
+	8 + 3,
+	16 + 3,
+	32 + 5,
+	64 + 3,
+	128 + 3,
+	256 + 27,
+	512 + 9,
+	1024 + 9,
+	2048 + 5,
+	4096 + 3,
+	8192 + 27,
+	16384 + 43,
+	32768 + 3,
+	65536 + 45,
+	131072 + 29,
+	262144 + 3,
+	524288 + 21,
+	1048576 + 7,
+	2097152 + 17,
+	4194304 + 15,
+	8388608 + 9,
+	16777216 + 43,
+	33554432 + 35,
+	67108864 + 15,
+	134217728 + 29,
+	268435456 + 3,
+	536870912 + 11,
+	1073741824 + 85,
+	0
 };
 
 static int
@@ -121,20 +97,20 @@ new_size(size)
 
 #if 0
     for (i=3; i<31; i++) {
-  if ((1<<i) > size) return 1<<i;
+	if ((1<<i) > size) return 1<<i;
     }
     return -1;
 #else
     int newsize;
 
     for (i = 0, newsize = MINSIZE;
-   i < sizeof(primes)/sizeof(primes[0]);
-   i++, newsize <<= 1)
+	 i < sizeof(primes)/sizeof(primes[0]);
+	 i++, newsize <<= 1)
     {
-  if (newsize > size) return primes[i];
+	if (newsize > size) return primes[i];
     }
     /* Ran out of polynomials */
-    return -1;      /* should raise exception */
+    return -1;			/* should raise exception */
 #endif
 }
 
@@ -160,12 +136,12 @@ st_init_table_with_size(type, size)
 
 #ifdef HASH_LOG
     if (init_st == 0) {
-  init_st = 1;
-  atexit(stat_col);
+	init_st = 1;
+	atexit(stat_col);
     }
 #endif
 
-    size = new_size(size);  /* round up to prime number */
+    size = new_size(size);	/* round up to prime number */
 
     tbl = alloc(st_table);
     tbl->type = type;
@@ -184,7 +160,7 @@ st_init_table(type)
 }
 
 st_table*
-st_init_numtable()
+st_init_numtable(void)
 {
     return st_init_table(&type_numhash);
 }
@@ -197,7 +173,7 @@ st_init_numtable_with_size(size)
 }
 
 st_table*
-st_init_strtable()
+st_init_strtable(void)
 {
     return st_init_table(&type_strhash);
 }
@@ -209,19 +185,6 @@ st_init_strtable_with_size(size)
     return st_init_table_with_size(&type_strhash, size);
 }
 
-st_table*
-st_init_Rtable()
-{
-    return st_init_table(&type_Rhash);
-}
-
-st_table*
-st_init_Rtable_with_size(size)
-    int size;
-{
-    return st_init_table_with_size(&type_Rhash, size);
-}
-
 void
 st_free_table(table)
     st_table *table;
@@ -230,15 +193,15 @@ st_free_table(table)
     int i;
 
     for(i = 0; i < table->num_bins; i++) {
-  ptr = table->bins[i];
-  while (ptr != 0) {
-      next = ptr->next;
-      Free(ptr);
-      ptr = next;
-  }
+	ptr = table->bins[i];
+	while (ptr != 0) {
+	    next = ptr->next;
+	    free(ptr);
+	    ptr = next;
+	}
     }
-    Free(table->bins);
-    Free(table);
+    free(table->bins);
+    free(table);
 }
 
 #define PTR_NOT_EQUAL(table, ptr, hash_val, key) \
@@ -254,19 +217,19 @@ st_free_table(table)
     bin_pos = hash_val%(table)->num_bins;\
     ptr = (table)->bins[bin_pos];\
     if (PTR_NOT_EQUAL(table, ptr, hash_val, key)) {\
-  COLLISION;\
-  while (PTR_NOT_EQUAL(table, ptr->next, hash_val, key)) {\
-      ptr = ptr->next;\
-  }\
-  ptr = ptr->next;\
+	COLLISION;\
+	while (PTR_NOT_EQUAL(table, ptr->next, hash_val, key)) {\
+	    ptr = ptr->next;\
+	}\
+	ptr = ptr->next;\
     }\
 } while (0)
 
 int
 st_lookup(table, key, value)
     st_table *table;
-    register char *key;
-    char **value;
+    register st_data_t key;
+    st_data_t *value;
 {
     unsigned int hash_val, bin_pos;
     register st_table_entry *ptr;
@@ -275,29 +238,19 @@ st_lookup(table, key, value)
     FIND_ENTRY(table, ptr, hash_val, bin_pos);
 
     if (ptr == 0) {
-  return 0;
+	return 0;
     }
     else {
-  if (value != 0)  *value = ptr->record;
-  return 1;
+	if (value != 0)  *value = ptr->record;
+	return 1;
     }
 }
 
-int
-st_lookup_R(table, key, value)
-    st_table *table;
-    register SEXP key;
-    SEXP *value;
-{
-  return st_lookup(table, (char *)key, (char **)value);
-}
-
-/*
 #define ADD_DIRECT(table, key, value, hash_val, bin_pos)\
 do {\
     st_table_entry *entry;\
     if (table->num_entries/(table->num_bins) > ST_DEFAULT_MAX_DENSITY) {\
-  rehash(table);\
+	rehash(table);\
         bin_pos = hash_val % table->num_bins;\
     }\
     \
@@ -310,41 +263,12 @@ do {\
     table->bins[bin_pos] = entry;\
     table->num_entries++;\
 } while (0)
-*/
-
-#define ADD_DIRECT(table, key, value, hash_val, bin_pos) add_direct(table, key, value, hash_val, bin_pos)
-
-void
-add_direct(table, key, value, hash_val, bin_pos)
-  st_table *table;
-  register char *key;
-  char *value;
-  unsigned int hash_val;
-  unsigned int bin_pos;
-{
-  do {
-    st_table_entry *entry;
-    if (table->num_entries/(table->num_bins) > ST_DEFAULT_MAX_DENSITY) {
-      rehash(table);
-      bin_pos = hash_val % table->num_bins;
-    }
-    
-    entry = alloc(st_table_entry);
-    
-    entry->hash = hash_val;
-    entry->key = key;
-    entry->record = value;
-    entry->next = table->bins[bin_pos];
-    table->bins[bin_pos] = entry;
-    table->num_entries++;
-  } while (0);
-}
 
 int
 st_insert(table, key, value)
     register st_table *table;
-    register char *key;
-    char *value;
+    register st_data_t key;
+    st_data_t value;
 {
     unsigned int hash_val, bin_pos;
     register st_table_entry *ptr;
@@ -353,29 +277,20 @@ st_insert(table, key, value)
     FIND_ENTRY(table, ptr, hash_val, bin_pos);
 
     if (ptr == 0) {
-  ADD_DIRECT(table, key, value, hash_val, bin_pos);
-  return 0;
+	ADD_DIRECT(table, key, value, hash_val, bin_pos);
+	return 0;
     }
     else {
-  ptr->record = value;
-  return 1;
+	ptr->record = value;
+	return 1;
     }
-}
-
-int
-st_insert_R(table, key, value)
-    register st_table *table;
-    register SEXP key;
-    SEXP value;
-{
-    return st_insert(table, (char *)key, (char *)value);
 }
 
 void
 st_add_direct(table, key, value)
     st_table *table;
-    char *key;
-    char *value;
+    st_data_t key;
+    st_data_t value;
 {
     unsigned int hash_val, bin_pos;
 
@@ -396,16 +311,16 @@ rehash(table)
     new_bins = (st_table_entry**)Calloc(new_num_bins, st_table_entry*);
 
     for(i = 0; i < old_num_bins; i++) {
-  ptr = table->bins[i];
-  while (ptr != 0) {
-      next = ptr->next;
-      hash_val = ptr->hash % new_num_bins;
-      ptr->next = new_bins[hash_val];
-      new_bins[hash_val] = ptr;
-      ptr = next;
-  }
+	ptr = table->bins[i];
+	while (ptr != 0) {
+	    next = ptr->next;
+	    hash_val = ptr->hash % new_num_bins;
+	    ptr->next = new_bins[hash_val];
+	    new_bins[hash_val] = ptr;
+	    ptr = next;
+	}
     }
-    Free(table->bins);
+    free(table->bins);
     table->num_bins = new_num_bins;
     table->bins = new_bins;
 }
@@ -420,33 +335,33 @@ st_copy(old_table)
 
     new_table = alloc(st_table);
     if (new_table == 0) {
-  return 0;
+	return 0;
     }
 
     *new_table = *old_table;
     new_table->bins = (st_table_entry**)
-  Calloc((unsigned)num_bins, st_table_entry*);
+	Calloc((unsigned)num_bins, st_table_entry*);
 
     if (new_table->bins == 0) {
-  Free(new_table);
-  return 0;
+	free(new_table);
+	return 0;
     }
 
     for(i = 0; i < num_bins; i++) {
-  new_table->bins[i] = 0;
-  ptr = old_table->bins[i];
-  while (ptr != 0) {
-      entry = alloc(st_table_entry);
-      if (entry == 0) {
-    Free(new_table->bins);
-    Free(new_table);
-    return 0;
-      }
-      *entry = *ptr;
-      entry->next = new_table->bins[i];
-      new_table->bins[i] = entry;
-      ptr = ptr->next;
-  }
+	new_table->bins[i] = 0;
+	ptr = old_table->bins[i];
+	while (ptr != 0) {
+	    entry = alloc(st_table_entry);
+	    if (entry == 0) {
+		free(new_table->bins);
+		free(new_table);
+		return 0;
+	    }
+	    *entry = *ptr;
+	    entry->next = new_table->bins[i];
+	    new_table->bins[i] = entry;
+	    ptr = ptr->next;
+	}
     }
     return new_table;
 }
@@ -454,8 +369,8 @@ st_copy(old_table)
 int
 st_delete(table, key, value)
     register st_table *table;
-    register char **key;
-    char **value;
+    register st_data_t *key;
+    st_data_t *value;
 {
     unsigned int hash_val;
     st_table_entry *tmp;
@@ -465,29 +380,29 @@ st_delete(table, key, value)
     ptr = table->bins[hash_val];
 
     if (ptr == 0) {
-  if (value != 0) *value = 0;
-  return 0;
+	if (value != 0) *value = 0;
+	return 0;
     }
 
     if (EQUAL(table, *key, ptr->key)) {
-  table->bins[hash_val] = ptr->next;
-  table->num_entries--;
-  if (value != 0) *value = ptr->record;
-  *key = ptr->key;
-  Free(ptr);
-  return 1;
+	table->bins[hash_val] = ptr->next;
+	table->num_entries--;
+	if (value != 0) *value = ptr->record;
+	*key = ptr->key;
+	free(ptr);
+	return 1;
     }
 
     for(; ptr->next != 0; ptr = ptr->next) {
-  if (EQUAL(table, ptr->next->key, *key)) {
-      tmp = ptr->next;
-      ptr->next = ptr->next->next;
-      table->num_entries--;
-      if (value != 0) *value = tmp->record;
-      *key = tmp->key;
-      Free(tmp);
-      return 1;
-  }
+	if (EQUAL(table, ptr->next->key, *key)) {
+	    tmp = ptr->next;
+	    ptr->next = ptr->next->next;
+	    table->num_entries--;
+	    if (value != 0) *value = tmp->record;
+	    *key = tmp->key;
+	    free(tmp);
+	    return 1;
+	}
     }
 
     return 0;
@@ -496,9 +411,9 @@ st_delete(table, key, value)
 int
 st_delete_safe(table, key, value, never)
     register st_table *table;
-    register char **key;
-    char **value;
-    char *never;
+    register st_data_t *key;
+    st_data_t *value;
+    st_data_t never;
 {
     unsigned int hash_val;
     register st_table_entry *ptr;
@@ -507,26 +422,26 @@ st_delete_safe(table, key, value, never)
     ptr = table->bins[hash_val];
 
     if (ptr == 0) {
-  if (value != 0) *value = 0;
-  return 0;
+	if (value != 0) *value = 0;
+	return 0;
     }
 
     for(; ptr != 0; ptr = ptr->next) {
-  if ((ptr->key != never) && EQUAL(table, ptr->key, *key)) {
-      table->num_entries--;
-      *key = ptr->key;
-      if (value != 0) *value = ptr->record;
-      ptr->key = ptr->record = never;
-      return 1;
-  }
+	if ((ptr->key != never) && EQUAL(table, ptr->key, *key)) {
+	    table->num_entries--;
+	    *key = ptr->key;
+	    if (value != 0) *value = ptr->record;
+	    ptr->key = ptr->record = never;
+	    return 1;
+	}
     }
 
     return 0;
 }
 
-static enum st_retval
+static int
 delete_never(key, value, never)
-    char *key, *value, *never;
+    st_data_t key, value, never;
 {
     if (value == never) return ST_DELETE;
     return ST_CONTINUE;
@@ -535,7 +450,7 @@ delete_never(key, value, never)
 void
 st_cleanup_safe(table, never)
     st_table *table;
-    char *never;
+    st_data_t never;
 {
     int num_entries = table->num_entries;
 
@@ -543,46 +458,59 @@ st_cleanup_safe(table, never)
     table->num_entries = num_entries;
 }
 
-void
+int
 st_foreach(table, func, arg)
     st_table *table;
-    enum st_retval (*func)(char *, char *, char *);
-    char *arg;
+    int (*func)();
+    st_data_t arg;
 {
     st_table_entry *ptr, *last, *tmp;
     enum st_retval retval;
     int i;
 
     for(i = 0; i < table->num_bins; i++) {
-      last = 0;
-      for(ptr = table->bins[i]; ptr != 0;) {
-        retval = (*func)(ptr->key, ptr->record, arg);
-        switch (retval) {
-          case ST_CONTINUE:
-            last = ptr;
-            ptr = ptr->next;
-            break;
-          case ST_STOP:
-            return;
-          case ST_DELETE:
-            tmp = ptr;
-            if (last == 0) {
-              table->bins[i] = ptr->next;
-            }
-            else {
-              last->next = ptr->next;
-            }
-            ptr = ptr->next;
-            Free(tmp);
-            table->num_entries--;
-        }
-      }
+	last = 0;
+	for(ptr = table->bins[i]; ptr != 0;) {
+	    retval = (*func)(ptr->key, ptr->record, arg);
+	    switch (retval) {
+	    case ST_CHECK:	/* check if hash is modified during iteration */
+	        tmp = 0;
+		if (i < table->num_bins) {
+		    for (tmp = table->bins[i]; tmp; tmp=tmp->next) {
+			if (tmp == ptr) break;
+		    }
+		}
+		if (!tmp) {
+		    /* call func with error notice */
+		    return 1;
+		}
+		/* fall through */
+	    case ST_CONTINUE:
+		last = ptr;
+		ptr = ptr->next;
+		break;
+	    case ST_STOP:
+	        return 0;
+	    case ST_DELETE:
+		tmp = ptr;
+		if (last == 0) {
+		    table->bins[i] = ptr->next;
+		}
+		else {
+		    last->next = ptr->next;
+		}
+		ptr = ptr->next;
+		free(tmp);
+		table->num_entries--;
+	    }
+	}
     }
+    return 0;
 }
 
-static int
+int
 strhash(string)
-    register char *string;
+    register const char *string;
 {
     register int c;
 
@@ -590,36 +518,29 @@ strhash(string)
     register unsigned int h = 0, g;
 
     while ((c = *string++) != '\0') {
-  h = ( h << 4 ) + c;
-  if ( g = h & 0xF0000000 )
-      h ^= g >> 24;
-  h &= ~g;
+	h = ( h << 4 ) + c;
+	if ( g = h & 0xF0000000 )
+	    h ^= g >> 24;
+	h &= ~g;
     }
     return h;
-#elif HASH_PERL
+#elif defined(HASH_PERL)
     register int val = 0;
 
     while ((c = *string++) != '\0') {
-  val = val*33 + c;
+	val += c;
+	val += (val << 10);
+	val ^= (val >> 6);
     }
+    val += (val << 3);
+    val ^= (val >> 11);
 
-    return val + (val>>5);
-#elif HASH_JENKINS
-    register const unsigned char *s_PeRlHaSh = (const unsigned char *)string;
-    register U32 hash_PeRlHaSh = 0;
-    while ((c = *s_PeRlHaSh++) != '\0') {
-        hash_PeRlHaSh += c;
-        hash_PeRlHaSh += (hash_PeRlHaSh << 10);
-        hash_PeRlHaSh ^= (hash_PeRlHaSh >> 6);
-    }
-    hash_PeRlHaSh += (hash_PeRlHaSh << 3);
-    hash_PeRlHaSh ^= (hash_PeRlHaSh >> 11);
-    return (hash_PeRlHaSh + (hash_PeRlHaSh << 15));
+    return val + (val << 15);
 #else
     register int val = 0;
 
     while ((c = *string++) != '\0') {
-  val = val*997 + c;
+	val = val*997 + c;
     }
 
     return val + (val>>5);
@@ -638,76 +559,4 @@ numhash(n)
     long n;
 {
     return n;
-}
-
-static SEXP R_CmpFunc = NULL;
-static int
-Rcmp(st_x, st_y)
-  char *st_x;
-  char *st_y;
-{
-  int i, retval = 0, *arr;
-  SEXP call, result;
-  SEXP x = (SEXP)st_x;
-  SEXP y = (SEXP)st_y;
-
-  if (R_CmpFunc == NULL)
-    R_CmpFunc = findFun(install("=="), R_GlobalEnv);
-
-  PROTECT(call = lang3(R_CmpFunc, x, y));
-  PROTECT(result = eval(call, R_GlobalEnv));
-  
-  arr = LOGICAL(result);
-  for(i = 0; i < LENGTH(result); i++) {
-    if (!arr[i]) {
-      retval = 1;
-      break;
-    }
-  }
-  UNPROTECT(2);
-  return retval;
-}
-
-static SEXP R_SerializedSymbol = NULL;
-static SEXP
-get_or_create_serialized_attr(obj)
-  SEXP obj;
-{
-  SEXP attr, serialized, tru;
-  if (R_SerializedSymbol == NULL)
-    R_SerializedSymbol = install("serialized");
-
-  attr = getAttrib(obj, R_SerializedSymbol);
-  if (attr != R_NilValue)
-    return attr;
-
-  PROTECT(tru = NEW_LOGICAL(1));
-  LOGICAL(tru)[0] = 1;
-  PROTECT(serialized = R_serialize(obj, R_NilValue, tru, R_NilValue));
-  UNPROTECT_PTR(tru);
-
-  char str[LENGTH(serialized) + 1];
-  strncpy(str, (char *)RAW(serialized), LENGTH(serialized));
-  str[LENGTH(serialized)] = 0;
-
-  PROTECT(attr = NEW_STRING(1));
-  SET_STRING_ELT(attr, 0, mkChar(str));
-  UNPROTECT(2);
-
-  return attr;
-}
-
-int
-Rhash(st_obj)
-  register char *st_obj;
-{
-  SEXP obj, serialized;
-  int i, hash;
-  obj = (SEXP)st_obj;
-
-  /* serialize the object */
-  serialized = get_or_create_serialized_attr(obj);
-  hash = strhash(CHAR(STRING_ELT(serialized, 0)));
-
-  return hash;
 }

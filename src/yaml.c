@@ -5,7 +5,117 @@
 #include "R_ext/Rdynload.h"
 
 #define HAVE_ST_H
-#include <syck.h>
+#include "syck.h"
+
+static int Rcmp(char *,char *);
+int Rhash(register char *);
+static struct st_hash_type type_Rhash = {
+    Rcmp,
+    Rhash,
+};
+
+st_table* 
+st_init_Rtable()
+{
+    return st_init_table(&type_Rhash);
+}
+
+st_table* 
+st_init_Rtable_with_size(size)
+    int size;
+{
+    return st_init_table_with_size(&type_Rhash, size);
+}
+
+int 
+st_insert_R(table, key, value)
+    register st_table *table;
+    register SEXP key;
+    SEXP value;
+{
+    return st_insert(table, (st_data_t)key, (st_data_t)value);
+}
+
+int
+st_lookup_R(table, key, value)
+    st_table *table;
+    register SEXP key;
+    SEXP *value;
+{
+  return st_lookup(table, (st_data_t)key, (st_data_t *)value);
+}
+
+static SEXP R_CmpFunc = NULL;
+static int
+Rcmp(st_x, st_y)
+  char *st_x;
+  char *st_y;
+{
+  int i, retval = 0, *arr;
+  SEXP call, result;
+  SEXP x = (SEXP)st_x;
+  SEXP y = (SEXP)st_y;
+
+  if (R_CmpFunc == NULL)
+    R_CmpFunc = findFun(install("=="), R_GlobalEnv);
+
+  PROTECT(call = lang3(R_CmpFunc, x, y));
+  PROTECT(result = eval(call, R_GlobalEnv));
+  
+  arr = LOGICAL(result);
+  for(i = 0; i < LENGTH(result); i++) {
+    if (!arr[i]) {
+      retval = 1;
+      break;
+    }
+  }
+  UNPROTECT(2);
+  return retval;
+}
+
+static SEXP R_SerializedSymbol = NULL;
+static SEXP
+get_or_create_serialized_attr(obj)
+  SEXP obj;
+{
+  SEXP attr, serialized, tru;
+  if (R_SerializedSymbol == NULL)
+    R_SerializedSymbol = install("serialized");
+
+  attr = getAttrib(obj, R_SerializedSymbol);
+  if (attr != R_NilValue)
+    return attr;
+
+  PROTECT(tru = NEW_LOGICAL(1));
+  LOGICAL(tru)[0] = 1;
+  PROTECT(serialized = R_serialize(obj, R_NilValue, tru, R_NilValue));
+  UNPROTECT_PTR(tru);
+
+  char str[LENGTH(serialized) + 1];
+  strncpy(str, (char *)RAW(serialized), LENGTH(serialized));
+  str[LENGTH(serialized)] = 0;
+
+  PROTECT(attr = NEW_STRING(1));
+  SET_STRING_ELT(attr, 0, mkChar(str));
+  UNPROTECT(2);
+
+  return attr;
+}
+
+int
+Rhash(st_obj)
+  register char *st_obj;
+{
+  SEXP obj, serialized;
+  int i, hash;
+  obj = (SEXP)st_obj;
+
+  /* serialize the object */
+  serialized = get_or_create_serialized_attr(obj);
+  hash = strhash(CHAR(STRING_ELT(serialized, 0)));
+
+  return hash;
+}
 
 #define PRESERVE(x) R_do_preserve(x)
 #define RELEASE(x)  R_do_release(x)
@@ -599,7 +709,7 @@ static int yaml_org_handler( p, n, ref )
 
       for(i = 0, j = 0; i < object_map->num_bins; i++) {
         entry = object_map->bins[i];
-        if (entry) {
+        while (entry) {
           SET_VECTOR_ELT(obj, j, (SEXP)entry->record);
           RELEASE((SEXP)entry->record);
 
@@ -611,6 +721,7 @@ static int yaml_org_handler( p, n, ref )
           }
           RELEASE((SEXP)entry->key);
           j++;
+	  entry = entry->next;
         }
       }
       if (xtra->use_named) {
@@ -654,7 +765,7 @@ R_yaml_handler(p, n)
   /* if n->id > 0, it means that i've run across a bad anchor that was just defined... or something.
    * so i want to overwrite the existing node with this one */
   if (n->id > 0) {
-    st_insert( p->syms, (char *)n->id, (char *)(*obj) ); 
+    st_insert( p->syms, (st_data_t)n->id, (st_data_t)(*obj) ); 
   }
   
   retval = syck_add_sym( p, (char *)(*obj) );
@@ -689,7 +800,7 @@ load_yaml_str(s_str, s_use_named)
   SEXP retval;
   SYMID root_id;
   SyckParser *parser;
-  char *str;
+  const char *str;
   long len;
   int use_named;
   
@@ -708,7 +819,7 @@ load_yaml_str(s_str, s_use_named)
 
   /* setup parser */
   parser = syck_new_parser();
-  syck_parser_str( parser, str, len, NULL);
+  syck_parser_str( parser, (char *)str, len, NULL);
   syck_parser_handler( parser, &R_yaml_handler );
   syck_parser_bad_anchor_handler( parser, &R_bad_anchor_handler );
   syck_parser_error_handler( parser, &R_error_handler );
@@ -719,6 +830,8 @@ load_yaml_str(s_str, s_use_named)
   root_id = syck_parse( parser );
   syck_lookup_sym(parser, root_id, (char **)&retval);
   RELEASE(retval);
+  syck_free_parser(parser);
+  Free(xtra);
   return retval;
 }
 

@@ -128,6 +128,33 @@ typedef struct {
 
 typedef struct {
   int use_named;
+  SEXP handlers;
+
+  /* handlers */
+  SEXP (*null_handler)();
+  SEXP (*binary_handler)();
+  SEXP (*bool_yes_handler)();
+  SEXP (*bool_no_handler)();
+  SEXP (*int_hex_handler)();
+  SEXP (*int_oct_handler)();
+  SEXP (*int_base60_handler)();
+  SEXP (*int_handler)();
+  SEXP (*float_base60_handler)();
+  SEXP (*float_nan_handler)();
+  SEXP (*float_inf_handler)();
+  SEXP (*float_neginf_handler)();
+  SEXP (*float_handler)();
+  SEXP (*timestamp_iso8601_handler)();
+  SEXP (*timestamp_spaced_handler)();
+  SEXP (*timestamp_ymd_handler)();
+  SEXP (*timestamp_handler)();
+  SEXP (*merge_handler)();
+  SEXP (*default_handler)();
+  SEXP (*str_handler)();
+  SEXP (*anchor_bad_handler)();
+  SEXP (*unknown_handler)();
+  SEXP (*seq_handler)();
+  SEXP (*map_handler)();
 } parser_xtra;
 
 static SEXP R_KeysSymbol = NULL;
@@ -281,17 +308,227 @@ free_list(head)
     free_list(tmp);
 }
 
+static SEXP R_get_handler(type_id, xtra)
+  const char *type_id;
+  parser_xtra *xtra;
+{
+  int i;
+  SEXP handlers, names, retval;
+  char msg[255];
+  
+  retval = R_NilValue;
+  handlers = xtra->handlers;
+  if (handlers == R_NilValue)
+    return R_NilValue;
+
+  // try to find the type
+  names = GET_NAMES(handlers);
+  for (i = 0; i < LENGTH(names); i++) {
+    if ( strcmp( type_id, CHAR(STRING_ELT(names, i)) ) == 0 ) {
+      retval = VECTOR_ELT(handlers, i);
+      break;
+    }
+  }
+
+  // check retval to make sure it's a function
+  if (retval != R_NilValue && TYPEOF(retval) != CLOSXP) {
+    sprintf(msg, "the object for '%s' is not a function!", type_id);
+    warning(_(msg));
+    return R_NilValue;
+  }
+
+  return retval;
+}
+
+static SEXP default_null_handler(data)
+  const char *data;
+{
+  return R_NilValue;
+}
+
+/*
+static SEXP default_binary_handler(data)
+  const char *data;
+{
+}
+*/
+
+static SEXP default_bool_yes_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_LOGICAL(1);
+  LOGICAL(obj)[0] = 1;
+  return obj;
+}
+
+static SEXP default_bool_no_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_LOGICAL(1);
+  LOGICAL(obj)[0] = 0;
+  return obj;
+}
+
+static SEXP default_int_hex_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_INTEGER(1);
+  INTEGER(obj)[0] = (int)strtol(data, NULL, 16);
+  return obj;
+}
+
+static SEXP default_int_oct_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_INTEGER(1);
+  INTEGER(obj)[0] = (int)strtol(data, NULL, 8);
+  return obj;
+}
+
+/*
+static SEXP default_int_base60_handler(data)
+  const char *data;
+{
+}
+*/
+
+static SEXP default_int_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_INTEGER(1);
+  INTEGER(obj)[0] = (int)strtol(data, NULL, 10);
+  return obj;
+}
+
+static SEXP default_float_nan_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_NUMERIC(1);
+  REAL(obj)[0] = R_NaN;
+  return obj;
+}
+
+static SEXP default_float_inf_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_NUMERIC(1);
+  REAL(obj)[0] = R_PosInf;
+  return obj;
+}
+
+static SEXP default_float_neginf_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_NUMERIC(1);
+  REAL(obj)[0] = R_NegInf;
+  return obj;
+}
+
+static SEXP default_float_handler(data)
+  const char *data;
+{
+  double f;
+  f = strtod( data, NULL );
+
+  SEXP obj;
+  obj = NEW_NUMERIC(1);
+  REAL(obj)[0] = f;
+  return obj;
+}
+
+/*
+static SEXP default_timestamp_iso8601_handler(data)
+  const char *data;
+{
+}
+*/
+
+/*
+static SEXP default_timestamp_spaced_handler(data)
+  const char *data;
+{
+}
+*/
+
+/*
+static SEXP default_timestamp_ymd_handler(data)
+  const char *data;
+{
+}
+*/
+
+/*
+static SEXP default_timestamp_handler(data)
+  const char *data;
+{
+}
+*/
+
+static SEXP default_merge_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_STRING(1);
+  SET_STRING_ELT(obj, 0, mkChar("_yaml.merge_"));
+  R_set_class(obj, "_yaml.merge_");
+  return obj;
+}
+
+static SEXP default_default_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_STRING(1);
+  SET_STRING_ELT(obj, 0, mkChar("_yaml.default_"));
+  R_set_class(obj, "_yaml.default_");
+  return obj;
+}
+
+static SEXP default_str_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_STRING(1);
+  SET_STRING_ELT(obj, 0, mkChar(data));
+  return obj;
+}
+
+static SEXP default_anchor_bad_handler(data)
+  const char *data;
+{
+  SEXP obj = NEW_STRING(1);
+  SET_STRING_ELT(obj, 0, mkChar("_yaml.bad-anchor_"));
+  R_set_str_attrib(obj, install("name"), data);
+  R_set_class(obj, "_yaml.bad-anchor_");
+  return obj;
+}
+
+/*
+static SEXP default_unknown_handler(data)
+  const char *data;
+{
+}
+*/
+
+static SEXP default_seq_handler(data)
+  const char *data;
+{
+}
+
+static SEXP default_map_handler(data)
+  const char *data;
+{
+}
+
+
 /* originally from Ruby's syck extension; modified for R */
 static int yaml_org_handler( p, n, ref )
   SyckParser *p;
   SyckNode *n;
   SEXP *ref;
 {
-  int             transferred, type, len, total_len, count, do_insert;
+  int             transferred, type, len, total_len, count, do_insert, errorOccurred;
   long            i, j;
-  char           *type_id;
+  char           *type_id, msg[255], *data_ptr;
   SYMID           syck_key, syck_val;
-  SEXP            obj, s_keys, R_key, R_val, tmp, *k, *v, *list;
+  SEXP            obj, s_keys, R_key, R_val, tmp, *k, *v, *list, tmp_obj, R_func, R_cmd;
   st_table       *object_map;
   st_table_entry *entry;
   parser_xtra    *xtra;
@@ -310,200 +547,114 @@ static int yaml_org_handler( p, n, ref )
   {
     case syck_str_kind:
       transferred = 1;
+      data_ptr = n->data.str->ptr;
+
       if ( type_id == NULL )
       {
-        obj = NEW_STRING(1);
-        PRESERVE(obj);
-        SET_STRING_ELT(obj, 0, mkChar(n->data.str->ptr));
+        obj = xtra->unknown_handler(data_ptr);
+      }
+      else if ( (R_func = R_get_handler( type_id, xtra )) != R_NilValue )
+      {
+        // found a user-defined handler for this type; convert
+        // this object into a string and call the custom handler
+        tmp_obj = NEW_STRING(1);
+        PROTECT(tmp_obj);
+        SET_STRING_ELT(tmp_obj, 0, mkChar(n->data.str->ptr));
+
+        PROTECT(R_cmd = allocVector(LANGSXP, 2));
+        SETCAR(R_cmd, R_func);
+        SETCADR(R_cmd, tmp_obj);
+
+        obj = R_tryEval(R_cmd, R_GlobalEnv, &errorOccurred);
+        UNPROTECT(2);
+
+        if (errorOccurred) {
+          sprintf(msg, "an error occurred when handling type '%s'; returning string", type_id);
+          warning(_(msg));
+          obj = tmp_obj;
+        }
       }
       else if ( strcmp( type_id, "null" ) == 0 )
       {
-        obj = R_NilValue;
+        obj = xtra->null_handler(data_ptr);
       }
-/*
- *      else if ( strcmp( type_id, "binary" ) == 0 )
- *      {
- *        VALUE arr;
- *        obj = rb_str_new( n->data.str->ptr, n->data.str->len );
- *        rb_funcall( obj, s_tr_bang, 2, rb_str_new2( "\n\t " ), rb_str_new2( "" ) );
- *        arr = rb_funcall( obj, s_unpack, 1, rb_str_new2( "m" ) );
- *        obj = rb_ary_shift( arr );
- *      }
- */
+      else if ( strcmp( type_id, "binary" ) == 0 )
+      {
+        obj = xtra->binary_handler(data_ptr);
+      }
       else if ( strcmp( type_id, "bool#yes" ) == 0 )
       {
-        obj = NEW_LOGICAL(1);
-        PRESERVE(obj);
-        LOGICAL(obj)[0] = 1;
+        obj = xtra->bool_yes_handler(data_ptr);
       }
       else if ( strcmp( type_id, "bool#no" ) == 0 )
       {
-        obj = NEW_LOGICAL(1);
-        PRESERVE(obj);
-        LOGICAL(obj)[0] = 0;
+        obj = xtra->bool_no_handler(data_ptr);
       }
       else if ( strcmp( type_id, "int#hex" ) == 0 )
       {
         syck_str_blow_away_commas( n );
-
-        obj = NEW_INTEGER(1);
-        PRESERVE(obj);
-        INTEGER(obj)[0] = (int)strtol(n->data.str->ptr, NULL, 16);
+        obj = xtra->int_hex_handler(data_ptr);
       }
       else if ( strcmp( type_id, "int#oct" ) == 0 )
       {
         syck_str_blow_away_commas( n );
-
-        obj = NEW_INTEGER(1);
-        PRESERVE(obj);
-        INTEGER(obj)[0] = (int)strtol(n->data.str->ptr, NULL, 8);
+        obj = xtra->int_oct_handler(data_ptr);
       }
-/*
- *      else if ( strcmp( type_id, "int#base60" ) == 0 )
- *      {
- *        char *ptr, *end;
- *        long sixty = 1;
- *        long total = 0;
- *        syck_str_blow_away_commas( n );
- *        ptr = n->data.str->ptr;
- *        end = n->data.str->ptr + n->data.str->len;
- *        while ( end > ptr )
- *        {
- *          long bnum = 0;
- *          char *colon = end - 1;
- *          while ( colon >= ptr && *colon != ':' )
- *          {
- *            colon--;
- *          }
- *          if ( colon >= ptr && *colon == ':' ) *colon = '\0';
- *
- *          bnum = strtol( colon + 1, NULL, 10 );
- *          total += bnum * sixty;
- *          sixty *= 60;
- *          end = colon;
- *        }
- *        obj = INT2FIX(total);
- *      }
- */
+      else if ( strcmp( type_id, "int#base60" ) == 0 )
+      {
+        syck_str_blow_away_commas( n );
+        obj = xtra->int_base60_handler(data_ptr);
+      }
       else if ( strncmp( type_id, "int", 3 ) == 0 )
       {
         syck_str_blow_away_commas( n );
-
-        obj = NEW_INTEGER(1);
-        PRESERVE(obj);
-        INTEGER(obj)[0] = (int)strtol(n->data.str->ptr, NULL, 10);
+        obj = xtra->int_handler(data_ptr);
       }
-/*
- *      else if ( strcmp( type_id, "float#base60" ) == 0 )
- *      {
- *        char *ptr, *end;
- *        long sixty = 1;
- *        double total = 0.0;
- *        syck_str_blow_away_commas( n );
- *        ptr = n->data.str->ptr;
- *        end = n->data.str->ptr + n->data.str->len;
- *        while ( end > ptr )
- *        {
- *          double bnum = 0;
- *          char *colon = end - 1;
- *          while ( colon >= ptr && *colon != ':' )
- *          {
- *            colon--;
- *          }
- *          if ( colon >= ptr && *colon == ':' ) *colon = '\0';
- *
- *          bnum = strtod( colon + 1, NULL );
- *          total += bnum * sixty;
- *          sixty *= 60;
- *          end = colon;
- *        }
- *        obj = rb_float_new( total );
- *      }
- */
+      else if ( strcmp( type_id, "float#base60" ) == 0 )
+      {
+        syck_str_blow_away_commas( n );
+        obj = xtra->float_base60_handler(data_ptr);
+      }
       else if ( strcmp( type_id, "float#nan" ) == 0 )
       {
-        obj = NEW_NUMERIC(1);
-        PRESERVE(obj);
-        REAL(obj)[0] = R_NaN;
+        obj = xtra->float_nan_handler(data_ptr);
       }
       else if ( strcmp( type_id, "float#inf" ) == 0 )
       {
-        obj = NEW_NUMERIC(1);
-        PRESERVE(obj);
-        REAL(obj)[0] = R_PosInf;
+        obj = xtra->float_inf_handler(data_ptr);
       }
       else if ( strcmp( type_id, "float#neginf" ) == 0 )
       {
-        obj = NEW_NUMERIC(1);
-        PRESERVE(obj);
-        REAL(obj)[0] = R_NegInf;
+        obj = xtra->float_neginf_handler(data_ptr);
       }
       else if ( strncmp( type_id, "float", 5 ) == 0 )
       {
-        double f;
         syck_str_blow_away_commas( n );
-        f = strtod( n->data.str->ptr, NULL );
-
-        obj = NEW_NUMERIC(1);
-        PRESERVE(obj);
-        REAL(obj)[0] = f;
+        obj = xtra->float_handler(data_ptr);
       }
-/*
- *      else if ( strcmp( type_id, "timestamp#iso8601" ) == 0 )
- *      {
- *        obj = rb_syck_mktime( n->data.str->ptr, n->data.str->len );
- *      }
- *      else if ( strcmp( type_id, "timestamp#spaced" ) == 0 )
- *      {
- *        obj = rb_syck_mktime( n->data.str->ptr, n->data.str->len );
- *      }
- *      else if ( strcmp( type_id, "timestamp#ymd" ) == 0 )
- *      {
- *        char *ptr = n->data.str->ptr;
- *        VALUE year, mon, day;
- *
- *        // Year
- *        ptr[4] = '\0';
- *        year = INT2FIX(strtol(ptr, NULL, 10));
- *
- *        // Month
- *        ptr += 4;
- *        while ( !ISDIGIT( *ptr ) ) ptr++;
- *        mon = INT2FIX(strtol(ptr, NULL, 10));
- *
- *        // Day
- *        ptr += 2;
- *        while ( !ISDIGIT( *ptr ) ) ptr++;
- *        day = INT2FIX(strtol(ptr, NULL, 10));
- *
- *        if ( !cDate ) {
- *          //
- *          // Load Date module
- *          //
- *          rb_require( "date" );
- *          cDate = rb_const_get( rb_cObject, rb_intern("Date") );
- *        }
- *
- *        obj = rb_funcall( cDate, s_new, 3, year, mon, day );
- *      }
- *      else if ( strncmp( type_id, "timestamp", 9 ) == 0 )
- *      {
- *        obj = rb_syck_mktime( n->data.str->ptr, n->data.str->len );
- *      }
- */
+      else if ( strcmp( type_id, "timestamp#iso8601" ) == 0 )
+      {
+        obj = xtra->timestamp_iso8601_handler(data_ptr);
+      }
+      else if ( strcmp( type_id, "timestamp#spaced" ) == 0 )
+      {
+        obj = xtra->timestamp_spaced_handler(data_ptr);
+      }
+      else if ( strcmp( type_id, "timestamp#ymd" ) == 0 )
+      {
+        obj = xtra->timestamp_ymd_handler(data_ptr);
+      }
+      else if ( strncmp( type_id, "timestamp", 9 ) == 0 )
+      {
+        obj = xtra->timestamp_handler(data_ptr);
+      }
       else if ( strncmp( type_id, "merge", 5 ) == 0 )
       {
-        obj = NEW_STRING(1);
-        PRESERVE(obj);
-        SET_STRING_ELT(obj, 0, mkChar("_yaml.merge_"));
-        R_set_class(obj, "_yaml.merge_");
+        obj = xtra->merge_handler(data_ptr);
       }
       else if ( strncmp( type_id, "default", 7 ) == 0 )
       {
-        obj = NEW_STRING(1);
-        PRESERVE(obj);
-        SET_STRING_ELT(obj, 0, mkChar("_yaml.default_"));
-        R_set_class(obj, "_yaml.default_");
+        obj = xtra->default_handler(data_ptr);
       }
 /*
  *      else if ( n->data.str->style == scalar_plain &&
@@ -517,25 +668,19 @@ static int yaml_org_handler( p, n, ref )
  */
       else if ( strcmp( type_id, "str" ) == 0 )
       {
-        obj = NEW_STRING(1);
-        PRESERVE(obj);
-        SET_STRING_ELT(obj, 0, mkChar(n->data.str->ptr));
+        obj = xtra->str_handler(data_ptr);
       }
       else if ( strcmp( type_id, "anchor#bad" ) == 0 )
       {
-        obj = NEW_STRING(1);
-        PRESERVE(obj);
-        SET_STRING_ELT(obj, 0, mkChar("_yaml.bad-anchor_"));
-        R_set_str_attrib(obj, install("name"), n->data.str->ptr);
-        R_set_class(obj, "_yaml.bad-anchor_");
+        obj = xtra->anchor_bad_handler(data_ptr);
       }
       else
       {
         transferred = 0;
-        obj = NEW_STRING(1);
-        PRESERVE(obj);
-        SET_STRING_ELT(obj, 0, mkChar(n->data.str->ptr));
+        obj = xtra->unknown_handler(data_ptr);
       }
+      if (obj != R_NilValue)
+        PRESERVE(obj);
       break;
 
     case syck_seq_kind:
@@ -721,7 +866,7 @@ static int yaml_org_handler( p, n, ref )
           }
           RELEASE((SEXP)entry->key);
           j++;
-	  entry = entry->next;
+          entry = entry->next;
         }
       }
       if (xtra->use_named) {
@@ -793,9 +938,10 @@ R_error_handler(p, msg)
 
 
 SEXP 
-load_yaml_str(s_str, s_use_named)
+load_yaml_str(s_str, s_use_named, s_handlers)
   SEXP s_str;
   SEXP s_use_named;
+  SEXP s_handlers;
 {
   SEXP retval;
   SYMID root_id;
@@ -813,9 +959,43 @@ load_yaml_str(s_str, s_use_named)
     error("second argument must be a logical vector of length 1");
     return R_NilValue;
   }
+
+  if (s_handlers != R_NilValue && !R_is_named_list(s_handlers)) {
+    error("handlers must be either NULL or a named list of functions");
+    return R_NilValue;
+  }
+
   str = CHAR(STRING_ELT(s_str, 0));
   len = LENGTH(STRING_ELT(s_str, 0));
   use_named = LOGICAL(s_use_named)[0];
+
+  // setup data handlers
+  parser_xtra *xtra = Calloc(1, parser_xtra);
+  xtra->null_handler              = default_null_handler;
+  xtra->binary_handler            = default_str_handler;
+  xtra->bool_yes_handler          = default_bool_yes_handler;
+  xtra->bool_no_handler           = default_bool_no_handler;
+  xtra->int_hex_handler           = default_int_hex_handler;
+  xtra->int_oct_handler           = default_int_oct_handler;
+  xtra->int_base60_handler        = default_str_handler;
+  xtra->int_handler               = default_int_handler;
+  xtra->float_base60_handler      = default_str_handler;
+  xtra->float_nan_handler         = default_float_nan_handler;
+  xtra->float_inf_handler         = default_float_inf_handler;
+  xtra->float_neginf_handler      = default_float_neginf_handler;
+  xtra->float_handler             = default_float_handler;
+  xtra->timestamp_iso8601_handler = default_str_handler;
+  xtra->timestamp_spaced_handler  = default_str_handler;
+  xtra->timestamp_ymd_handler     = default_str_handler;
+  xtra->timestamp_handler         = default_str_handler;
+  xtra->merge_handler             = default_merge_handler;
+  xtra->default_handler           = default_default_handler;
+  xtra->str_handler               = default_str_handler;
+  xtra->anchor_bad_handler        = default_anchor_bad_handler;
+  xtra->unknown_handler           = default_str_handler;
+  xtra->seq_handler               = default_seq_handler;
+  xtra->map_handler               = default_map_handler;
+  xtra->handlers = s_handlers;
 
   /* setup parser */
   parser = syck_new_parser();
@@ -823,7 +1003,6 @@ load_yaml_str(s_str, s_use_named)
   syck_parser_handler( parser, &R_yaml_handler );
   syck_parser_bad_anchor_handler( parser, &R_bad_anchor_handler );
   syck_parser_error_handler( parser, &R_error_handler );
-  parser_xtra *xtra = Calloc(1, parser_xtra);
   xtra->use_named = use_named;
   parser->bonus = xtra;
 
@@ -836,7 +1015,7 @@ load_yaml_str(s_str, s_use_named)
 }
 
 R_CallMethodDef callMethods[] = {
-  {"yaml.load",(DL_FUNC)&load_yaml_str, 2},
+  {"yaml.load",(DL_FUNC)&load_yaml_str, 3},
   {NULL,NULL, 0}
 };
 

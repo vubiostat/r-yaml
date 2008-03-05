@@ -9,3 +9,6 @@ assert <- function(bool) {
 assert_equal <- function(expected, actual) {
   if (any(expected != actual)) stop("Expected <", expected, ">, got <", actual, ">")
 }
+assert_nan <- function(value) {
+  if (!is.nan(value)) stop(" is not NaN")
+}

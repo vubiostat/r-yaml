@@ -7,7 +7,7 @@
   into R objects.
 }
 \usage{
-yaml.load(string, as.named.list = TRUE)
+yaml.load(string, as.named.list = TRUE, handlers = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

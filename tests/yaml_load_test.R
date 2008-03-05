@@ -72,4 +72,104 @@ test_should_handle_syntax_errors <- function() {
   assert(inherits(x, "try-error"))
 }
 
+test_should_handle_null_type <- function() {
+  x <- yaml.load("~")
+  assert_equal(NULL, x)
+}
+
+test_should_handle_binary_type <- function() {
+  x <- yaml.load("0b101011")
+  assert_equal("0b101011", x)
+}
+
+test_should_handle_bool_yes_type <- function() {
+  x <- yaml.load("yes")
+  assert_equal(TRUE, x)
+}
+
+test_should_handle_bool_no_type <- function() {
+  x <- yaml.load("no")
+  assert_equal(FALSE, x)
+}
+
+test_should_handle_int_hex_type <- function() {
+  x <- yaml.load("0xF")
+  assert_equal(15, x)
+}
+
+test_should_handle_int_oct_type <- function() {
+  x <- yaml.load("015")
+  assert_equal(13, x)
+}
+
+test_should_handle_int_base60_type <- function() {
+  x <- yaml.load("1:20")
+  assert_equal("1:20", x)
+}
+
+test_should_handle_int_type <- function() {
+  x <- yaml.load("31337")
+  assert_equal(31337, x)
+}
+
+test_should_handle_float_base60_type <- function() {
+  x <- yaml.load("1:20.5")
+  assert_equal("1:20.5", x)
+}
+
+test_should_handle_float_nan_type <- function() {
+  x <- yaml.load(".NaN")
+  assert_nan(x)
+}
+
+test_should_handle_float_inf_type <- function() {
+  x <- yaml.load(".inf")
+  assert_equal(Inf, x)
+}
+
+test_should_handle_float_neginf_type <- function() {
+  x <- yaml.load("-.inf")
+  assert_equal(-Inf, x)
+}
+
+test_should_handle_float_type <- function() {
+  x <- yaml.load("123.456")
+  assert_equal(123.456, x)
+}
+
+test_should_handle_timestamp_iso8601_type <- function() {
+  x <- yaml.load("!!timestamp#iso8601 2001-12-14t21:59:43.10-05:00")
+  assert_equal("2001-12-14t21:59:43.10-05:00", x)
+}
+
+test_should_handle_timestamp_spaced_type <- function() {
+  x <- yaml.load("!!timestamp#spaced 2001-12-14 21:59:43.10 -5")
+  assert_equal("2001-12-14 21:59:43.10 -5", x)
+}
+
+test_should_handle_timestamp_ymd_type <- function() {
+  x <- yaml.load("!!timestamp#ymd 2008-03-03")
+  assert_equal("2008-03-03", x)
+}
+
+test_should_handle_timestamp_type <- function() {
+  x <- yaml.load("!!timestamp 2001-12-14t21:59:43.10-05:00")
+  assert_equal("2001-12-14t21:59:43.10-05:00", x)
+}
+
+test_should_handle_merge_type <- function() {
+  x <- yaml.load("- &foo bar\n- *foo")
+  assert_equal(c("bar", "bar"), x)
+}
+
+test_should_handle_str_type <- function() {
+  x <- yaml.load("lickety split")
+  assert_equal("lickety split", x)
+}
+
+test_should_handle_a_bad_anchor <- function() {
+  x <- yaml.load("*blargh")
+  print(x)
+}
+
 source("test_runner.r")

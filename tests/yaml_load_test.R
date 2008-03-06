@@ -78,7 +78,7 @@ test_should_handle_null_type <- function() {
 }
 
 test_should_handle_binary_type <- function() {
-  x <- yaml.load("0b101011")
+  x <- yaml.load("!binary 0b101011")
   assert_equal("0b101011", x)
 }
 
@@ -138,22 +138,22 @@ test_should_handle_float_type <- function() {
 }
 
 test_should_handle_timestamp_iso8601_type <- function() {
-  x <- yaml.load("!!timestamp#iso8601 2001-12-14t21:59:43.10-05:00")
+  x <- yaml.load("!timestamp#iso8601 2001-12-14t21:59:43.10-05:00")
   assert_equal("2001-12-14t21:59:43.10-05:00", x)
 }
 
 test_should_handle_timestamp_spaced_type <- function() {
-  x <- yaml.load("!!timestamp#spaced 2001-12-14 21:59:43.10 -5")
+  x <- yaml.load("!timestamp#spaced 2001-12-14 21:59:43.10 -5")
   assert_equal("2001-12-14 21:59:43.10 -5", x)
 }
 
 test_should_handle_timestamp_ymd_type <- function() {
-  x <- yaml.load("!!timestamp#ymd 2008-03-03")
+  x <- yaml.load("!timestamp#ymd 2008-03-03")
   assert_equal("2008-03-03", x)
 }
 
 test_should_handle_timestamp_type <- function() {
-  x <- yaml.load("!!timestamp 2001-12-14t21:59:43.10-05:00")
+  x <- yaml.load("!timestamp 2001-12-14t21:59:43.10-05:00")
   assert_equal("2001-12-14t21:59:43.10-05:00", x)
 }
 
@@ -170,6 +170,106 @@ test_should_handle_str_type <- function() {
 test_should_handle_a_bad_anchor <- function() {
   x <- yaml.load("*blargh")
   print(x)
+}
+
+test_should_use_custom_null_handler <- function() {
+  x <- yaml.load("~", handlers=list("null"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_binary_handler <- function() {
+  x <- yaml.load("!binary 0b101011", handlers=list("binary"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_bool_yes_handler <- function() {
+  x <- yaml.load("yes", handlers=list("bool#yes"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_bool_no_handler <- function() {
+  x <- yaml.load("no", handlers=list("bool#no"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_int_hex_handler <- function() {
+  x <- yaml.load("0xF", handlers=list("int#hex"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_int_oct_handler <- function() {
+  x <- yaml.load("015", handlers=list("int#oct"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_int_base60_handler <- function() {
+  x <- yaml.load("1:20", handlers=list("int#base60"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_int_handler <- function() {
+  x <- yaml.load("31337", handlers=list("int"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_float_base60_handler <- function() {
+  x <- yaml.load("1:20.5", handlers=list("float#base60"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_float_nan_handler <- function() {
+  x <- yaml.load(".NaN", handlers=list("float#nan"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_float_inf_handler <- function() {
+  x <- yaml.load(".inf", handlers=list("float#inf"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_float_neginf_handler <- function() {
+  x <- yaml.load("-.inf", handlers=list("float#neginf"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_float_handler <- function() {
+  x <- yaml.load("123.456", handlers=list("float"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_timestamp_iso8601_handler <- function() {
+  x <- yaml.load("2001-12-14t21:59:43.10-05:00", handlers=list("timestamp#iso8601"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_timestamp_spaced_handler <- function() {
+  x <- yaml.load("!timestamp#spaced 2001-12-14 21:59:43.10 -5", handlers=list("timestamp#spaced"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_use_custom_timestamp_ymd_handler <- function() {
+  x <- yaml.load("2008-03-03", handlers=list("timestamp#ymd"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_NOT_use_custom_merge_handler <- function() {
+  x <- yaml.load("foo: &foo\n  bar: 123\n  baz: 456\n\njunk:\n  <<: *foo\n  bah: 789", handlers=list("merge"=function(x) { "argh!" }))
+  assert_lists_equal(list(foo=list(bar=123, baz=456), junk=list(bar=123, baz=456, bah=789)), x)
+}
+
+test_should_use_custom_str_handler <- function() {
+  x <- yaml.load("lickety split", handlers=list("str"=function(x) { "argh!" }))
+  assert_equal("argh!", x)
+}
+
+test_should_NOT_use_custom_bad_anchor_handler <- function() {
+  x <- yaml.load("*blargh", handlers=list("anchor#bad"=function(x) { "argh!" }))
+  assert_equal("_yaml.bad-anchor_", x)
+}
+
+test_should_use_handler_for_weird_type <- function() {
+  x <- yaml.load("!viking pillage", handlers=list(viking=function(x) { paste(x, "the village") }))
+  assert_equal("pillage the village", x)
 }
 
 source("test_runner.r")

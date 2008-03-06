@@ -13,6 +13,7 @@ yaml.load(string, as.named.list = TRUE, handlers = NULL)
 \arguments{
   \item{string}{ the YAML string to be parsed (character vector of length 1) }
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
+  \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
 }
 \details{
   Sequences of uniform data (i.e. a sequence of integers) are converted into vectors.  If
@@ -21,6 +22,15 @@ yaml.load(string, as.named.list = TRUE, handlers = NULL)
   keys to be coerced into strings, set \code{as.named.list} to FALSE.  When it's FALSE, a
   list will be returned with an additional attribute named 'keys', which is a list of the
   un-coerced keys in the map (in the same order as the main list).
+
+  You can specify custom handler functions via the \code{handlers} argument.  This argument
+  must be a named list of functions, where the names are the YAML types (i.e., 'int', 'float',
+  'timestamp#iso8601', etc).  The functions you provide will be passed one argument.  Custom
+  handler functions for string types (all types except sequence and map) will receive a
+  character vector of length 1.  Custom sequence and map functions will be passed the object
+  that the internal sequence and map creates, the type of which varies based upon the
+  contents of the map or sequence (see the above paragraph).  ALL functions you provide must
+  return an object.  See examples for example custom handler use.
 }
 \value{
   If the root YAML object is a map, a named list or list with an attribute of 'keys' is
@@ -41,6 +51,19 @@ yaml.load(string, as.named.list = TRUE, handlers = NULL)
 \dontrun{
   yaml.load(readLines("foo.yml"))
 }
+
+  # custom string-type handler
+  my.float.handler <- function(x) { x + 123 }
+  yaml.load("123.456", handlers=list(float=my.float.handler))
+
+  # custom sequence handler
+  yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { x + 3 }))
+
+  # custom map handler
+  yaml.load("foo: 123", handlers=list(map=function(x) { x$foo <- x$foo + 123; x }))
+
+  # handling a custom type
+  yaml.load("!sqrt 555", handlers=list(sqrt=function(x) { sqrt(x) }))
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

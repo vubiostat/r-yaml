@@ -121,6 +121,10 @@ st_lookup_R(table, key, value)
   return st_lookup(table, (st_data_t)key, (st_data_t *)value);
 }
 
+/* end R hashing */
+
+static char error_msg[255];
+
 typedef struct {
   SEXP key;
   SEXP val;
@@ -154,8 +158,9 @@ typedef struct {
   SEXP (*str_handler)();
   SEXP (*anchor_bad_handler)();
   SEXP (*unknown_handler)();
-  SEXP (*seq_handler)();
-  SEXP (*map_handler)();
+
+  SEXP seq_handler;
+  SEXP map_handler;
 } parser_xtra;
 
 static SEXP R_KeysSymbol = NULL;
@@ -539,13 +544,32 @@ find_user_handler(type, xtra, ptr)
 }
 
 static SEXP
+run_R_handler_function(func, arg, type)
+  SEXP func;
+  SEXP arg;
+  const char *type;
+{
+  SEXP obj;
+  int errorOccurred;
+
+  SETCADR(func, arg);
+  obj = R_tryEval(func, R_GlobalEnv, &errorOccurred);
+
+  if (errorOccurred) {
+    sprintf(error_msg, "an error occurred when handling type '%s'; returning default object", type);
+    warning(_(error_msg));
+    return arg;
+  }
+  return obj;
+}
+
+static SEXP
 run_user_handler(type, data, xtra)
   const char *type;
   const char *data;
   parser_xtra *xtra;
 {
   int errorOccurred;
-  char msg[255];
   SEXP func, tmp_obj, obj;
 
   // create a string to pass to the handler
@@ -556,21 +580,14 @@ run_user_handler(type, data, xtra)
   // find the handler
   find_user_handler(type, xtra, &func);
   if (!func) {
-    sprintf(msg, "INTERNAL ERROR: couldn't find the handler for type '%s'!", type);
-    error(_(msg));
+    sprintf(error_msg, "INTERNAL ERROR: couldn't find the handler for type '%s'!", type);
+    error(_(error_msg));
     UNPROTECT(1);
     return tmp_obj;
   }
-  SETCADR(func, tmp_obj);
 
-  obj = R_tryEval(func, R_GlobalEnv, &errorOccurred);
+  obj = run_R_handler_function(func, tmp_obj, type);
   UNPROTECT(1);
-
-  if (errorOccurred) {
-    sprintf(msg, "an error occurred when handling type '%s'; returning string", type);
-    warning(_(msg));
-    return tmp_obj;
-  }
   return obj;
 }
 
@@ -783,7 +800,7 @@ yaml_org_handler( p, n, ref )
 
       /* allocate object accordingly */
       obj = allocVector(type, total_len);
-      PRESERVE(obj);
+      PROTECT(obj);
       switch(type) {
         case VECSXP:
           for ( i = 0; i < len; i++ ) {
@@ -833,6 +850,16 @@ yaml_org_handler( p, n, ref )
           break;
       }
       Free(list);
+
+      if (xtra->seq_handler != 0) {
+        tmp_obj = run_R_handler_function(xtra->seq_handler, obj, "seq"); 
+        UNPROTECT_PTR(obj);
+        obj = tmp_obj;
+      }
+      else
+        UNPROTECT_PTR(obj);
+
+      PRESERVE(obj);
       break;
 
     case syck_map_kind:
@@ -912,7 +939,7 @@ yaml_org_handler( p, n, ref )
       }
 
       obj = allocVector(VECSXP, object_map->num_entries);
-      PRESERVE(obj);
+      PROTECT(obj);
       if (xtra->use_named) {
         PROTECT(s_keys = NEW_STRING(object_map->num_entries));
       }
@@ -943,9 +970,19 @@ yaml_org_handler( p, n, ref )
       else {
         setAttrib(obj, R_KeysSymbol, s_keys);
       }
-      UNPROTECT(1);
+      UNPROTECT_PTR(s_keys);
 
       st_free_table(object_map);
+
+      if (xtra->map_handler != 0) {
+        tmp_obj = run_R_handler_function(xtra->map_handler, obj, "map"); 
+        UNPROTECT_PTR(obj);
+        obj = tmp_obj;
+      }
+      else
+        UNPROTECT_PTR(obj);
+
+      PRESERVE(obj);
       break;
   }
 
@@ -1018,7 +1055,6 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   parser_xtra *xtra;
   st_table_entry *entry;
   const char *str, *name;
-  char msg[255];
   long len;
   int use_named, i;
   
@@ -1065,8 +1101,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   xtra->str_handler               = default_str_handler;
   xtra->anchor_bad_handler        = default_anchor_bad_handler;
   xtra->unknown_handler           = default_unknown_handler;
-  xtra->seq_handler               = default_seq_handler;
-  xtra->map_handler               = default_map_handler;
+  xtra->seq_handler               = 0;
+  xtra->map_handler               = 0;
 
   // setup user handlers
   xtra->user_handlers = st_init_strtable_with_size(13);
@@ -1078,8 +1114,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
       handler = VECTOR_ELT(s_handlers, i);
 
       if (TYPEOF(handler) != CLOSXP) {
-        sprintf(msg, "your handler for '%s' is not a function!", name);
-        warning(_(msg));
+        sprintf(error_msg, "your handler for '%s' is not a function!", name);
+        warning(_(error_msg));
         continue;
       }
 
@@ -1088,14 +1124,23 @@ load_yaml_str(s_str, s_use_named, s_handlers)
            strcmp( name, "default" ) == 0 ||
            strcmp( name, "anchor#bad" ) == 0 ) 
       {
-        sprintf(msg, "custom handling of %s type is not allowed; handler ignored", name);
-        warning(_(msg));
+        sprintf(error_msg, "custom handling of %s type is not allowed; handler ignored", name);
+        warning(_(error_msg));
         continue;
       }
 
       // create function call
       PRESERVE(cmd = allocVector(LANGSXP, 2));
       SETCAR(cmd, handler);
+
+      if ( strcmp( name, "seq" ) == 0 ) {
+        xtra->seq_handler = cmd;
+        continue;
+      }
+      else if ( strcmp( name, "map" ) == 0 ) {
+        xtra->map_handler = cmd;
+        continue;
+      }
 
       // put into handler hash
       st_insert(xtra->user_handlers, (st_data_t)name, (st_data_t)cmd);
@@ -1155,12 +1200,6 @@ load_yaml_str(s_str, s_use_named, s_handlers)
       else if ( strcmp( name, "str" ) == 0 ) {
         xtra->str_handler = run_user_handler;
       }
-      else if ( strcmp( name, "seq" ) == 0 ) {
-        xtra->seq_handler = run_user_handler;
-      }
-      else if ( strcmp( name, "map" ) == 0 ) {
-        xtra->map_handler = run_user_handler;
-      }
     }
   }   // end user handlers
 
@@ -1177,6 +1216,11 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   syck_lookup_sym(parser, root_id, (char **)&retval);
   RELEASE(retval);
   syck_free_parser(parser);
+
+  if (xtra->seq_handler)
+    RELEASE(xtra->seq_handler);
+  if (xtra->map_handler)
+    RELEASE(xtra->map_handler);
 
   for(i = 0; i < xtra->user_handlers->num_bins; i++) {
     entry = xtra->user_handlers->bins[i];

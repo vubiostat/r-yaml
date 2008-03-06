@@ -272,4 +272,14 @@ test_should_use_handler_for_weird_type <- function() {
   assert_equal("pillage the village", x)
 }
 
+test_should_use_custom_seq_handler <- function() {
+  x <- yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { x + 3 }))
+  assert_equal(4:6, x)
+}
+
+test_should_use_custom_map_handler <- function() {
+  x <- yaml.load("foo: bar", handlers=list(map=function(x) { x$foo <- paste(x$foo, "yarr"); x }))
+  assert_equal("bar yarr", x$foo)
+}
+
 source("test_runner.r")

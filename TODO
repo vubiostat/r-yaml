@@ -1,3 +1,2 @@
 - use named vectors instead of lists where appropriate
-- add support for custom sequence/map tags
 - add support for R native tags (matrix, data.frame, etc)

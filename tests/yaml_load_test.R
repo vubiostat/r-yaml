@@ -282,4 +282,14 @@ test_should_use_custom_map_handler <- function() {
   assert_equal("bar yarr", x$foo)
 }
 
+test_should_use_custom_typed_seq_handler <- function() {
+  x <- yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { x + 1 }))
+  assert_equal(2:3, x)
+}
+
+test_should_use_custom_typed_map_handler <- function() {
+  x <- yaml.load("!foo\nuno: 1\ndos: 2", handlers=list(foo=function(x) { x$uno <- "uno"; x$dos <- "dos"; x }))
+  assert_lists_equal(list(uno="uno", dos="dos"), x)
+}
+
 source("test_runner.r")

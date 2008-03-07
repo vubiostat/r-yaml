@@ -851,7 +851,12 @@ yaml_org_handler( p, n, ref )
       }
       Free(list);
 
-      if (xtra->seq_handler != 0) {
+      if (!transferred && find_user_handler(type_id, xtra, &R_func)) {
+        tmp_obj = run_R_handler_function(R_func, obj, type_id); 
+        UNPROTECT_PTR(obj);
+        obj = tmp_obj;
+      }
+      else if (xtra->seq_handler != 0) {
         tmp_obj = run_R_handler_function(xtra->seq_handler, obj, "seq"); 
         UNPROTECT_PTR(obj);
         obj = tmp_obj;
@@ -974,7 +979,12 @@ yaml_org_handler( p, n, ref )
 
       st_free_table(object_map);
 
-      if (xtra->map_handler != 0) {
+      if (!transferred && find_user_handler(type_id, xtra, &R_func)) {
+        tmp_obj = run_R_handler_function(R_func, obj, type_id); 
+        UNPROTECT_PTR(obj);
+        obj = tmp_obj;
+      }
+      else if (xtra->map_handler != 0) {
         tmp_obj = run_R_handler_function(xtra->map_handler, obj, "map"); 
         UNPROTECT_PTR(obj);
         obj = tmp_obj;

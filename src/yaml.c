@@ -10,126 +10,13 @@
 #define PRESERVE(x) R_do_preserve(x)
 #define RELEASE(x)  R_do_release(x)
 
-/* R hashing stuff */
-
-static SEXP R_CmpFunc = NULL;
-static SEXP R_SerializedSymbol = NULL;
-
-static int
-Rcmp(st_x, st_y)
-  char *st_x;
-  char *st_y;
-{
-  int i, retval = 0, *arr;
-  SEXP call, result;
-  SEXP x = (SEXP)st_x;
-  SEXP y = (SEXP)st_y;
-
-  if (R_CmpFunc == NULL)
-    R_CmpFunc = findFun(install("=="), R_GlobalEnv);
-
-  PROTECT(call = lang3(R_CmpFunc, x, y));
-  PROTECT(result = eval(call, R_GlobalEnv));
-  
-  arr = LOGICAL(result);
-  for(i = 0; i < LENGTH(result); i++) {
-    if (!arr[i]) {
-      retval = 1;
-      break;
-    }
-  }
-  UNPROTECT(2);
-  return retval;
-}
-
-static SEXP
-get_or_create_serialized_attr(obj)
-  SEXP obj;
-{
-  SEXP attr, serialized, tru;
-  if (R_SerializedSymbol == NULL)
-    R_SerializedSymbol = install("serialized");
-
-  attr = getAttrib(obj, R_SerializedSymbol);
-  if (attr != R_NilValue)
-    return attr;
-
-  PROTECT(tru = NEW_LOGICAL(1));
-  LOGICAL(tru)[0] = 1;
-  PROTECT(serialized = R_serialize(obj, R_NilValue, tru, R_NilValue));
-  UNPROTECT_PTR(tru);
-
-  char str[LENGTH(serialized) + 1];
-  strncpy(str, (char *)RAW(serialized), LENGTH(serialized));
-  str[LENGTH(serialized)] = 0;
-
-  PROTECT(attr = NEW_STRING(1));
-  SET_STRING_ELT(attr, 0, mkChar(str));
-  UNPROTECT(2);
-
-  return attr;
-}
-
-static int
-Rhash(st_obj)
-  register char *st_obj;
-{
-  SEXP obj, serialized;
-  int i, hash;
-  obj = (SEXP)st_obj;
-
-  /* serialize the object */
-  serialized = get_or_create_serialized_attr(obj);
-  hash = strhash(CHAR(STRING_ELT(serialized, 0)));
-
-  return hash;
-}
-
-static struct st_hash_type type_Rhash = {
-    Rcmp,
-    Rhash,
-};
-
-static st_table* 
-st_init_Rtable()
-{
-    return st_init_table(&type_Rhash);
-}
-
-static st_table* 
-st_init_Rtable_with_size(size)
-    int size;
-{
-    return st_init_table_with_size(&type_Rhash, size);
-}
-
-static int 
-st_insert_R(table, key, value)
-    register st_table *table;
-    register SEXP key;
-    SEXP value;
-{
-    return st_insert(table, (st_data_t)key, (st_data_t)value);
-}
-
-static int
-st_lookup_R(table, key, value)
-    st_table *table;
-    register SEXP key;
-    SEXP *value;
-{
-  return st_lookup(table, (st_data_t)key, (st_data_t *)value);
-}
-
-/* end R hashing */
-
-static char error_msg[255];
-
-typedef struct {
-  SEXP key;
-  SEXP val;
-  void *next;
-} linked;
+typedef size_t R_size_t;
+typedef struct membuf_st {
+    R_size_t size;
+    R_size_t count;
+    unsigned char *buf;
+    int errorOccurred;
+} *membuf_t;
 
 typedef struct {
   int use_named;
@@ -163,7 +50,19 @@ typedef struct {
   SEXP map_handler;
 } parser_xtra;
 
+static int Rhash(register char*);
+static int Rcmp(char*, char*);
+
+static struct st_hash_type 
+type_Rhash = {
+    Rcmp,
+    Rhash,
+};
+static SEXP R_CmpFunc = NULL;
+static SEXP R_SerializedSymbol = NULL;
 static SEXP R_KeysSymbol = NULL;
+
+
 
 static void
 R_do_preserve(x)
@@ -182,6 +81,209 @@ R_do_release(x)
     R_ReleaseObject(x);
   }
 }
+
+/* NOTE: this is where all of the preserved R objects get released */
+static void
+do_free_parser(p)
+  SyckParser *p;
+{
+  int i;
+  st_table_entry *entry;
+  parser_xtra *xtra = p->bonus;
+
+  /* release R objects */
+  if (p->syms) {
+    for(i = 0; i < p->syms->num_bins; i++) {
+      entry = p->syms->bins[i];
+      while (entry) {
+        RELEASE(entry->record);
+        entry = entry->next;
+      }
+    }
+  }
+
+  /* free xtra */
+  if (xtra->seq_handler)
+    RELEASE(xtra->seq_handler);
+  if (xtra->map_handler)
+    RELEASE(xtra->map_handler);
+
+  for(i = 0; i < xtra->user_handlers->num_bins; i++) {
+    entry = xtra->user_handlers->bins[i];
+    while (entry) {
+      RELEASE(entry->record);
+      entry = entry->next;
+    }
+  }
+  st_free_table(xtra->user_handlers);
+  Free(xtra);
+  syck_free_parser(p);
+}
+
+/* stuff needed for serialization; why isn't this exposed?? */
+static void resize_buffer(membuf_t mb, R_size_t needed)
+{
+  /* This used to allocate double 'needed', but that was problematic for
+     large buffers */
+  R_size_t newsize = needed;
+
+  mb->buf = realloc(mb->buf, newsize);
+  if (mb->buf == NULL) {
+    mb->errorOccurred = 1;
+    return;
+  }
+
+  mb->size = newsize;
+}
+
+static void free_mem_buffer(void *data)
+{
+  membuf_t mb = data;
+  if (mb->buf != NULL) {
+    unsigned char *buf = mb->buf;
+    mb->buf = NULL;
+    free(buf);
+  }
+}
+
+static void OutCharMem(R_outpstream_t stream, int c)
+{
+  membuf_t mb = stream->data;
+  if (mb->errorOccurred)
+    return;
+
+  if (mb->count >= mb->size)
+    resize_buffer(mb, mb->count + 50);
+  if (mb->errorOccurred)
+    return;
+
+  mb->buf[mb->count++] = c;
+}
+
+static void OutBytesMem(R_outpstream_t stream, void *buf, int length)
+{
+  membuf_t mb = stream->data;
+  if (mb->errorOccurred)
+    return;
+
+  R_size_t needed = mb->count + (R_size_t) length;
+
+  if (needed > mb->size)
+    resize_buffer(mb, needed + 50);
+  if (mb->errorOccurred)
+    return;
+
+  memcpy(mb->buf + mb->count, buf, length);
+  mb->count = needed;
+}
+
+/* R hashing stuff */
+static int
+Rcmp(st_x, st_y)
+  char *st_x;
+  char *st_y;
+{
+  int i, retval = 0, *arr;
+  SEXP call, result;
+  SEXP x = (SEXP)st_x;
+  SEXP y = (SEXP)st_y;
+
+  PROTECT(call = lang3(R_CmpFunc, x, y));
+  PROTECT(result = eval(call, R_GlobalEnv));
+  
+  arr = LOGICAL(result);
+  for(i = 0; i < LENGTH(result); i++) {
+    if (!arr[i]) {
+      retval = 1;
+      break;
+    }
+  }
+  UNPROTECT(2);
+  return retval;
+}
+
+static SEXP
+create_serialized_attr(obj, errorOccurred)
+  SEXP obj;
+  int *errorOccurred;
+{
+  SEXP attr, serialized;
+  struct R_outpstream_st out;
+  struct membuf_st mbs;
+
+  /* create a stream for serialization */
+  mbs.count = 0;
+  mbs.size  = 0;
+  mbs.buf   = NULL;
+  mbs.errorOccurred = 0;
+  R_InitOutPStream(&out, (R_pstream_data_t)&mbs, R_pstream_ascii_format, 0,
+                   OutCharMem, OutBytesMem, NULL, R_NilValue);
+  R_Serialize(obj, &out);
+  OutCharMem(&out, 0);
+
+  if (!mbs.errorOccurred) {
+    PROTECT(attr = NEW_STRING(1));
+    SET_STRING_ELT(attr, 0, mkChar(mbs.buf));
+    setAttrib(obj, R_SerializedSymbol, attr);
+    UNPROTECT(1);
+    *errorOccurred = 0;
+  }
+  else {
+    attr = R_NilValue;
+    *errorOccurred = 1;
+  }
+
+  free_mem_buffer(&mbs);
+  return attr;
+}
+
+static int
+Rhash(st_obj)
+  register char *st_obj;
+{
+  SEXP obj, key;
+  int hash;
+  obj = (SEXP)st_obj;
+  key = getAttrib(obj, R_SerializedSymbol);
+
+  /* serialize the object */
+  hash = strhash(CHAR(STRING_ELT(key, 0)));
+
+  return hash;
+}
+
+static st_table* 
+st_init_Rtable()
+{
+  return st_init_table(&type_Rhash);
+}
+
+static st_table* 
+st_init_Rtable_with_size(size)
+    int size;
+{
+  return st_init_table_with_size(&type_Rhash, size);
+}
+
+static int 
+st_insert_R(table, key, value)
+  register st_table *table;
+  register SEXP key;
+  SEXP value;
+{
+  return st_insert(table, (st_data_t)key, (st_data_t)value);
+}
+
+static int
+st_lookup_R(table, key, value)
+    st_table *table;
+    register SEXP key;
+    SEXP *value;
+{
+  return st_lookup(table, (st_data_t)key, (st_data_t *)value);
+}
+/* end R hashing */
+
 
 static void
 R_set_str_attrib( obj, sym, str )
@@ -240,23 +342,37 @@ R_is_pseudo_hash( obj )
   return (keys != R_NilValue && TYPEOF(keys) == VECSXP);
 }
 
-static void
+static int
 R_do_map_insert( map, key, value, use_named ) 
   st_table *map;
   SEXP key;
   SEXP value;
   int use_named;
 {
-  /* do a lookup first to ignore duplicate keys */
-  if (!st_lookup_R(map, key, NULL)) {
-    if (use_named) {
-      /* coerce key to character */
-      st_insert_R(map, AS_CHARACTER(key), value);
-    }
-    else {
-      st_insert_R(map, key, value);
-    }
+  SEXP k, s;
+  int errorOccurred;
+
+  if (use_named) {
+    /* coerce key to character */
+    k = AS_CHARACTER(key);
+    PRESERVE(k);
   }
+  else
+    k = key;
+
+  /* serialize the key if necessary */
+  s = getAttrib(k, R_SerializedSymbol);
+  if (s == R_NilValue)
+    create_serialized_attr(k, &errorOccurred);
+
+  if (errorOccurred)
+    return 0;
+
+  /* only insert if lookup fails; this ignores duplicate keys */
+  if (!st_lookup_R(map, k, NULL)) {
+    st_insert_R(map, k, value);
+  }
+  return 1;
 }
 
 static int
@@ -266,78 +382,57 @@ R_merge_list( map, list, use_named )
   int use_named;
 {
   SEXP tmp, name;
-  int i;
+  int i, success;
 
   if (use_named) {
     tmp = GET_NAMES(list);
     for ( i = 0; i < LENGTH(list); i++ ) {
       PROTECT(name = NEW_STRING(1));
       SET_STRING_ELT(name, 0, STRING_ELT(tmp, i));
-      R_do_map_insert( map, name, VECTOR_ELT(list, i), 0 ); /* don't coerce, since it's been done */
+
+      success = R_do_map_insert( map, name, VECTOR_ELT(list, i), 0 );
       UNPROTECT(1);
+
+      if (!success)
+        break;
     }
   }
   else {
     tmp = getAttrib(list, R_KeysSymbol);
     for ( i = 0; i < LENGTH(list); i++ ) {
-      R_do_map_insert( map, VECTOR_ELT(tmp, i), VECTOR_ELT(list, i), 0 );
+      success = R_do_map_insert( map, VECTOR_ELT(tmp, i), VECTOR_ELT(list, i), 0 );
+
+      if (!success)
+        break;
     }
   }
-}
-
-/* call like this:
- *  tail = add_item(tail, foo); */
-static linked*
-add_item(tail, key, val)
-  linked *tail;
-  SEXP key;
-  SEXP val;
-{
-  linked *retval;
-  tail->next = retval = Calloc(1, linked);
-  retval->next = NULL;
-  retval->key  = key;
-  retval->val  = val;
-
-  return retval;
-}
-
-void
-free_list(head)
-  linked *head;
-{
-  linked *tmp;
-  tmp = head->next;
-  Free(head);
-
-  if (tmp != NULL)
-    free_list(tmp);
+  return success;
 }
 
 static SEXP 
-default_null_handler(type, data, xtra)
+default_null_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   return R_NilValue;
 }
 
 /*
 static SEXP 
-default_binary_handler(type, data, xtra)
+default_binary_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
 }
 */
 
 static SEXP
-default_bool_yes_handler(type, data, xtra)
+default_bool_yes_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_LOGICAL(1);
   LOGICAL(obj)[0] = 1;
@@ -345,10 +440,10 @@ default_bool_yes_handler(type, data, xtra)
 }
 
 static SEXP
-default_bool_no_handler(type, data, xtra)
+default_bool_no_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_LOGICAL(1);
   LOGICAL(obj)[0] = 0;
@@ -356,10 +451,10 @@ default_bool_no_handler(type, data, xtra)
 }
 
 static SEXP
-default_int_hex_handler(type, data, xtra)
+default_int_hex_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_INTEGER(1);
   INTEGER(obj)[0] = (int)strtol(data, NULL, 16);
@@ -367,10 +462,10 @@ default_int_hex_handler(type, data, xtra)
 }
 
 static SEXP
-default_int_oct_handler(type, data, xtra)
+default_int_oct_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_INTEGER(1);
   INTEGER(obj)[0] = (int)strtol(data, NULL, 8);
@@ -379,19 +474,19 @@ default_int_oct_handler(type, data, xtra)
 
 /*
 static SEXP
-default_int_base60_handler(type, data, xtra)
+default_int_base60_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
 }
 */
 
 static SEXP
-default_int_handler(type, data, xtra)
+default_int_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_INTEGER(1);
   INTEGER(obj)[0] = (int)strtol(data, NULL, 10);
@@ -399,10 +494,10 @@ default_int_handler(type, data, xtra)
 }
 
 static SEXP
-default_float_nan_handler(type, data, xtra)
+default_float_nan_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_NUMERIC(1);
   REAL(obj)[0] = R_NaN;
@@ -410,10 +505,10 @@ default_float_nan_handler(type, data, xtra)
 }
 
 static SEXP
-default_float_inf_handler(type, data, xtra)
+default_float_inf_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_NUMERIC(1);
   REAL(obj)[0] = R_PosInf;
@@ -421,10 +516,10 @@ default_float_inf_handler(type, data, xtra)
 }
 
 static SEXP
-default_float_neginf_handler(type, data, xtra)
+default_float_neginf_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_NUMERIC(1);
   REAL(obj)[0] = R_NegInf;
@@ -432,10 +527,10 @@ default_float_neginf_handler(type, data, xtra)
 }
 
 static SEXP
-default_float_handler(type, data, xtra)
+default_float_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   double f;
   f = strtod( data, NULL );
@@ -448,49 +543,49 @@ default_float_handler(type, data, xtra)
 
 /*
 static SEXP
-default_timestamp_iso8601_handler(type, data, xtra)
+default_timestamp_iso8601_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
 }
 */
 
 /*
 static SEXP
-default_timestamp_spaced_handler(type, data, xtra)
+default_timestamp_spaced_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
 }
 */
 
 /*
 static SEXP
-default_timestamp_ymd_handler(type, data, xtra)
+default_timestamp_ymd_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
 }
 */
 
 /*
 static SEXP
-default_timestamp_handler(type, data, xtra)
+default_timestamp_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
 }
 */
 
 static SEXP
-default_merge_handler(type, data, xtra)
+default_merge_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_STRING(1);
   SET_STRING_ELT(obj, 0, mkChar("_yaml.merge_"));
@@ -499,10 +594,10 @@ default_merge_handler(type, data, xtra)
 }
 
 static SEXP
-default_default_handler(type, data, xtra)
+default_default_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_STRING(1);
   SET_STRING_ELT(obj, 0, mkChar("_yaml.default_"));
@@ -511,10 +606,10 @@ default_default_handler(type, data, xtra)
 }
 
 static SEXP
-default_str_handler(type, data, xtra)
+default_str_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_STRING(1);
   SET_STRING_ELT(obj, 0, mkChar(data));
@@ -522,10 +617,10 @@ default_str_handler(type, data, xtra)
 }
 
 static SEXP
-default_anchor_bad_handler(type, data, xtra)
+default_anchor_bad_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   SEXP obj = NEW_STRING(1);
   SET_STRING_ELT(obj, 0, mkChar("_yaml.bad-anchor_"));
@@ -551,6 +646,7 @@ run_R_handler_function(func, arg, type)
 {
   SEXP obj;
   int errorOccurred;
+  char error_msg[255];
 
   SETCADR(func, arg);
   obj = R_tryEval(func, R_GlobalEnv, &errorOccurred);
@@ -564,23 +660,27 @@ run_R_handler_function(func, arg, type)
 }
 
 static SEXP
-run_user_handler(type, data, xtra)
+run_user_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
   int errorOccurred;
+  char error_msg[255];
   SEXP func, tmp_obj, obj;
+  parser_xtra *xtra = p->bonus;
 
-  // create a string to pass to the handler
+  /* create a string to pass to the handler */
   tmp_obj = NEW_STRING(1);
   PROTECT(tmp_obj);
   SET_STRING_ELT(tmp_obj, 0, mkChar(data));
 
-  // find the handler
+  /* find the handler */
   find_user_handler(type, xtra, &func);
   if (!func) {
+    /* this shouldn't ever happen */
     sprintf(error_msg, "INTERNAL ERROR: couldn't find the handler for type '%s'!", type);
+    do_free_parser(p);
     error(_(error_msg));
     UNPROTECT(1);
     return tmp_obj;
@@ -592,35 +692,21 @@ run_user_handler(type, data, xtra)
 }
 
 static SEXP
-default_unknown_handler(type, data, xtra)
+default_unknown_handler(type, data, p)
   const char *type;
   const char *data;
-  parser_xtra *xtra;
+  SyckParser *p;
 {
-  // see if there's a user handler for this type
+  parser_xtra *xtra = p->bonus;
+
+  /* see if there's a user handler for this type */
   if (find_user_handler(type, xtra, 0)) {
-    run_user_handler(type, data, xtra);
+    run_user_handler(type, data, p);
   }
   else {
-    // run the string handler
-    default_str_handler(type, data, xtra);
+    /* run the string handler */
+    default_str_handler(type, data, p);
   }
-}
-
-static SEXP
-default_seq_handler(type, data, xtra)
-  const char *type;
-  const char *data;
-  parser_xtra *xtra;
-{
-}
-
-static SEXP
-default_map_handler(type, data, xtra)
-  const char *type;
-  const char *data;
-  parser_xtra *xtra;
-{
 }
 
 /* originally from Ruby's syck extension; modified for R */
@@ -630,7 +716,7 @@ yaml_org_handler( p, n, ref )
   SyckNode *n;
   SEXP *ref;
 {
-  int             transferred, type, len, total_len, count, do_insert, errorOccurred;
+  int             transferred, type, len, total_len, count, do_insert, errorOccurred, success;
   long            i, j;
   char           *type_id, *data_ptr;
   SYMID           syck_key, syck_val;
@@ -657,89 +743,89 @@ yaml_org_handler( p, n, ref )
 
       if ( type_id == NULL )
       {
-        obj = xtra->unknown_handler(type_id, data_ptr, xtra);
+        obj = xtra->unknown_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "null" ) == 0 )
       {
-        obj = xtra->null_handler(type_id, data_ptr, xtra);
+        obj = xtra->null_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "binary" ) == 0 )
       {
-        obj = xtra->binary_handler(type_id, data_ptr, xtra);
+        obj = xtra->binary_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "bool#yes" ) == 0 )
       {
-        obj = xtra->bool_yes_handler(type_id, data_ptr, xtra);
+        obj = xtra->bool_yes_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "bool#no" ) == 0 )
       {
-        obj = xtra->bool_no_handler(type_id, data_ptr, xtra);
+        obj = xtra->bool_no_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "int#hex" ) == 0 )
       {
         syck_str_blow_away_commas( n );
-        obj = xtra->int_hex_handler(type_id, data_ptr, xtra);
+        obj = xtra->int_hex_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "int#oct" ) == 0 )
       {
         syck_str_blow_away_commas( n );
-        obj = xtra->int_oct_handler(type_id, data_ptr, xtra);
+        obj = xtra->int_oct_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "int#base60" ) == 0 )
       {
         syck_str_blow_away_commas( n );
-        obj = xtra->int_base60_handler(type_id, data_ptr, xtra);
+        obj = xtra->int_base60_handler(type_id, data_ptr, p);
       }
       else if ( strncmp( type_id, "int", 3 ) == 0 )
       {
         syck_str_blow_away_commas( n );
-        obj = xtra->int_handler("int", data_ptr, xtra);
+        obj = xtra->int_handler("int", data_ptr, p);
       }
       else if ( strcmp( type_id, "float#base60" ) == 0 )
       {
         syck_str_blow_away_commas( n );
-        obj = xtra->float_base60_handler(type_id, data_ptr, xtra);
+        obj = xtra->float_base60_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "float#nan" ) == 0 )
       {
-        obj = xtra->float_nan_handler(type_id, data_ptr, xtra);
+        obj = xtra->float_nan_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "float#inf" ) == 0 )
       {
-        obj = xtra->float_inf_handler(type_id, data_ptr, xtra);
+        obj = xtra->float_inf_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "float#neginf" ) == 0 )
       {
-        obj = xtra->float_neginf_handler(type_id, data_ptr, xtra);
+        obj = xtra->float_neginf_handler(type_id, data_ptr, p);
       }
       else if ( strncmp( type_id, "float", 5 ) == 0 )
       {
         syck_str_blow_away_commas( n );
-        obj = xtra->float_handler("float", data_ptr, xtra);
+        obj = xtra->float_handler("float", data_ptr, p);
       }
       else if ( strcmp( type_id, "timestamp#iso8601" ) == 0 )
       {
-        obj = xtra->timestamp_iso8601_handler(type_id, data_ptr, xtra);
+        obj = xtra->timestamp_iso8601_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "timestamp#spaced" ) == 0 )
       {
-        obj = xtra->timestamp_spaced_handler(type_id, data_ptr, xtra);
+        obj = xtra->timestamp_spaced_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "timestamp#ymd" ) == 0 )
       {
-        obj = xtra->timestamp_ymd_handler(type_id, data_ptr, xtra);
+        obj = xtra->timestamp_ymd_handler(type_id, data_ptr, p);
       }
       else if ( strncmp( type_id, "timestamp", 9 ) == 0 )
       {
-        obj = xtra->timestamp_handler("timestamp", data_ptr, xtra);
+        obj = xtra->timestamp_handler("timestamp", data_ptr, p);
       }
       else if ( strncmp( type_id, "merge", 5 ) == 0 )
       {
-        obj = xtra->merge_handler("merge", data_ptr, xtra);
+        obj = xtra->merge_handler("merge", data_ptr, p);
       }
       else if ( strncmp( type_id, "default", 7 ) == 0 )
       {
-        obj = xtra->default_handler("default", data_ptr, xtra);
+        obj = xtra->default_handler("default", data_ptr, p);
       }
 /*
  *      else if ( n->data.str->style == scalar_plain &&
@@ -753,16 +839,16 @@ yaml_org_handler( p, n, ref )
  */
       else if ( strcmp( type_id, "str" ) == 0 )
       {
-        obj = xtra->str_handler(type_id, data_ptr, xtra);
+        obj = xtra->str_handler(type_id, data_ptr, p);
       }
       else if ( strcmp( type_id, "anchor#bad" ) == 0 )
       {
-        obj = xtra->anchor_bad_handler(type_id, data_ptr, xtra);
+        obj = xtra->anchor_bad_handler(type_id, data_ptr, p);
       }
       else
       {
         transferred = 0;
-        obj = xtra->unknown_handler(type_id, data_ptr, xtra);
+        obj = xtra->unknown_handler(type_id, data_ptr, p);
       }
       if (obj != R_NilValue)
         PRESERVE(obj);
@@ -805,7 +891,6 @@ yaml_org_handler( p, n, ref )
         case VECSXP:
           for ( i = 0; i < len; i++ ) {
             SET_VECTOR_ELT(obj, i, list[i]);
-            RELEASE(list[i]);
           }
           break;
           
@@ -815,7 +900,6 @@ yaml_org_handler( p, n, ref )
             for ( j = 0; j < LENGTH(tmp); j++ ) {
               LOGICAL(obj)[count++] = LOGICAL(tmp)[j];
             }
-            RELEASE(tmp);
           }
           break;
 
@@ -825,7 +909,6 @@ yaml_org_handler( p, n, ref )
             for ( j = 0; j < LENGTH(tmp); j++ ) {
               INTEGER(obj)[count++] = INTEGER(tmp)[j];
             }
-            RELEASE(tmp);
           }
           break;
 
@@ -835,7 +918,6 @@ yaml_org_handler( p, n, ref )
             for ( j = 0; j < LENGTH(tmp); j++ ) {
               REAL(obj)[count++] = REAL(tmp)[j];
             }
-            RELEASE(tmp);
           }
           break;
 
@@ -845,7 +927,6 @@ yaml_org_handler( p, n, ref )
             for ( j = 0; j < LENGTH(tmp); j++ ) {
               SET_STRING_ELT(obj, count++, STRING_ELT(tmp, j));
             }
-            RELEASE(tmp);
           }
           break;
       }
@@ -896,7 +977,12 @@ yaml_org_handler( p, n, ref )
              *        <<: *bar
              */
             do_insert = 0;
-            R_merge_list( object_map, R_val, xtra->use_named );
+            success = R_merge_list( object_map, R_val, xtra->use_named );
+            if (!success) {
+              st_free_table(object_map);
+              do_free_parser(p);
+              error(_("memory allocation error"));
+            }
           }
           else if ( TYPEOF(R_val) == VECSXP )
           {
@@ -911,7 +997,12 @@ yaml_org_handler( p, n, ref )
             for ( j = 0; j < LENGTH(R_val); j++ ) {
               tmp = VECTOR_ELT(R_val, j);
               if ( (xtra->use_named && R_is_named_list(tmp)) || (!xtra->use_named && R_is_pseudo_hash(tmp)) ) {
-                R_merge_list( object_map, tmp, xtra->use_named );
+                success = R_merge_list( object_map, tmp, xtra->use_named );
+                if (!success) {
+                  st_free_table(object_map);
+                  do_free_parser(p);
+                  error(_("memory allocation error"));
+                }
               }
               else {
                 /* this is probably undesirable behavior; don't write crappy YAML
@@ -923,7 +1014,12 @@ yaml_org_handler( p, n, ref )
                  *        <<: [*bar, "bad yaml!", *baz]
                  */
                    
-                R_do_map_insert( object_map, R_key, tmp, xtra->use_named );
+                success = R_do_map_insert( object_map, R_key, tmp, xtra->use_named );
+                if (!success) {
+                  st_free_table(object_map);
+                  do_free_parser(p);
+                  error(_("memory allocation error"));
+                }
               }
             }
           }
@@ -939,7 +1035,12 @@ yaml_org_handler( p, n, ref )
         
         /* insert into hash if not already done */
         if (do_insert) {
-          R_do_map_insert( object_map, R_key, R_val, xtra->use_named ); 
+          success = R_do_map_insert( object_map, R_key, R_val, xtra->use_named ); 
+          if (!success) {
+            st_free_table(object_map);
+            do_free_parser(p);
+            error(_("memory allocation error"));
+          }
         }
       }
 
@@ -956,15 +1057,19 @@ yaml_org_handler( p, n, ref )
         entry = object_map->bins[i];
         while (entry) {
           SET_VECTOR_ELT(obj, j, (SEXP)entry->record);
-          RELEASE((SEXP)entry->record);
 
           if (xtra->use_named) {
             SET_STRING_ELT(s_keys, j, STRING_ELT((SEXP)entry->key, 0));
+
+            /* This is necessary here because the key was coerced into a string, which
+             * may or may not have created a new R object.  Even if it didn't create
+             * a new object, it doesn't hurt anything to release the object more than once 
+             * (except losing a few clock cycles). */
+            RELEASE((SEXP)entry->key);
           }
           else {
             SET_VECTOR_ELT(s_keys, j, (SEXP)entry->key);
           }
-          RELEASE((SEXP)entry->key);
           j++;
           entry = entry->next;
         }
@@ -1040,18 +1145,21 @@ R_error_handler(p, msg)
     char *msg;
 {
   char *endl = p->cursor;
+  char error_msg[255];
 
   while ( *endl != '\0' && *endl != '\n' )
     endl++;
 
   endl[0] = '\0';
-  error("%s on line %d, col %d: `%s'",
+
+  sprintf(error_msg, "%s on line %d, col %d: `%s'",
       msg,
       p->linect,
       p->cursor - p->lineptr, 
       p->lineptr); 
+  do_free_parser(p);
+  error(_(error_msg));
 }
-
 
 SEXP 
 load_yaml_str(s_str, s_use_named, s_handlers)
@@ -1063,8 +1171,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   SYMID root_id;
   SyckParser *parser;
   parser_xtra *xtra;
-  st_table_entry *entry;
   const char *str, *name;
+  char error_msg[255];
   long len;
   int use_named, i;
   
@@ -1088,7 +1196,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   use_named = LOGICAL(s_use_named)[0];
   xtra = Calloc(1, parser_xtra);
 
-  // setup data handlers
+  /* setup data handlers */
   xtra->null_handler              = default_null_handler;        
   xtra->binary_handler            = default_str_handler;
   xtra->bool_yes_handler          = default_bool_yes_handler;
@@ -1114,7 +1222,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   xtra->seq_handler               = 0;
   xtra->map_handler               = 0;
 
-  // setup user handlers
+  /* setup user handlers */
   xtra->user_handlers = st_init_strtable_with_size(13);
 
   if (s_handlers != R_NilValue) {
@@ -1129,7 +1237,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
         continue;
       }
 
-      // custom handlers for merge, default, and anchor#bad are illegal
+      /* custom handlers for merge, default, and anchor#bad are illegal */
       if ( strcmp( name, "merge" ) == 0   || 
            strcmp( name, "default" ) == 0 ||
            strcmp( name, "anchor#bad" ) == 0 ) 
@@ -1139,7 +1247,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
         continue;
       }
 
-      // create function call
+      /* create function call */
       PRESERVE(cmd = allocVector(LANGSXP, 2));
       SETCAR(cmd, handler);
 
@@ -1152,10 +1260,10 @@ load_yaml_str(s_str, s_use_named, s_handlers)
         continue;
       }
 
-      // put into handler hash
+      /* put into handler hash */
       st_insert(xtra->user_handlers, (st_data_t)name, (st_data_t)cmd);
 
-      // set handler pointer (if a default handler exists) to call user function
+      /* set handler pointer (if a default handler exists) to call user function */
       if ( strcmp( name, "null" ) == 0 ) {
         xtra->null_handler = run_user_handler;
       }
@@ -1211,11 +1319,11 @@ load_yaml_str(s_str, s_use_named, s_handlers)
         xtra->str_handler = run_user_handler;
       }
     }
-  }   // end user handlers
+  }   /* end user handlers */
 
   /* setup parser */
   parser = syck_new_parser();
-  syck_parser_str( parser, (char *)str, len, NULL);
+  syck_parser_str( parser, (char *)str, len, NULL );
   syck_parser_handler( parser, &R_yaml_handler );
   syck_parser_bad_anchor_handler( parser, &R_bad_anchor_handler );
   syck_parser_error_handler( parser, &R_error_handler );
@@ -1224,23 +1332,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
   root_id = syck_parse( parser );
   syck_lookup_sym(parser, root_id, (char **)&retval);
-  RELEASE(retval);
-  syck_free_parser(parser);
-
-  if (xtra->seq_handler)
-    RELEASE(xtra->seq_handler);
-  if (xtra->map_handler)
-    RELEASE(xtra->map_handler);
-
-  for(i = 0; i < xtra->user_handlers->num_bins; i++) {
-    entry = xtra->user_handlers->bins[i];
-    while (entry) {
-      RELEASE(entry->record);
-      entry = entry->next;
-    }
-  }
-  st_free_table(xtra->user_handlers);
-  Free(xtra);
+  do_free_parser(parser);
 
   return retval;
 }
@@ -1252,5 +1344,7 @@ R_CallMethodDef callMethods[] = {
 
 void R_init_yaml(DllInfo *dll) {
   R_KeysSymbol = install("keys");
+  R_SerializedSymbol = install("serialized");
+  R_CmpFunc = findFun(install("=="), R_GlobalEnv);
   R_registerRoutines(dll,NULL,callMethods,NULL,NULL);
 }

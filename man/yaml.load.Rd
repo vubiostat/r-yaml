@@ -54,7 +54,7 @@ yaml.load(string, as.named.list = TRUE, handlers = NULL)
 
   # custom string-type handler
   my.float.handler <- function(x) { as.numeric(x) + 123 }
-  yaml.load("123.456", handlers=list(float=my.float.handler))
+  yaml.load("123.456", handlers=list("float#fix"=my.float.handler))
 
   # custom sequence handler
   yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { as.integer(x) + 3 }))

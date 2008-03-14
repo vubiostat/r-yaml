@@ -1103,6 +1103,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   setup_handler(parser, "float#nan",         default_float_nan_handler,    R_NilValue);
   setup_handler(parser, "float#inf",         default_float_inf_handler,    R_NilValue);
   setup_handler(parser, "float#neginf",      default_float_neginf_handler, R_NilValue);
+  setup_handler(parser, "float#fix",         default_float_handler,        R_NilValue);
   setup_handler(parser, "float",             default_float_handler,        R_NilValue);
   setup_handler(parser, "timestamp#iso8601", default_str_handler,          R_NilValue);
   setup_handler(parser, "timestamp#spaced",  default_str_handler,          R_NilValue);

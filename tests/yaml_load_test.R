@@ -233,7 +233,7 @@ test_should_use_custom_float_neginf_handler <- function() {
 }
 
 test_should_use_custom_float_handler <- function() {
-  x <- yaml.load("123.456", handlers=list("float"=function(x) { "argh!" }))
+  x <- yaml.load("123.456", handlers=list("float#fix"=function(x) { "argh!" }))
   assert_equal("argh!", x)
 }
 
@@ -273,7 +273,7 @@ test_should_use_handler_for_weird_type <- function() {
 }
 
 test_should_use_custom_seq_handler <- function() {
-  x <- yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { x + 3 }))
+  x <- yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { as.integer(x) + 3 }))
   assert_equal(4:6, x)
 }
 
@@ -283,7 +283,7 @@ test_should_use_custom_map_handler <- function() {
 }
 
 test_should_use_custom_typed_seq_handler <- function() {
-  x <- yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { x + 1 }))
+  x <- yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1 }))
   assert_equal(2:3, x)
 }
 
@@ -291,5 +291,11 @@ test_should_use_custom_typed_map_handler <- function() {
   x <- yaml.load("!foo\nuno: 1\ndos: 2", handlers=list(foo=function(x) { x$uno <- "uno"; x$dos <- "dos"; x }))
   assert_lists_equal(list(uno="uno", dos="dos"), x)
 }
+
+# NOTE: this works, but it looks like R_tryEval doesn't behave correctly when called in the context of try()
+#test_should_handle_a_bad_handler <- function() {
+#  x <- yaml.load("foo", handlers=list(str=function(x) { blargh }))
+#  str(x)
+#}
 
 source("test_runner.r")

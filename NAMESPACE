@@ -1,0 +1,2 @@
+useDynLib(yaml)
+export(as.yaml, as.yaml.list, as.yaml.data.frame, as.yaml.default, yaml.load)

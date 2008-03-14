@@ -27,10 +27,10 @@ yaml.load(string, as.named.list = TRUE, handlers = NULL)
   must be a named list of functions, where the names are the YAML types (i.e., 'int', 'float',
   'timestamp\#iso8601', etc).  The functions you provide will be passed one argument.  Custom
   handler functions for string types (all types except sequence and map) will receive a
-  character vector of length 1.  Custom sequence and map functions will be passed the object
-  that the internal sequence and map creates, the type of which varies based upon the
-  contents of the map or sequence (see the above paragraph).  ALL functions you provide must
-  return an object.  See examples for example custom handler use.
+  character vector of length 1.  Custom sequence functions will be passed a list of objects.
+  Custom map functions will be passed the object that the internal map handler creates, which
+  is either a named list or a list with a 'keys' attribute (depending on \code{as.named.list}).
+  ALL functions you provide must return an object.  See the examples for custom handler use.
 }
 \value{
   If the root YAML object is a map, a named list or list with an attribute of 'keys' is
@@ -57,14 +57,14 @@ yaml.load(string, as.named.list = TRUE, handlers = NULL)
   yaml.load("123.456", handlers=list(float=my.float.handler))
 
   # custom sequence handler
-  yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { x + 3 }))
+  yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { as.integer(x) + 3 }))
 
   # custom map handler
   yaml.load("foo: 123", handlers=list(map=function(x) { x$foo <- x$foo + 123; x }))
 
   # handling custom types
   yaml.load("!sqrt 555", handlers=list(sqrt=function(x) { sqrt(as.integer(x)) }))
-  yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { x + 1 }))
+  yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1 }))
   yaml.load("!bar\none: 1\ntwo: 2", handlers=list(foo=function(x) { x$one <- "one"; x }))
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

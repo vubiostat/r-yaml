@@ -1,6 +1,3 @@
-Short term:
-- double check PRESERVE and RELEASE to make sure everything's getting released properly
-
 Long term:
 - use named vectors instead of lists where appropriate
 - add support for R native tags (matrix, data.frame, etc)

@@ -1,6 +1,8 @@
 failure = FALSE
 for (i in ls(pattern = "^test")) {
-  res <- try(eval(call(i)), TRUE)
+  cat("running ", i, "...\n");
+  func <- get(i)
+  res <- try(func(), TRUE)
   if (inherits(res, "try-error")) {
     cat("assertion failed in function <", i, ">\n", sep="")
     cat("\t", res)

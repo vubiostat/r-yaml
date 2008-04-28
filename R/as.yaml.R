@@ -5,6 +5,7 @@ function(x, ...) {
 
 as.yaml.list <- 
 function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...) {
+  if (length(x) == 0)  return("[]")
   x.names <- names(x)
   is.map <- (!is.null(x.names) && length(x.names) == length(x))
   if (!is.map) {
@@ -32,6 +33,7 @@ function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...) {
 
 as.yaml.data.frame <-
 function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, column.major = TRUE, ...) {
+  if (nrow(x) == 0)  return("[]")
   x.names <- names(x)
   retval  <- vector("list", ifelse(column.major, ncol(x), nrow(x)))
   pre.indent.str <- paste(rep(" ", pre.indent * indent), collapse="", sep = "")
@@ -56,6 +58,7 @@ function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, column.major
 
 as.yaml.default <- 
 function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...) {
+  if (length(x) == 0)  return("[]")
   retval <- vector("list", length(x))
   pre.indent.str <- paste(rep(" ", pre.indent * indent), collapse = "", sep = "")
   line.sep <- match.arg(line.sep)

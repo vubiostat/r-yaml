@@ -1,2 +1,5 @@
 Thanks to the following people for helping out:
 - Jeff Horner, for general advice and incorporating the syck parser into this package
+
+Patches submitted by:
+- Brendan O'Connor (dfe10f615562458142a73e5bb26b1227a1836581)

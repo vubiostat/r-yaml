@@ -8,12 +8,19 @@ function() {
   y <- yaml.load(as.yaml(x))
   assert_equal(x$foo, y$foo)
   assert_equal(x$bar, y$bar)
- 
+
   x <- list(foo=1:10, bar=list(foo=11:20, bar=letters[1:10]))
   y <- yaml.load(as.yaml(x))
   assert_equal(x$foo, y$foo)
   assert_equal(x$bar$foo, y$bar$foo)
   assert_equal(x$bar$bar, y$bar$bar)
+
+  # nested lists
+  x <- list(foo = list(a = 1, b = 2), bar = list(b = 4))
+  y <- yaml.load(as.yaml(x))
+  assert_equal(x$foo$a, y$foo$a)
+  assert_equal(x$foo$b, y$foo$b)
+  assert_equal(x$bar$b, y$bar$b)
 }
 
 test_should_convert_data_frame_to_yaml <-

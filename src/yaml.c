@@ -31,7 +31,7 @@ typedef struct {
 static int Rhash(register char*);
 static int Rcmp(char*, char*);
 
-static struct st_hash_type 
+static struct st_hash_type
 type_Rhash = {
     Rcmp,
     Rhash,
@@ -166,7 +166,7 @@ Rcmp(st_x, st_y)
 
   PROTECT(call = lang3(R_CmpFunc, x, y));
   PROTECT(result = eval(call, R_GlobalEnv));
-  
+
   arr = LOGICAL(result);
   for(i = 0; i < LENGTH(result); i++) {
     if (!arr[i]) {
@@ -228,20 +228,20 @@ Rhash(st_obj)
   return hash;
 }
 
-static st_table* 
+static st_table*
 st_init_Rtable()
 {
   return st_init_table(&type_Rhash);
 }
 
-static st_table* 
+static st_table*
 st_init_Rtable_with_size(size)
     int size;
 {
   return st_init_table_with_size(&type_Rhash, size);
 }
 
-static int 
+static int
 st_insert_R(table, key, value)
   register st_table *table;
   register SEXP key;
@@ -274,7 +274,7 @@ R_set_str_attrib( obj, sym, str )
   UNPROTECT(1);
 }
 
-static void 
+static void
 R_set_class( obj, name )
   SEXP obj;
   char *name;
@@ -282,7 +282,7 @@ R_set_class( obj, name )
   R_set_str_attrib(obj, R_ClassSymbol, name);
 }
 
-static int 
+static int
 R_class_of( obj, name )
   SEXP obj;
   char *name;
@@ -294,7 +294,7 @@ R_class_of( obj, name )
   return 0;
 }
 
-static int 
+static int
 R_is_named_list( obj )
   SEXP obj;
 {
@@ -306,7 +306,7 @@ R_is_named_list( obj )
   return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
 }
 
-static int 
+static int
 R_is_pseudo_hash( obj )
   SEXP obj;
 {
@@ -319,7 +319,7 @@ R_is_pseudo_hash( obj )
 }
 
 static int
-R_do_map_insert( map, key, value, use_named ) 
+R_do_map_insert( map, key, value, use_named )
   st_table *map;
   SEXP key;
   SEXP value;
@@ -385,7 +385,7 @@ R_merge_list( map, list, use_named )
   return success;
 }
 
-static SEXP 
+static SEXP
 default_null_handler(type, data, R_cmd)
   const char *type;
   const char *data;
@@ -395,7 +395,7 @@ default_null_handler(type, data, R_cmd)
 }
 
 /*
-static SEXP 
+static SEXP
 default_binary_handler(type, data, R_cmd)
   const char *type;
   const char *data;
@@ -765,7 +765,7 @@ yaml_org_handler( p, n, ref )
             SET_VECTOR_ELT(obj, i, list[i]);
           }
           break;
-          
+
         case LGLSXP:
           for ( i = 0, count = 0; i < len; i++ ) {
             tmp = list[i];
@@ -878,7 +878,7 @@ yaml_org_handler( p, n, ref )
                  *        hello: friend
                  *        <<: [*bar, "bad yaml!", *baz]
                  */
-                   
+
                 success = R_do_map_insert( object_map, R_key, tmp, xtra->use_named );
                 if (!success) {
                   st_free_table(object_map);
@@ -897,10 +897,10 @@ yaml_org_handler( p, n, ref )
  *          skip_aset = 1;
  *        }
  */
-        
+
         /* insert into hash if not already done */
         if (do_insert) {
-          success = R_do_map_insert( object_map, R_key, R_val, xtra->use_named ); 
+          success = R_do_map_insert( object_map, R_key, R_val, xtra->use_named );
           if (!success) {
             st_free_table(object_map);
             free_all(p);
@@ -928,7 +928,7 @@ yaml_org_handler( p, n, ref )
 
             /* This is necessary here because the key was coerced into a string, which
              * may or may not have created a new R object.  Even if it didn't create
-             * a new object, it doesn't hurt anything to release the object more than once 
+             * a new object, it doesn't hurt anything to release the object more than once
              * (except losing a few clock cycles). */
             RELEASE((SEXP)entry->key);
           }
@@ -990,9 +990,9 @@ R_yaml_handler(p, n)
   /* if n->id > 0, it means that i've run across a bad anchor that was just defined... or something.
    * so i want to overwrite the existing node with this one */
   if (n->id > 0) {
-    st_insert( p->syms, (st_data_t)n->id, (st_data_t)(*obj) ); 
+    st_insert( p->syms, (st_data_t)n->id, (st_data_t)(*obj) );
   }
-  
+
   retval = syck_add_sym( p, (char *)(*obj) );
   Free(obj);
   return retval;
@@ -1014,8 +1014,8 @@ R_error_handler(p, msg)
   sprintf(error_msg, "%s on line %d, col %d: `%s'",
       msg,
       p->linect,
-      p->cursor - p->lineptr, 
-      p->lineptr); 
+      p->cursor - p->lineptr,
+      p->lineptr);
   free_all(p);
   error(_(error_msg));
 }
@@ -1048,7 +1048,7 @@ setup_handler(p, type, func, R_cmd)
     st_insert(hash, (st_data_t)type, (st_data_t)hndlr);
 }
 
-SEXP 
+SEXP
 load_yaml_str(s_str, s_use_named, s_handlers)
   SEXP s_str;
   SEXP s_use_named;
@@ -1062,7 +1062,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   char error_msg[255];
   long len;
   int use_named, i;
-  
+
   if (!isString(s_str) || length(s_str) != 1) {
     error("first argument must be a character vector of length 1");
     return R_NilValue;
@@ -1084,7 +1084,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
   parser = syck_new_parser();
   xtra = Calloc(1, parser_xtra);
-  if (xtra == NULL) 
+  if (xtra == NULL)
     error(_("memory allocation error"));
   xtra->use_named = use_named;
   parser->bonus = xtra;
@@ -1132,9 +1132,9 @@ load_yaml_str(s_str, s_use_named, s_handlers)
       }
 
       /* custom handlers for merge, default, and anchor#bad are illegal */
-      if ( strcmp( name, "merge" ) == 0   || 
+      if ( strcmp( name, "merge" ) == 0   ||
            strcmp( name, "default" ) == 0 ||
-           strcmp( name, "anchor#bad" ) == 0 ) 
+           strcmp( name, "anchor#bad" ) == 0 )
       {
         sprintf(error_msg, "custom handling of %s type is not allowed; handler ignored", name);
         warning(_(error_msg));
@@ -1157,7 +1157,10 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   syck_parser_error_handler( parser, &R_error_handler );
 
   root_id = syck_parse( parser );
-  syck_lookup_sym(parser, root_id, (char **)&retval);
+  if (syck_lookup_sym(parser, root_id, (char **)&retval) == 0) {
+    // empty document
+    retval = R_NilValue;
+  }
   free_all(parser);
 
   return retval;

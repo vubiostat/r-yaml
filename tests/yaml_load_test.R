@@ -298,4 +298,11 @@ test_should_use_custom_typed_map_handler <- function() {
 #  str(x)
 #}
 
+test_should_load_empty_documents <- function() {
+  x <- yaml.load("")
+  assert_equal(NULL, x)
+  x <- yaml.load("# this document only has\n   # wickedly awesome comments")
+  assert_equal(NULL, x)
+}
+
 source("test_runner.r")

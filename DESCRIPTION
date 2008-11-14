@@ -1,8 +1,8 @@
 Package: yaml
 Type: Package
-Title: Methods to convert R to YAML and back 
-Version: 1.0
-Date: 2008-02-27
+Title: Methods to convert R to YAML and back
+Version: 1.0.1
+Date: 2008-11-14
 Author: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 Maintainer: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 License: BSD

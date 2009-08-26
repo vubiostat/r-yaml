@@ -1,3 +1,4 @@
 .*swp
 src/*.o
 src/*.so
+Session.vim

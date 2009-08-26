@@ -305,4 +305,13 @@ test_should_load_empty_documents <- function() {
   assert_equal(NULL, x)
 }
 
+test_should_read_from_connection <- function() {
+  cat("foo: 123", file="pants.yml", sep="\n")
+  pants <- file('pants.yml', 'r')
+  x <- yaml.load(pants)
+  close(pants)
+  unlink("pants.yml")
+  assert_equal(123, x$foo)
+}
+
 source("test_runner.r")

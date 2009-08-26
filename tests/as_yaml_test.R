@@ -37,4 +37,10 @@ function() {
   assert_equal(15,  y[[5]]$c)
 }
 
+test_should_convert_empty_nested_list <-
+function() {
+  x <- list(foo=list())
+  assert_equal("foo:\n  []", as.yaml(x))
+}
+
 source("test_runner.r")

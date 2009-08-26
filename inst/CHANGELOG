@@ -1,3 +1,6 @@
+v1.0.2
+  - fixed as.yaml bug where a nested empty list wasn't converted correctly
+
 v1.0.1
   - yaml.load will now load empty documents (bug submitted by Jeff Klingner)
   - as.yaml will return '[]' for empty objects (patch submitted by Brendan O'Connor)

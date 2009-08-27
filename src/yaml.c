@@ -617,6 +617,15 @@ default_anchor_bad_handler(type, data, R_cmd)
   return obj;
 }
 
+static SEXP
+default_omap_handler(type, data, R_cmd)
+  const char *type;
+  const char *data;
+  SEXP R_cmd;
+{
+  return data;
+}
+
 /*
 static SEXP
 default_unknown_handler(type, data, R_cmd)
@@ -685,7 +694,7 @@ find_and_run_handler(p, type, data)
 
 /* originally from Ruby's syck extension; modified for R */
 static void
-yaml_org_handler( p, n, ref )
+yaml_handler( p, n, ref )
   SyckParser *p;
   SyckNode *n;
   SEXP *ref;
@@ -805,8 +814,7 @@ yaml_org_handler( p, n, ref )
       Free(list);
 
       if (custom) {
-        /* hndlr->func isn't even used in this case, which might need to change at some point */
-        tmp_obj = run_R_handler_function(hndlr->R_cmd, obj, type_id == NULL ? "seq" : type_id);
+        tmp_obj = hndlr->func(type_id == NULL ? "seq" : type_id, obj, hndlr->R_cmd);
         UNPROTECT_PTR(obj);
         obj = tmp_obj;
       }
@@ -985,7 +993,7 @@ R_yaml_handler(p, n)
   SEXP *obj, tmp;
 
   obj = Calloc(1, SEXP);
-  yaml_org_handler( p, n, obj );
+  yaml_handler( p, n, obj );
 
   /* if n->id > 0, it means that i've run across a bad anchor that was just defined... or something.
    * so i want to overwrite the existing node with this one */
@@ -1114,6 +1122,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   setup_handler(parser, "str",               default_str_handler,          R_NilValue);
   setup_handler(parser, "anchor#bad",        default_anchor_bad_handler,   R_NilValue);
   setup_handler(parser, "unknown",           default_str_handler,          R_NilValue);
+  setup_handler(parser, "omap",              default_omap_handler,         R_NilValue);
 
 //  xtra->seq_handler               = 0;
 //  xtra->map_handler               = 0;

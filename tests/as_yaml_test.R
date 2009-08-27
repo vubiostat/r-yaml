@@ -43,4 +43,23 @@ function() {
   assert_equal("foo:\n  []", as.yaml(x))
 }
 
+test_should_convert_empty_nested_data_frame <-
+function() {
+  x <- list(foo=data.frame())
+  assert_equal("foo:\n  []", as.yaml(x))
+}
+
+test_should_convert_empty_nested_vector <-
+function() {
+  x <- list(foo=c())
+  assert_equal("foo: []", as.yaml(x))
+}
+
+test_should_convert_list_as_omap <-
+function() {
+  x <- list(a=1:2, b=3:4)
+  expected <- "--- !omap\n- a:\n    - 1\n    - 2\n- b:\n    - 3\n    - 4"
+  assert_equal(expected, as.yaml(x, omap=TRUE))
+}
+
 source("test_runner.r")

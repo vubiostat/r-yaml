@@ -9,5 +9,6 @@ for (i in ls(pattern = "^test")) {
     failure = TRUE
   }
 }
-if (failure)
+if (failure) {
   stop("errors occurred")
+}

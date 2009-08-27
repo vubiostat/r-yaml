@@ -314,4 +314,12 @@ test_should_read_from_connection <- function() {
   assert_equal(123, x$foo)
 }
 
+test_should_load_omap <- function() {
+  x <- yaml.load("--- !omap\n- foo: [1,2,3]\n- bar: [1,2,3]")
+  expected <- list(foo=1:3, bar=1:3)
+  print(expected)
+  print(x)
+  assert_equal(expected, x)
+}
+
 source("test_runner.r")

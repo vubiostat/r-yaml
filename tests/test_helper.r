@@ -1,7 +1,11 @@
-dyn.load("../src/yaml.so")
-for (f in list.files("../R", full.names = TRUE))
-  source(f)
-#library(yaml)
+if (file.exists("../src/yaml.so")) {
+  dyn.load("../src/yaml.so")
+  for (f in list.files("../R", full.names = TRUE)) {
+    source(f)
+  }
+} else {
+  library(yaml)
+}
 
 assert <- function(bool) {
   if (!bool) stop(bool, " is not TRUE")

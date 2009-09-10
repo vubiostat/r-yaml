@@ -62,4 +62,10 @@ function() {
   assert_equal(expected, as.yaml(x, omap=TRUE))
 }
 
+test_should_load_omap <-
+function() {
+  x <- yaml.load(as.yaml(list(a=1:2, b=3:4), omap=TRUE))
+  print(x)
+}
+
 source("test_runner.r")

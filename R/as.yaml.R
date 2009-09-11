@@ -50,6 +50,8 @@ function(x, line.sep, indent, pre.indent, omap = FALSE, ...) {
   retval <- vector("list", length(x))
 
   for (i in 1:length(x.names)) {
+    omap.tag <- ifelse(omap && is.list(x[[i]]), " !omap", "");
+
     tmp.pre.indent <- pre.indent + ifelse(omap, 2, 1)
     tmp <- .as.yaml.internal(x[[i]], line.sep = line.sep, indent = indent, pre.indent = tmp.pre.indent, omap = omap, ...)
 
@@ -60,7 +62,7 @@ function(x, line.sep, indent, pre.indent, omap = FALSE, ...) {
       retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ": ", tmp[[1]], sep = "")
     }
     else {
-      retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ":", line.sep, tmp, sep = "")
+      retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ":", omap.tag, line.sep, tmp, sep = "")
     }
   }
 
@@ -104,13 +106,18 @@ function(x, line.sep, indent, pre.indent, ...) {
   pre.indent.str <- paste(rep(" ", pre.indent * indent), collapse = "", sep = "")
 
   if (length(x) == 1) {
-    retval[[1]] <- as.character(x)
+    retval[[1]] <- .format.obj(x)
   }
   else {
     for (i in 1:length(x)) {
-      retval[[i]] <- paste(pre.indent.str, "- ", x[[i]], sep = "")
+      retval[[i]] <- paste(pre.indent.str, "- ", .format.obj(x[[i]]), sep = "")
     }
   }
 
   paste(retval, collapse = line.sep)
+}
+
+.format.obj <-
+function(obj) {
+  format(obj, nsmall=1)
 }

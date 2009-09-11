@@ -1,2 +1,2 @@
 useDynLib(yaml)
-exportPattern("^[^\\.]")
+export(as.yaml, as.yaml.list, as.yaml.data.frame, as.yaml.default, yaml.load_file, yaml.load)

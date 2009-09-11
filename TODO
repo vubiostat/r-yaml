@@ -1,8 +1,4 @@
-Short term:
 - fix 'Yes' and 'No' not being quoted in as.yaml
-- add omap to yaml.load and as.yaml
-- bump up syck
-
-Long term:
+- bump up syck version
 - use named vectors instead of lists where appropriate
 - add support for R native tags (matrix, data.frame, etc)

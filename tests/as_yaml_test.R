@@ -62,10 +62,22 @@ function() {
   assert_equal(expected, as.yaml(x, omap=TRUE))
 }
 
+test_should_convert_nested_lists_as_omap <-
+function() {
+  x <- list(a=list(c=list(e=1L, f=2L)), b=list(d=list(g=3L, h=4L)))
+  expected <- "--- !omap\n- a: !omap\n    - c: !omap\n        - e: 1\n        - f: 2\n- b: !omap\n    - d: !omap\n        - g: 3\n        - h: 4"
+  assert_equal(expected, as.yaml(x, omap=TRUE))
+}
+
 test_should_load_omap <-
 function() {
   x <- yaml.load(as.yaml(list(a=1:2, b=3:4, c=5:6, d=7:8), omap=TRUE))
   assert_equal(c("a", "b", "c", "d"), names(x))
+}
+
+test_should_convert_numeric_correctly <-
+function() {
+  assert_equal("1.0", as.yaml(1.0))
 }
 
 source("test_runner.r")

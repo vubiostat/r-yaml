@@ -1,3 +1,8 @@
+v1.1.0
+  - added support for omaps
+  - added yaml.load_file function to read from files/connections
+  - using format instead of as.character now in as.yaml.default
+
 v1.0.2
   - fixed as.yaml bug where a nested empty list wasn't converted correctly
 

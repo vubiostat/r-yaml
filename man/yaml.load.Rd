@@ -1,5 +1,6 @@
 \name{yaml.load}
 \alias{yaml.load}
+\alias{yaml.load_file}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Convert a YAML string into R objects }
 \description{
@@ -7,15 +8,22 @@
   into R objects.
 }
 \usage{
-yaml.load(input, as.named.list = TRUE, handlers = NULL)
+  yaml.load(string, as.named.list = TRUE, handlers = NULL)
+  yaml.load_file(input, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{input}{ the YAML string to be parsed; if not a string, it will be treated as a connection }
+  \item{string}{ the YAML string to be parsed, a filename, or a connection }
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
   \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
+  \item{input}{ a filename or connection }
+  \item{...}{ arguments to pass to yaml.load }
 }
 \details{
+  Use \code{yaml.load} to load a YAML string.  For files and connections, use
+  \code{yaml.load_file}, which calls \code{yaml.load} with the contents of the specified
+  file or connection.
+
   Sequences of uniform data (i.e. a sequence of integers) are converted into vectors.  If
   the sequence is not uniform, it's returned as a list. Maps are converted into named lists
   by default, and all the keys in the map are converted to strings.  If you don't want the
@@ -51,9 +59,7 @@ yaml.load(input, as.named.list = TRUE, handlers = NULL)
 
   # reading from a file (uses readLines internally)
   cat("foo: 123", file="foo.yml", sep="\n")
-  foo <- file("foo.yml", "r")
-  yaml.load(foo)
-  close(foo)
+  yaml.load_file('foo.yml')
   unlink("foo.yml") # tidy up
 
   # custom string-type handler

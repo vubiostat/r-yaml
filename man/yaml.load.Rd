@@ -13,7 +13,7 @@
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{string}{ the YAML string to be parsed, a filename, or a connection }
+  \item{string}{ the YAML string to be parsed }
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
   \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
   \item{input}{ a filename or connection }

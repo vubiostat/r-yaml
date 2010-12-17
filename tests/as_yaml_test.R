@@ -80,4 +80,13 @@ function() {
   assert_equal("1.0", as.yaml(1.0))
 }
 
+test_multiline_string <-
+function() {
+  assert_equal("|\n  foo\n  bar", as.yaml("foo\nbar"))
+  assert_equal("- foo\n- |\n  bar\n  baz", as.yaml(c("foo", "bar\nbaz")))
+  # Excess indentation, perhaps
+  assert_equal("foo: |\n    foo\n    bar", as.yaml(list(foo = "foo\nbar")))
+  assert_equal("a:\n  - foo\n  - bar\n  - |\n    baz\n    quux", as.yaml(data.frame(a = c('foo', 'bar', 'baz\nquux'))))
+}
+
 source("test_runner.r")

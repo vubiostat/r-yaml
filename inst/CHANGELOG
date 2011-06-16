@@ -1,3 +1,8 @@
+v1.2.0
+  - added support for loading R expressions (using the !expr tag)
+  - added multiline string support
+  - added support for nameless lists in as.yaml (converts to a sequence)
+
 v1.1.0
   - added support for omaps
   - added yaml.load_file function to read from files/connections

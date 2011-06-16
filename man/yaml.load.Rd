@@ -76,6 +76,10 @@
   yaml.load("!sqrt 555", handlers=list(sqrt=function(x) { sqrt(as.integer(x)) }))
   yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1 }))
   yaml.load("!bar\none: 1\ntwo: 2", handlers=list(foo=function(x) { x$one <- "one"; x }))
+
+  # loading R expressions
+  doc <- yaml.load("inc: !expr function(x) x + 1")
+  doc$inc(1)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

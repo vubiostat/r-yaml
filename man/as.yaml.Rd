@@ -48,6 +48,13 @@
 \author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu }
 \seealso{ \code{\link{yaml.load}} }
 \examples{
+  as.yaml(1:10)
+  as.yaml(list(foo=1:10, bar=c("test1", "test2")))
+  as.yaml(data.frame(a=1:10, b=letters[1:10], c=11:20))
+  as.yaml(list(a=1:2, b=3:4), omap=TRUE)
+  as.yaml("multi\nline\nstring")
+  as.yaml(function(x) x + 1)
+  as.yaml(list(foo=list(list(x = 1, y = 2), list(x = 3, y = 4))))
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

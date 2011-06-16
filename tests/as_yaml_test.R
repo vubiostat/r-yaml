@@ -97,4 +97,18 @@ function() {
   assert_equal(expected, result)
 }
 
+test_list_with_unnamed_items <-
+function() {
+  x <- list(foo=list(list(x = 1L, y = 2L), list(x = 3L, y = 4L)))
+  expected <- "foo:
+  -
+    x: 1
+    y: 2
+  -
+    x: 3
+    y: 4"
+  result <- as.yaml(x)
+  assert_equal(expected, result)
+}
+
 source("test_runner.r")

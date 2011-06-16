@@ -42,31 +42,45 @@ function(x, line.sep, indent, pre.indent, omap = FALSE, ...) {
     return(c(string = paste(pre.indent.str, "[]", sep=""), length = 1))
   }
 
-  x.names <- names(x)
-  is.map <- (!is.null(x.names) && length(x.names) == length(x))
-  if (!is.map) {
-    stop("can only handle fully-named lists (length(names(x)) must equal names(x))")
-  }
-
-  omap.str <- ifelse(omap, "- ", "");
-
   retval <- vector("list", length(x))
+  x.names <- names(x)
+  if (is.null(x.names)) {
+    # sequence
+    for (i in 1:length(x)) {
+      tmp.pre.indent <- pre.indent + 1
+      tmp <- .as.yaml.internal(x[[i]], line.sep = line.sep, indent = indent, pre.indent = tmp.pre.indent, omap = omap, ...)
 
-  for (i in 1:length(x.names)) {
-    omap.tag <- ifelse(omap && is.list(x[[i]]), " !omap", "");
-
-    tmp.pre.indent <- pre.indent + ifelse(omap, 2, 1)
-    tmp <- .as.yaml.internal(x[[i]], line.sep = line.sep, indent = indent, pre.indent = tmp.pre.indent, omap = omap, ...)
-
-    if (tmp['length'] == 1 && !is.list(x[[i]])) {
-      retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ": ", tmp['string'][[1]], sep = "")
-    }
-    else {
-      retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ":", omap.tag, line.sep, tmp['string'], sep = "")
+      if (tmp['length'] == 1 && !is.list(x[[i]])) {
+        retval[[i]] <- paste(pre.indent.str, "- ", tmp['string'][[1]], sep = "")
+      }
+      else {
+        retval[[i]] <- paste(pre.indent.str, "-", line.sep, tmp['string'], sep = "")
+      }
     }
   }
+  else if (length(x.names) == length(x)) {
+    # map
+    omap.str <- ifelse(omap, "- ", "");
 
-  c(string = paste(retval, collapse = line.sep), length = length(x.names))
+    for (i in 1:length(x.names)) {
+      omap.tag <- ifelse(omap && is.list(x[[i]]), " !omap", "");
+
+      tmp.pre.indent <- pre.indent + ifelse(omap, 2, 1)
+      tmp <- .as.yaml.internal(x[[i]], line.sep = line.sep, indent = indent, pre.indent = tmp.pre.indent, omap = omap, ...)
+
+      if (tmp['length'] == 1 && !is.list(x[[i]])) {
+        retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ": ", tmp['string'][[1]], sep = "")
+      }
+      else {
+        retval[[i]] <- paste(pre.indent.str, omap.str, x.names[i], ":", omap.tag, line.sep, tmp['string'], sep = "")
+      }
+    }
+  }
+  else {
+    stop("list must either be fully-named (length(names(x)) == length(x)) or have no names")
+  }
+
+  c(string = paste(retval, collapse = line.sep), length = length(x))
 }
 
 .as.yaml.internal.data.frame <-

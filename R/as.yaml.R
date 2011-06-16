@@ -19,14 +19,14 @@ function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, omap = FALSE
 as.yaml.data.frame <-
 function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, column.major = TRUE, ...) {
   line.sep <- match.arg(line.sep)
-  result <- .as.yaml.internal.data.frame(x, line.sep, indent, pre.indent, column.major, ...)
+  result <- .as.yaml.internal(x, line.sep, indent, pre.indent, column.major, ...)
   result[['string']]
 }
 
 as.yaml.default <-
 function(x, line.sep = c("\n", "\r\n"), indent = 2, pre.indent = 0, ...) {
   line.sep <- match.arg(line.sep)
-  result <- .as.yaml.internal.default(x, line.sep, indent, pre.indent, ...)
+  result <- .as.yaml.internal(x, line.sep, indent, pre.indent, ...)
   result[['string']]
 }
 
@@ -81,7 +81,7 @@ function(x, line.sep, indent, pre.indent, column.major, ...) {
   rlength <- NULL
   if (column.major) {
     for (i in 1:ncol(x)) {
-      tmp <- .as.yaml.internal.default(x[[i]], line.sep, indent, pre.indent + 1, ...)
+      tmp <- .as.yaml.internal(x[[i]], line.sep, indent, pre.indent + 1, ...)
       retval[[i]] <- paste(pre.indent.str, x.names[i], ":", line.sep, tmp['string'], sep = "")
     }
     rlength <- ncol(x)
@@ -97,6 +97,13 @@ function(x, line.sep, indent, pre.indent, column.major, ...) {
   }
 
   c(string = paste(retval, collapse = line.sep), length = rlength)
+}
+
+.as.yaml.internal.function <-
+function(x, line.sep, indent, pre.indent, ...) {
+  pre.indent.str <- paste(rep(" ", pre.indent * indent), collapse = "", sep = "")
+  result <- paste(pre.indent.str, "!expr ", .format.obj(paste(deparse(x), collapse="\n"), pre.indent.str, indent), sep = "")
+  c(string = result, length = 1)
 }
 
 .as.yaml.internal.default <-

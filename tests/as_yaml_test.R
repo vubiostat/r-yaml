@@ -89,4 +89,12 @@ function() {
   assert_equal("a:\n  - foo\n  - bar\n  - |\n    baz\n    quux", as.yaml(data.frame(a = c('foo', 'bar', 'baz\nquux'))))
 }
 
+test_function <-
+function() {
+  x <- function() { runif(100) }
+  expected <- "!expr |\n  function () \n  {\n      runif(100)\n  }"
+  result <- as.yaml(x)
+  assert_equal(expected, result)
+}
+
 source("test_runner.r")

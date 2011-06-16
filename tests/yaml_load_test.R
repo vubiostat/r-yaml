@@ -321,4 +321,15 @@ test_should_error_when_omap_is_invalid <- function() {
   assert(inherits(x, "try-error"))
 }
 
+test_should_convert_expressions <- function() {
+  x <- yaml.load("!expr |\n  function() \n  {\n    'hey!'\n  }")
+  assert_equal("function", class(x))
+  assert_equal("hey!", x())
+}
+
+test_should_error_for_bad_expressions <- function() {
+  x <- try(yaml.load("!expr |\n  1+"))
+  assert(inherits(x, "try-error"))
+}
+
 source("test_runner.r")

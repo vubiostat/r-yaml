@@ -694,6 +694,40 @@ default_unknown_handler(type, kind, data, R_cmd)
 */
 
 static SEXP
+default_expr_handler(type, kind, data, R_cmd)
+  const char *type;
+  enum syck_kind_tag kind;
+  void *data;
+  SEXP R_cmd;
+{
+  SEXP expr, obj, text, call, pcall, Rfn;
+
+  /* call parse() */
+  PROTECT(Rfn = findFun(install("parse"), R_BaseEnv));
+  PROTECT(pcall = call = allocList(2));
+  SET_TYPEOF(call, LANGSXP);
+  SETCAR(pcall, Rfn); pcall = CDR(pcall);
+  SETCAR(pcall, allocVector(STRSXP, 1));
+  SET_STRING_ELT(CAR(pcall), 0, mkChar((char *)data));
+  SET_TAG(pcall, install("text"));
+  SET_NAMED(CAR(pcall), 2);
+  expr = eval(call, R_GlobalEnv);
+  UNPROTECT(2);
+  PROTECT(expr);
+
+  /* call eval() to evaluate the expression */
+  PROTECT(Rfn = findFun(install("eval"), R_BaseEnv));
+  PROTECT(pcall = call = allocList(2));
+  SET_TYPEOF(call, LANGSXP);
+  SETCAR(pcall, Rfn); pcall = CDR(pcall);
+  SETCAR(pcall, expr);
+  obj = eval(call, R_GlobalEnv);
+  UNPROTECT(3);
+
+  return obj;
+}
+
+static SEXP
 run_R_handler_function(func, arg, type)
   SEXP func;
   SEXP arg;
@@ -1089,8 +1123,8 @@ R_error_handler(p, msg)
   sprintf(error_msg, "%s on line %d, col %d: `%s'",
       msg,
       p->linect,
-      p->cursor - p->lineptr,
-      p->lineptr);
+      (int)(p->cursor - p->lineptr),
+      (char *)p->lineptr);
   free_all(p);
   error(_(error_msg));
 }
@@ -1190,6 +1224,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   setup_handler(parser, "anchor#bad",        default_anchor_bad_handler,   R_NilValue);
   setup_handler(parser, "unknown",           default_str_handler,          R_NilValue);
   setup_handler(parser, "omap",              default_omap_handler,         R_NilValue);
+  setup_handler(parser, "expr",              default_expr_handler,         R_NilValue);
 
 //  xtra->seq_handler               = 0;
 //  xtra->map_handler               = 0;

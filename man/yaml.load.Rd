@@ -57,10 +57,12 @@
   yaml.load("- foo\n- bar\n- 3.14")
   yaml.load("foo: bar\n123: 456", as.named.list = FALSE)
 
+\dontrun{
   # reading from a file (uses readLines internally)
   cat("foo: 123", file="foo.yml", sep="\n")
   yaml.load_file('foo.yml')
   unlink("foo.yml") # tidy up
+}
 
   # custom string-type handler
   my.float.handler <- function(x) { as.numeric(x) + 123 }

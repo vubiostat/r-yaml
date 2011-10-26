@@ -12,83 +12,86 @@ typedef struct {
   PROTECT_INDEX ipx;  /* in case we need coercion */
   yaml_event_type_t type;
   void *prev;
-} s_stack;
+} s_stack_entry;
 
-static int
-R_is_named_list( obj )
+typedef struct {
   SEXP obj;
-{
-  SEXP names;
-  if (TYPEOF(obj) != VECSXP)
-    return 0;
+  void *prev;
+} s_alias_entry;
 
-  names = GET_NAMES(obj);
-  return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
-}
-
-static s_stack *
-push(stack, type, obj, ipx)
-  s_stack *stack;
+static void
+stack_push(stack, type, obj, ipx)
+  s_stack_entry **stack;
   yaml_event_type_t type;
   SEXP obj;
   PROTECT_INDEX ipx;
 {
-  s_stack *result;
+  s_stack_entry *result;
 
-  result = (s_stack *)malloc(sizeof(s_stack));
+  result = (s_stack_entry *)malloc(sizeof(s_stack_entry));
   result->type = type;
   result->obj = obj;
   result->ipx = ipx;
-  result->prev = stack;
+  result->prev = *stack;
 
-  return result;
+  *stack = result;
 }
 
-static s_stack *
-pop(stack, obj, ipx)
-  s_stack *stack;
+static void
+stack_pop(stack, obj, ipx)
+  s_stack_entry **stack;
   SEXP *obj;
   PROTECT_INDEX *ipx;
 {
-  s_stack *result;
+  s_stack_entry *result, *top;
 
-  *obj = stack->obj;
+  top = *stack;
+  *obj = top->obj;
   if (ipx != NULL) {
-    *ipx = stack->ipx;
+    *ipx = top->ipx;
   }
-  result = (s_stack *)stack->prev;
-  free(stack);
+  result = (s_stack_entry *)top->prev;
+  free(top);
 
-  return result;
+  *stack = result;
 }
 
-static s_stack *
-handle_scalar(event, stack)
+static void
+handle_start_event(event, stack, aliases)
   yaml_event_t *event;
-  s_stack *stack;
+  s_stack_entry **stack;
+  s_alias_entry **aliases;
+{
+  stack_push(stack, event->type, NULL, -1);
+}
+
+static void
+handle_scalar(event, stack, aliases)
+  yaml_event_t *event;
+  s_stack_entry **stack;
+  s_alias_entry **aliases;
 {
   SEXP obj;
   PROTECT_INDEX ipx;
 
   PROTECT_WITH_INDEX(obj = NEW_STRING(1), &ipx);
   SET_STRING_ELT(obj, 0, mkChar((char *)event->data.scalar.value));
-  stack = push(stack, event->type, obj, ipx);
-
-  return stack;
+  stack_push(stack, event->type, obj, ipx);
 }
 
-static s_stack *
-handle_sequence(event, stack)
+static void
+handle_sequence(event, stack, aliases)
   yaml_event_t *event;
-  s_stack *stack;
+  s_stack_entry **stack;
+  s_alias_entry **aliases;
 {
-  s_stack *stack_ptr;
+  s_stack_entry *stack_ptr;
   int count, i;
   SEXP list, obj;
   PROTECT_INDEX ipx;
 
   /* Find out how many elements there are */
-  stack_ptr = stack;
+  stack_ptr = *stack;
   count = 0;
   while (stack_ptr->type != YAML_SEQUENCE_START_EVENT) {
     count++;
@@ -100,33 +103,31 @@ handle_sequence(event, stack)
   PROTECT_WITH_INDEX(list, &ipx);
 
   /* Populate the list, popping items off the stack as we go */
-  stack_ptr = stack;
   for (i = count - 1; i >= 0; i--) {
-    stack_ptr = pop(stack_ptr, &obj, NULL);
+    stack_pop(stack, &obj, NULL);
     SET_VECTOR_ELT(list, i, obj);
 
     /* obj is now part of list and is therefore protected */
     UNPROTECT_PTR(obj);
   }
-  stack_ptr->obj = list;
-  stack_ptr->ipx = ipx;
-
-  return stack_ptr;
+  (*stack)->obj = list;
+  (*stack)->ipx = ipx;
 }
 
-static s_stack *
-handle_map(event, stack, coerce)
+static void
+handle_map(event, stack, aliases, coerce)
   yaml_event_t *event;
-  s_stack *stack;
+  s_stack_entry **stack;
+  s_alias_entry **aliases;
   int coerce;
 {
-  s_stack *stack_ptr;
+  s_stack_entry *stack_ptr;
   int count, i;
   SEXP list, keys, obj, key;
   PROTECT_INDEX ipx, obj_ipx;
 
   /* Find out how many elements there are */
-  stack_ptr = stack;
+  stack_ptr = *stack;
   count = 0;
   while (stack_ptr->type != YAML_MAPPING_START_EVENT) {
     count++;
@@ -146,9 +147,8 @@ handle_map(event, stack, coerce)
   }
 
   /* Populate the list, popping items off the stack as we go */
-  stack_ptr = stack;
   for (i = count - 1; i >= 0; i--) {
-    stack_ptr = pop(stack_ptr, &obj, &obj_ipx);
+    stack_pop(stack, &obj, &obj_ipx);
 
     if (i % 2 == 1) {
       /* map value */
@@ -156,6 +156,7 @@ handle_map(event, stack, coerce)
     }
     else {
       /* map key */
+      /* TODO: handle duplicate keys */
       if (coerce) {
         REPROTECT(obj = AS_CHARACTER(obj), obj_ipx);
         switch (LENGTH(obj)) {
@@ -190,8 +191,19 @@ handle_map(event, stack, coerce)
 
   stack_ptr->obj = list;
   stack_ptr->ipx = ipx;
+  *stack = stack_ptr;
+}
 
-  return stack_ptr;
+static int
+R_is_named_list( obj )
+  SEXP obj;
+{
+  SEXP names;
+  if (TYPEOF(obj) != VECSXP)
+    return 0;
+
+  names = GET_NAMES(obj);
+  return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
 }
 
 SEXP
@@ -207,7 +219,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   char error_msg[255];
   long len;
   int use_named, i, done = 0;
-  s_stack *stack = NULL;
+  s_stack_entry *stack = NULL;
+  s_alias_entry *aliases = NULL;
 
   if (!isString(s_str) || length(s_str) != 1) {
     error("first argument must be a character vector of length 1");
@@ -241,32 +254,32 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_SCALAR_EVENT:
           printf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
-          stack = handle_scalar(&event, stack);
+          handle_scalar(&event, &stack, &aliases);
           break;
 
         case YAML_SEQUENCE_START_EVENT:
           printf("SEQUENCE START: (%s)\n", event.data.sequence_start.tag);
-          stack = push(stack, event.type, NULL, -1);
+          handle_start_event(&event, &stack, &aliases);
           break;
 
         case YAML_SEQUENCE_END_EVENT:
           printf("SEQUENCE END\n");
-          stack = handle_sequence(&event, stack);
+          handle_sequence(&event, &stack, &aliases);
           break;
 
         case YAML_MAPPING_START_EVENT:
           printf("MAPPING START: (%s)\n", event.data.mapping_start.tag);
-          stack = push(stack, event.type, NULL, -1);
+          handle_start_event(&event, &stack, &aliases);
           break;
 
         case YAML_MAPPING_END_EVENT:
           printf("MAPPING END\n");
-          stack = handle_map(&event, stack, use_named);
+          handle_map(&event, &stack, &aliases, use_named);
           break;
 
         case YAML_STREAM_END_EVENT:
           if (stack != NULL) {
-            pop(stack, &retval, NULL);
+            stack_pop(&stack, &retval, NULL);
             UNPROTECT_PTR(retval);
           }
           else {
@@ -344,7 +357,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
     error(error_msg);
   }
 
-  return retval;;
+  return retval;
 }
 
 R_CallMethodDef callMethods[] = {

@@ -7,6 +7,7 @@
 
 typedef struct {
   SEXP obj;
+  yaml_event_type_t type;
   void *prev;
 } s_stack;
 
@@ -22,28 +23,83 @@ R_is_named_list( obj )
   return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
 }
 
-static SEXP
-handle_scalar(event)
-  yaml_event_t *event;
-{
-  SEXP obj;
-  PROTECT(obj = NEW_STRING(1));
-  SET_STRING_ELT(obj, 0, mkChar((char *)event->data.scalar.value));
-  return obj;
-}
-
-s_stack *
-push(stack, obj)
+static s_stack *
+push(stack, type, obj)
   s_stack *stack;
+  yaml_event_type_t type;
   SEXP obj;
 {
   s_stack *result;
 
   result = (s_stack *)malloc(sizeof(s_stack));
+  result->type = type;
   result->obj = obj;
   result->prev = stack;
 
   return result;
+}
+
+static s_stack *
+pop(stack, obj)
+  s_stack *stack;
+  SEXP *obj;
+{
+  s_stack *result;
+
+  *obj = stack->obj;
+  result = (s_stack *)stack->prev;
+  free(stack);
+
+  return result;
+}
+
+static s_stack *
+handle_scalar(event, stack)
+  yaml_event_t *event;
+  s_stack *stack;
+{
+  SEXP obj;
+
+  PROTECT(obj = NEW_STRING(1));
+  SET_STRING_ELT(obj, 0, mkChar((char *)event->data.scalar.value));
+  stack = push(stack, event->type, obj);
+
+  return stack;
+}
+
+static s_stack *
+handle_sequence(event, stack)
+  yaml_event_t *event;
+  s_stack *stack;
+{
+  s_stack *stack_ptr;
+  int count, i;
+  SEXP list, obj;
+
+  /* Find out how many elements there are */
+  stack_ptr = stack;
+  count = 0;
+  while (stack_ptr->type != YAML_SEQUENCE_START_EVENT) {
+    count++;
+    stack_ptr = stack_ptr->prev;
+  }
+
+  /* Initialize list */
+  list = allocVector(VECSXP, count);
+  PROTECT(list);
+
+  /* Populate the list, popping items off the stack as we go */
+  stack_ptr = stack;
+  for (i = 0; i < count; i++) {
+    stack_ptr = pop(stack_ptr, &obj);
+    SET_VECTOR_ELT(list, i, obj);
+
+    /* obj is now part of list and is therefore protected */
+    UNPROTECT_PTR(obj);
+  }
+  stack_ptr->obj = list;
+
+  return stack_ptr;
 }
 
 SEXP
@@ -92,13 +148,15 @@ load_yaml_str(s_str, s_use_named, s_handlers)
           break;
         case YAML_SCALAR_EVENT:
           printf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
-          stack = push(stack, handle_scalar(&event));
+          stack = handle_scalar(&event, stack);
           break;
         case YAML_SEQUENCE_START_EVENT:
           printf("SEQUENCE START: (%s)\n", event.data.sequence_start.tag);
+          stack = push(stack, event.type, NULL);
           break;
         case YAML_SEQUENCE_END_EVENT:
           printf("SEQUENCE END\n");
+          stack = handle_sequence(&event, stack);
           break;
         case YAML_MAPPING_START_EVENT:
           printf("MAPPING START: (%s)\n", event.data.mapping_start.tag);
@@ -108,9 +166,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
           break;
         case YAML_STREAM_END_EVENT:
           if (stack != NULL) {
-            retval = stack->obj;
-            UNPROTECT(1);
-            free(stack);
+            pop(stack, &retval);
+            UNPROTECT_PTR(retval);
           }
           else {
             retval = R_NilValue;

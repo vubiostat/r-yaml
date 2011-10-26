@@ -1,4 +1,5 @@
 .*swp
 src/*.o
 src/*.so
+src/Makefile
 Session.vim

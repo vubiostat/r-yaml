@@ -90,7 +90,7 @@ handle_sequence(event, stack)
 
   /* Populate the list, popping items off the stack as we go */
   stack_ptr = stack;
-  for (i = 0; i < count; i++) {
+  for (i = count - 1; i >= 0; i--) {
     stack_ptr = pop(stack_ptr, &obj);
     SET_VECTOR_ELT(list, i, obj);
 

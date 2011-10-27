@@ -8,6 +8,8 @@
 
 static SEXP R_KeysSymbol = NULL;
 
+yaml_char_t *find_implicit_tag(yaml_char_t *value, size_t size);
+
 typedef struct {
   int refcount;
   SEXP obj;
@@ -91,6 +93,7 @@ stack_pop(stack, obj)
   free(top);
 
   *stack = result;
+
 }
 
 static void
@@ -117,14 +120,55 @@ handle_start_event(event, stack)
 }
 
 static void
-handle_scalar(event, stack)
+handle_scalar(event, stack, s_handlers)
   yaml_event_t *event;
   s_stack_entry **stack;
+  SEXP s_handlers;
 {
-  SEXP obj;
+  SEXP obj, names, cmd, tmp_obj;
+  yaml_char_t *tag, *value;
+  size_t len;
+  int handled = 0, errorOccurred = 0, i;
+  PROTECT_INDEX ipx;
 
-  PROTECT(obj = NEW_STRING(1));
-  SET_STRING_ELT(obj, 0, mkChar((char *)event->data.scalar.value));
+  tag = event->data.scalar.tag;
+  value = event->data.scalar.value;
+  if (tag == NULL || strcmp(tag, "!") == 0) {
+    /* If there's no tag, try to tag it */
+    tag = find_implicit_tag(value, len);
+  }
+
+  PROTECT_WITH_INDEX(obj = NEW_STRING(1), &ipx);
+  SET_STRING_ELT(obj, 0, mkChar(value));
+
+  /* Look for a custom R handler */
+  if (s_handlers != R_NilValue) {
+    names = GET_NAMES(s_handlers);
+    for (i = 0; i < length(names); i++) {
+      if (STRING_ELT(names, i) != NA_STRING) {
+        if (strcmp(translateChar(STRING_ELT(names, i)), tag) == 0) {
+          /* Found custom handler */
+          handled = 1;
+
+          PROTECT(cmd = allocVector(LANGSXP, 2));
+          SETCAR(cmd, VECTOR_ELT(s_handlers, i));
+          SETCADR(cmd, obj);
+          tmp_obj = R_tryEval(cmd, R_GlobalEnv, &errorOccurred);
+          UNPROTECT(1);
+
+          if (errorOccurred) {
+            warning("an error occurred when handling type '%s'; returning default object", tag);
+          }
+          else {
+            obj = tmp_obj;
+            REPROTECT(obj, ipx);
+          }
+          break;
+        }
+      }
+    }
+  }
+
   stack_push(stack, 0, new_prot_object(obj));
 }
 
@@ -158,7 +202,9 @@ handle_sequence(event, stack)
   }
   (*stack)->obj->obj = list;
   (*stack)->placeholder = 0;
+#if DEBUG
   PrintValue(list);
+#endif
 }
 
 static void
@@ -180,7 +226,6 @@ handle_map(event, stack, coerce)
     count++;
     stack_ptr = stack_ptr->prev;
   }
-  printf("Count: %d\n", count);
 
   /* Initialize value list */
   list = allocVector(VECSXP, count / 2);
@@ -247,7 +292,9 @@ handle_map(event, stack, coerce)
 
   (*stack)->obj->obj = list;
   (*stack)->placeholder = 0;
+#if DEBUG
   PrintValue(list);
+#endif
 }
 
 static void
@@ -307,9 +354,33 @@ load_yaml_str(s_str, s_use_named, s_handlers)
     return R_NilValue;
   }
 
-  if (s_handlers != R_NilValue && !R_is_named_list(s_handlers)) {
+  if (s_handlers == R_NilValue) {
+    // Do nothing
+  }
+  else if (!R_is_named_list(s_handlers)) {
     error("handlers must be either NULL or a named list of functions");
     return R_NilValue;
+  }
+  else {
+    names = GET_NAMES(s_handlers);
+    for (i = 0; i < LENGTH(names); i++) {
+      name = CHAR(STRING_ELT(names, i));
+      R_hndlr = VECTOR_ELT(s_handlers, i);
+
+      if (TYPEOF(R_hndlr) != CLOSXP) {
+        warning("your handler for '%s' is not a function; using default", name);
+        continue;
+      }
+
+      /* custom handlers for merge, default, and anchor#bad are illegal */
+      if ( strcmp( name, "merge" ) == 0   ||
+           strcmp( name, "default" ) == 0 ||
+           strcmp( name, "anchor#bad" ) == 0 )
+      {
+        warning("custom handling of %s type is not allowed; handler ignored", name);
+        continue;
+      }
+    }
   }
 
   str = CHAR(STRING_ELT(s_str, 0));
@@ -324,35 +395,47 @@ load_yaml_str(s_str, s_use_named, s_handlers)
     if (yaml_parser_parse(&parser, &event)) {
       switch (event.type) {
         case YAML_ALIAS_EVENT:
+#if DEBUG
           printf("ALIAS: %s\n", event.data.alias.anchor);
+#endif
           handle_alias(&event, &stack, aliases);
           break;
 
         case YAML_SCALAR_EVENT:
+#if DEBUG
           printf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
-          handle_scalar(&event, &stack);
+#endif
+          handle_scalar(&event, &stack, s_handlers);
           possibly_record_alias(event.data.scalar.anchor, &aliases, stack->obj);
           break;
 
         case YAML_SEQUENCE_START_EVENT:
+#if DEBUG
           printf("SEQUENCE START: (%s)\n", event.data.sequence_start.tag);
+#endif
           handle_start_event(&event, &stack);
           possibly_record_alias(event.data.sequence_start.anchor, &aliases, stack->obj);
           break;
 
         case YAML_SEQUENCE_END_EVENT:
+#if DEBUG
           printf("SEQUENCE END\n");
+#endif
           handle_sequence(&event, &stack);
           break;
 
         case YAML_MAPPING_START_EVENT:
+#if DEBUG
           printf("MAPPING START: (%s)\n", event.data.mapping_start.tag);
+#endif
           handle_start_event(&event, &stack);
           possibly_record_alias(event.data.mapping_start.anchor, &aliases, stack->obj);
           break;
 
         case YAML_MAPPING_END_EVENT:
+#if DEBUG
           printf("MAPPING END\n");
+#endif
           handle_map(&event, &stack, use_named);
           break;
 

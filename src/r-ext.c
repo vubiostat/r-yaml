@@ -20,7 +20,7 @@ typedef struct {
 
 typedef struct {
   s_prot_object *obj;
-  yaml_event_type_t type;
+  int placeholder;
   void *prev;
 } s_stack_entry;
 
@@ -61,15 +61,15 @@ prune_prot_object(obj)
 }
 
 static void
-stack_push(stack, type, obj)
+stack_push(stack, placeholder, obj)
   s_stack_entry **stack;
-  yaml_event_type_t type;
+  int placeholder;
   s_prot_object *obj;
 {
   s_stack_entry *result;
 
   result = (s_stack_entry *)malloc(sizeof(s_stack_entry));
-  result->type = type;
+  result->placeholder = placeholder;
   result->obj = obj;
   obj->refcount++;
   result->prev = *stack;
@@ -102,7 +102,7 @@ handle_alias(event, stack, aliases)
   s_alias_entry *alias = aliases;
   while (alias) {
     if (strcmp((char *)alias->name, event->data.alias.anchor) == 0) {
-      stack_push(stack, event->type, alias->obj);
+      stack_push(stack, 0, alias->obj);
       break;
     }
   }
@@ -113,7 +113,7 @@ handle_start_event(event, stack)
   yaml_event_t *event;
   s_stack_entry **stack;
 {
-  stack_push(stack, event->type, new_prot_object(NULL, -1));
+  stack_push(stack, 1, new_prot_object(NULL, -1));
 }
 
 static void
@@ -125,7 +125,7 @@ handle_scalar(event, stack)
 
   PROTECT(obj = NEW_STRING(1));
   SET_STRING_ELT(obj, 0, mkChar((char *)event->data.scalar.value));
-  stack_push(stack, event->type, new_prot_object(obj));
+  stack_push(stack, 0, new_prot_object(obj));
 }
 
 static void
@@ -141,7 +141,7 @@ handle_sequence(event, stack)
   /* Find out how many elements there are */
   stack_ptr = *stack;
   count = 0;
-  while (stack_ptr->type != YAML_SEQUENCE_START_EVENT) {
+  while (!stack_ptr->placeholder) {
     count++;
     stack_ptr = stack_ptr->prev;
   }
@@ -157,6 +157,8 @@ handle_sequence(event, stack)
     prune_prot_object(obj);
   }
   (*stack)->obj->obj = list;
+  (*stack)->placeholder = 0;
+  PrintValue(list);
 }
 
 static void
@@ -174,10 +176,11 @@ handle_map(event, stack, coerce)
   /* Find out how many elements there are */
   stack_ptr = *stack;
   count = 0;
-  while (stack_ptr->type != YAML_MAPPING_START_EVENT) {
+  while (!stack_ptr->placeholder) {
     count++;
     stack_ptr = stack_ptr->prev;
   }
+  printf("Count: %d\n", count);
 
   /* Initialize value list */
   list = allocVector(VECSXP, count / 2);
@@ -242,8 +245,9 @@ handle_map(event, stack, coerce)
   }
   UNPROTECT_PTR(keys);
 
-  stack_ptr->obj->obj = list;
-  *stack = stack_ptr;
+  (*stack)->obj->obj = list;
+  (*stack)->placeholder = 0;
+  PrintValue(list);
 }
 
 static void

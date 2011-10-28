@@ -33,15 +33,16 @@ typedef struct {
 } s_alias_entry;
 
 static s_prot_object *
-new_prot_object(obj)
+new_prot_object(obj, orphan)
   SEXP obj;
+  int orphan;
 {
   s_prot_object *result;
 
   result = (s_prot_object *)malloc(sizeof(s_prot_object));
   result->refcount = 0;
   result->obj = obj;
-  result->orphan = 1;
+  result->orphan = orphan;
 
   return result;
 }
@@ -93,7 +94,30 @@ stack_pop(stack, obj)
   free(top);
 
   *stack = result;
+}
 
+static SEXP
+find_handler(handlers, name)
+  SEXP handlers;
+  const char *name;
+{
+  SEXP names;
+  int i;
+
+  /* Look for a custom R handler */
+  if (handlers != R_NilValue) {
+    names = GET_NAMES(handlers);
+    for (i = 0; i < length(names); i++) {
+      if (STRING_ELT(names, i) != NA_STRING) {
+        if (strcmp(translateChar(STRING_ELT(names, i)), name) == 0) {
+          /* Found custom handler */
+          return VECTOR_ELT(handlers, i);
+        }
+      }
+    }
+  }
+
+  return R_NilValue;
 }
 
 static void
@@ -116,7 +140,7 @@ handle_start_event(event, stack)
   yaml_event_t *event;
   s_stack_entry **stack;
 {
-  stack_push(stack, 1, new_prot_object(NULL, -1));
+  stack_push(stack, 1, new_prot_object(NULL, 1));
 }
 
 static void
@@ -125,10 +149,11 @@ handle_scalar(event, stack, s_handlers)
   s_stack_entry **stack;
   SEXP s_handlers;
 {
-  SEXP obj, names, cmd, tmp_obj;
+  SEXP obj, names, cmd, tmp_obj, handler;
   yaml_char_t *tag, *value;
   size_t len;
-  int handled = 0, errorOccurred = 0, i;
+  int errorOccurred = 0, handled = 0, str = 0, i;
+  double f;
   PROTECT_INDEX ipx;
 
   tag = event->data.scalar.tag;
@@ -137,39 +162,94 @@ handle_scalar(event, stack, s_handlers)
     /* If there's no tag, try to tag it */
     tag = find_implicit_tag(value, len);
   }
-
-  PROTECT_WITH_INDEX(obj = NEW_STRING(1), &ipx);
-  SET_STRING_ELT(obj, 0, mkChar(value));
+#if DEBUG
+  printf("Value: (%s), Tag: (%s)\n", value, tag);
+#endif
 
   /* Look for a custom R handler */
-  if (s_handlers != R_NilValue) {
-    names = GET_NAMES(s_handlers);
-    for (i = 0; i < length(names); i++) {
-      if (STRING_ELT(names, i) != NA_STRING) {
-        if (strcmp(translateChar(STRING_ELT(names, i)), tag) == 0) {
-          /* Found custom handler */
-          handled = 1;
+  handler = find_handler(s_handlers, tag);
+  if (handler != R_NilValue) {
+    PROTECT_WITH_INDEX(obj = NEW_STRING(1), &ipx);
+    SET_STRING_ELT(obj, 0, mkChar(value));
 
-          PROTECT(cmd = allocVector(LANGSXP, 2));
-          SETCAR(cmd, VECTOR_ELT(s_handlers, i));
-          SETCADR(cmd, obj);
-          tmp_obj = R_tryEval(cmd, R_GlobalEnv, &errorOccurred);
-          UNPROTECT(1);
+    PROTECT(cmd = allocVector(LANGSXP, 2));
+    SETCAR(cmd, handler);
+    SETCADR(cmd, obj);
+    tmp_obj = R_tryEval(cmd, R_GlobalEnv, &errorOccurred);
+    UNPROTECT(1);
 
-          if (errorOccurred) {
-            warning("an error occurred when handling type '%s'; returning default object", tag);
-          }
-          else {
-            obj = tmp_obj;
-            REPROTECT(obj, ipx);
-          }
-          break;
-        }
+    if (errorOccurred) {
+      warning("an error occurred when handling type '%s'; using default handler", tag);
+      UNPROTECT(1);
+    }
+    else {
+      handled = 1;
+      obj = tmp_obj;
+      if (obj == R_NilValue) {
+        UNPROTECT(1);
+      }
+      else {
+        REPROTECT(obj, ipx);
       }
     }
   }
 
-  stack_push(stack, 0, new_prot_object(obj));
+  if (!handled) {
+    /* default handlers, ordered by most-used */
+    if (strcmp(tag, "str") == 0) {
+      str = 1;
+    }
+    else if (strcmp(tag, "int") == 0) {
+      PROTECT(obj = NEW_INTEGER(1));
+      INTEGER(obj)[0] = (int)strtol((char *)value, NULL, 10);
+    }
+    else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0) {
+      f = strtod((char *)value, NULL);
+      PROTECT(obj = NEW_NUMERIC(1));
+      REAL(obj)[0] = f;
+    }
+    else if (strcmp(tag, "bool#yes") == 0) {
+      PROTECT(obj = NEW_LOGICAL(1));
+      LOGICAL(obj)[0] = 1;
+    }
+    else if (strcmp(tag, "bool#no") == 0) {
+      PROTECT(obj = NEW_LOGICAL(1));
+      LOGICAL(obj)[0] = 0;
+    }
+    else if (strcmp(tag, "int#hex") == 0) {
+      PROTECT(obj = NEW_INTEGER(1));
+      INTEGER(obj)[0] = (int)strtol((char *)value, NULL, 16);
+    }
+    else if (strcmp(tag, "int#oct") == 0) {
+      PROTECT(obj = NEW_INTEGER(1));
+      INTEGER(obj)[0] = (int)strtol((char *)value, NULL, 8);
+    }
+    else if (strcmp(tag, "float#nan") == 0) {
+      PROTECT(obj = NEW_NUMERIC(1));
+      REAL(obj)[0] = R_NaN;
+    }
+    else if (strcmp(tag, "float#inf") == 0) {
+      PROTECT(obj = NEW_NUMERIC(1));
+      REAL(obj)[0] = R_PosInf;
+    }
+    else if (strcmp(tag, "float#neginf") == 0) {
+      PROTECT(obj = NEW_NUMERIC(1));
+      REAL(obj)[0] = R_NegInf;
+    }
+    else if (strcmp(tag, "null") == 0) {
+      obj = R_NilValue;
+    }
+    else {
+      str = 1;
+    }
+
+    if (str == 1) {
+      PROTECT(obj = NEW_STRING(1));
+      SET_STRING_ELT(obj, 0, mkChar((char *)value));
+    }
+  }
+
+  stack_push(stack, 0, new_prot_object(obj, obj != R_NilValue));
 }
 
 static void
@@ -476,7 +556,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
         case YAML_SCANNER_ERROR:
           if (parser.context) {
             sprintf(error_msg, "Scanner error: %s at line %zd, column %zd"
-              "%s at line %zd, column %zd", parser.context,
+              "%s at line %zd, column %zd\n", parser.context,
               parser.context_mark.line+1, parser.context_mark.column+1,
               parser.problem, parser.problem_mark.line+1,
               parser.problem_mark.column+1);

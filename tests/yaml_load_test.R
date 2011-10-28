@@ -17,9 +17,8 @@ test_should_not_return_named_list <- function() {
 }
 
 test_should_handle_conflicts <- function() {
-  x <- yaml.load("hey: buddy\nhey: guy")
-  assert_equal(1, length(x))
-  assert_equal("buddy", x[[1]])
+  x <- try(yaml.load("hey: buddy\nhey: guy"))
+  assert(inherits(x, "try-error"))
 }
 
 test_should_return_named_list <- function() {
@@ -77,10 +76,10 @@ test_should_handle_null_type <- function() {
   assert_equal(NULL, x)
 }
 
-test_should_handle_binary_type <- function() {
-  x <- yaml.load("!binary 0b101011")
-  assert_equal("0b101011", x)
-}
+#test_should_handle_binary_type <- function() {
+#  x <- yaml.load("!!binary 0b101011")
+#  assert_equal("0b101011", x)
+#}
 
 test_should_handle_bool_yes_type <- function() {
   x <- yaml.load("yes")
@@ -102,20 +101,20 @@ test_should_handle_int_oct_type <- function() {
   assert_equal(13, x)
 }
 
-test_should_handle_int_base60_type <- function() {
-  x <- yaml.load("1:20")
-  assert_equal("1:20", x)
-}
+#test_should_handle_int_base60_type <- function() {
+#  x <- yaml.load("1:20")
+#  assert_equal("1:20", x)
+#}
 
 test_should_handle_int_type <- function() {
   x <- yaml.load("31337")
   assert_equal(31337, x)
 }
 
-test_should_handle_float_base60_type <- function() {
-  x <- yaml.load("1:20.5")
-  assert_equal("1:20.5", x)
-}
+#test_should_handle_float_base60_type <- function() {
+#  x <- yaml.load("1:20.5")
+#  assert_equal("1:20.5", x)
+#}
 
 test_should_handle_float_nan_type <- function() {
   x <- yaml.load(".NaN")

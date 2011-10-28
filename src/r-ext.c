@@ -7,6 +7,9 @@
 #include "yaml_private.h"
 
 static SEXP R_KeysSymbol = NULL;
+static SEXP R_IdenticalFunc = NULL;
+static SEXP R_FormatFunc = NULL;
+static char error_msg[255];
 
 yaml_char_t *find_implicit_tag(yaml_char_t *value, size_t size);
 
@@ -32,6 +35,43 @@ typedef struct {
   void *prev;
 } s_alias_entry;
 
+static int
+Rcmp(x, y)
+  SEXP x;
+  SEXP y;
+{
+  int i, retval = 0, *arr;
+  SEXP call, result, t;
+
+  PROTECT(t = allocVector(LGLSXP, 1));
+  LOGICAL(t)[0] = 1;
+  PROTECT(call = lang5(R_IdenticalFunc, x, y, t, t));
+  PROTECT(result = eval(call, R_GlobalEnv));
+
+  arr = LOGICAL(result);
+  for(i = 0; i < LENGTH(result); i++) {
+    if (!arr[i]) {
+      retval = 1;
+      break;
+    }
+  }
+  UNPROTECT(3);
+  return retval;
+}
+
+static const char *
+Rformat(x)
+  SEXP x;
+{
+  SEXP call, result;
+
+  PROTECT(call = lang2(R_FormatFunc, x));
+  result = eval(call, R_GlobalEnv);
+  UNPROTECT(1);
+
+  return CHAR(STRING_ELT(result, 0));
+}
+
 static s_prot_object *
 new_prot_object(obj, orphan)
   SEXP obj;
@@ -51,7 +91,10 @@ static void
 prune_prot_object(obj)
   s_prot_object *obj;
 {
-  if (obj->orphan == 1) {
+  if (obj == NULL)
+    return;
+
+  if (obj->obj != NULL && obj->orphan == 1) {
     /* obj is now part of list and is therefore protected */
     UNPROTECT_PTR(obj->obj);
     obj->orphan = 0;
@@ -88,7 +131,9 @@ stack_pop(stack, obj)
   s_stack_entry *result, *top;
 
   top = *stack;
-  *obj = top->obj;
+  if (obj) {
+    *obj = top->obj;
+  }
   top->obj->refcount--;
   result = (s_stack_entry *)top->prev;
   free(top);
@@ -120,7 +165,7 @@ find_handler(handlers, name)
   return R_NilValue;
 }
 
-static void
+static int
 handle_alias(event, stack, aliases)
   yaml_event_t *event;
   s_stack_entry **stack;
@@ -133,17 +178,19 @@ handle_alias(event, stack, aliases)
       break;
     }
   }
+  return 0;
 }
 
-static void
+static int
 handle_start_event(event, stack)
   yaml_event_t *event;
   s_stack_entry **stack;
 {
   stack_push(stack, 1, new_prot_object(NULL, 1));
+  return 0;
 }
 
-static void
+static int
 handle_scalar(event, stack, s_handlers)
   yaml_event_t *event;
   s_stack_entry **stack;
@@ -250,9 +297,10 @@ handle_scalar(event, stack, s_handlers)
   }
 
   stack_push(stack, 0, new_prot_object(obj, obj != R_NilValue));
+  return 0;
 }
 
-static void
+static int
 handle_sequence(event, stack)
   yaml_event_t *event;
   s_stack_entry **stack;
@@ -282,12 +330,10 @@ handle_sequence(event, stack)
   }
   (*stack)->obj->obj = list;
   (*stack)->placeholder = 0;
-#if DEBUG
-  PrintValue(list);
-#endif
+  return 0;
 }
 
-static void
+static int
 handle_map(event, stack, coerce)
   yaml_event_t *event;
   s_stack_entry **stack;
@@ -295,7 +341,7 @@ handle_map(event, stack, coerce)
 {
   s_prot_object *obj;
   s_stack_entry *stack_ptr;
-  int count, i, orphan_key;
+  int count, i, j, orphan_key, dup_key = 0;
   SEXP list, keys, key, key_str;
   PROTECT_INDEX ipx;
 
@@ -328,53 +374,88 @@ handle_map(event, stack, coerce)
       SET_VECTOR_ELT(list, i / 2, obj->obj);
     }
     else {
+      dup_key = 0;
+
       /* map key */
-      /* TODO: handle duplicate keys */
       if (coerce) {
-        key = AS_CHARACTER(obj->obj);
-        orphan_key = (key != obj->obj);
+        key_str = AS_CHARACTER(obj->obj);
+        orphan_key = (key_str != obj->obj);
         if (orphan_key) {
           /* This key has been coerced into a character, and is a new object. */
-          PROTECT(key);
+          PROTECT(key_str);
         }
 
-        switch (LENGTH(key)) {
+        switch (LENGTH(key_str)) {
           case 0:
             warning("Empty character vector used as a list name");
-            key_str = mkChar("");
+            key = mkChar("");
             break;
           default:
             warning("Character vector of length greater than 1 used as a list name");
           case 1:
-            key_str = STRING_ELT(key, 0);
+            key = STRING_ELT(key_str, 0);
             break;
         }
-        SET_STRING_ELT(keys, i / 2, key_str);
+
+        /* Look for duplicate keys */
+        for (j = (count / 2) - 1; j > i; j--) {
+          if (strcmp(CHAR(key), CHAR(STRING_ELT(keys, j))) == 0) {
+            /* Duplicate found */
+            dup_key = 1;
+            sprintf(error_msg, "Duplicate map key: '%s'", CHAR(key));
+            break;
+          }
+        }
+
+        if (!dup_key) {
+          SET_STRING_ELT(keys, i / 2, key);
+        }
 
         if (orphan_key) {
           UNPROTECT(1);
         }
       }
       else {
-        SET_VECTOR_ELT(keys, i / 2, obj->obj);
+        /* Look for duplicate keys */
+        for (j = (count / 2) - 1; j > i; j--) {
+          if (Rcmp(VECTOR_ELT(keys, j), obj->obj) == 0) {
+            /* Duplicate found */
+            dup_key = 1;
+            /* FIXME: doesn't print lists properly */
+            sprintf(error_msg, "Duplicate map key: %s", Rformat(obj->obj));
+            break;
+          }
+        }
+
+        if (!dup_key) {
+          SET_VECTOR_ELT(keys, i / 2, obj->obj);
+        }
       }
+
     }
     prune_prot_object(obj);
+
+    if (dup_key) {
+      break;
+    }
   }
 
-  if (coerce) {
-    SET_NAMES(list, keys);
+  if (!dup_key) {
+    if (coerce) {
+      SET_NAMES(list, keys);
+    }
+    else {
+      setAttrib(list, R_KeysSymbol, keys);
+    }
+    (*stack)->obj->obj = list;
+    (*stack)->placeholder = 0;
+    UNPROTECT(1); // keys
   }
   else {
-    setAttrib(list, R_KeysSymbol, keys);
+    UNPROTECT(2); // keys and list
   }
-  UNPROTECT_PTR(keys);
 
-  (*stack)->obj->obj = list;
-  (*stack)->placeholder = 0;
-#if DEBUG
-  PrintValue(list);
-#endif
+  return dup_key;
 }
 
 static void
@@ -418,10 +499,9 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   yaml_parser_t parser;
   yaml_event_t event;
   const char *str, *name;
-  char error_msg[255];
   long len;
-  int use_named, i, done = 0;
-  s_stack_entry *stack = NULL;
+  int use_named, i, done = 0, errorOccurred;
+  s_stack_entry *stack = NULL, *stack_ptr;
   s_alias_entry *aliases = NULL, *alias;
 
   if (!isString(s_str) || length(s_str) != 1) {
@@ -516,7 +596,12 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("MAPPING END\n");
 #endif
-          handle_map(&event, &stack, use_named);
+          errorOccurred = handle_map(&event, &stack, use_named);
+          if (errorOccurred) {
+            retval = R_NilValue;
+            done = 1;
+          }
+
           break;
 
         case YAML_STREAM_END_EVENT:
@@ -594,12 +679,19 @@ load_yaml_str(s_str, s_use_named, s_handlers)
     yaml_event_delete(&event);
   }
 
+  /* Clean up stack. This only happens if there was an error. */
+  while (stack != NULL) {
+    stack_pop(&stack, &obj);
+    prune_prot_object(obj);
+  }
+
   /* Clean up aliases */
   while (aliases != NULL) {
     alias = aliases;
     aliases = aliases->prev;
+    alias->obj->refcount--;
+    prune_prot_object(alias->obj);
     free(alias->name);
-    free(alias->obj);
     free(alias);
   }
 
@@ -619,5 +711,7 @@ R_CallMethodDef callMethods[] = {
 
 void R_init_yaml(DllInfo *dll) {
   R_KeysSymbol = install("keys");
+  R_IdenticalFunc = findFun(install("identical"), R_GlobalEnv);
+  R_FormatFunc = findFun(install("format"), R_GlobalEnv);
   R_registerRoutines(dll,NULL,callMethods,NULL,NULL);
 }

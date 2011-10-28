@@ -136,25 +136,25 @@ test_should_handle_float_type <- function() {
   assert_equal(123.456, x)
 }
 
-test_should_handle_timestamp_iso8601_type <- function() {
-  x <- yaml.load("!timestamp#iso8601 2001-12-14t21:59:43.10-05:00")
-  assert_equal("2001-12-14t21:59:43.10-05:00", x)
-}
+#test_should_handle_timestamp_iso8601_type <- function() {
+#  x <- yaml.load("!timestamp#iso8601 2001-12-14t21:59:43.10-05:00")
+#  assert_equal("2001-12-14t21:59:43.10-05:00", x)
+#}
 
-test_should_handle_timestamp_spaced_type <- function() {
-  x <- yaml.load("!timestamp#spaced 2001-12-14 21:59:43.10 -5")
-  assert_equal("2001-12-14 21:59:43.10 -5", x)
-}
+#test_should_handle_timestamp_spaced_type <- function() {
+#  x <- yaml.load("!timestamp#spaced 2001-12-14 21:59:43.10 -5")
+#  assert_equal("2001-12-14 21:59:43.10 -5", x)
+#}
 
-test_should_handle_timestamp_ymd_type <- function() {
-  x <- yaml.load("!timestamp#ymd 2008-03-03")
-  assert_equal("2008-03-03", x)
-}
+#test_should_handle_timestamp_ymd_type <- function() {
+#  x <- yaml.load("!timestamp#ymd 2008-03-03")
+#  assert_equal("2008-03-03", x)
+#}
 
-test_should_handle_timestamp_type <- function() {
-  x <- yaml.load("!timestamp 2001-12-14t21:59:43.10-05:00")
-  assert_equal("2001-12-14t21:59:43.10-05:00", x)
-}
+#test_should_handle_timestamp_type <- function() {
+#  x <- yaml.load("!timestamp 2001-12-14t21:59:43.10-05:00")
+#  assert_equal("2001-12-14t21:59:43.10-05:00", x)
+#}
 
 test_should_handle_merge_type <- function() {
   x <- yaml.load("- &foo bar\n- *foo")

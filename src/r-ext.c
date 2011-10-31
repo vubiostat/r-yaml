@@ -209,6 +209,18 @@ handle_scalar(event, stack, s_handlers)
     /* If there's no tag, try to tag it */
     tag = find_implicit_tag(value, len);
   }
+  else {
+    /* Explicit tag handling */
+
+    if (strncmp(tag, "tag:yaml.org,2002:", 18) == 0) {
+      tag = tag + 18;
+    }
+    else {
+      while (*tag == '!') {
+        tag++;
+      }
+    }
+  }
 #if DEBUG
   printf("Value: (%s), Tag: (%s)\n", value, tag);
 #endif

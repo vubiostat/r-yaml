@@ -2,18 +2,18 @@ source("test_helper.r")
 
 test_should_not_return_named_list <- function() {
   x <- yaml.load("hey: man\n123: 456\n", FALSE)
-  assert_equal(2, length(x))
-  assert_equal(2, length(attr(x, "keys")))
+  assert_equal(2L, length(x))
+  assert_equal(2L, length(attr(x, "keys")))
 
   x <- yaml.load("- dude\n- sup\n- 1.2345", FALSE)
-  assert_equal(3, length(x))
-  assert_equal(0, length(attr(x, "keys")))
+  assert_equal(3L, length(x))
+  assert_equal(0L, length(attr(x, "keys")))
   assert_equal("sup", x[[2]])
 
   x <- yaml.load("dude:\n  - 123\n  - sup", FALSE)
-  assert_equal(1, length(x))
-  assert_equal(1, length(attr(x, "keys")))
-  assert_equal(2, length(x[[1]]))
+  assert_equal(1L, length(x))
+  assert_equal(1L, length(attr(x, "keys")))
+  assert_equal(2L, length(x[[1]]))
 }
 
 test_should_handle_conflicts <- function() {
@@ -23,8 +23,8 @@ test_should_handle_conflicts <- function() {
 
 test_should_return_named_list <- function() {
   x <- yaml.load("hey: man\n123: 456\n", TRUE)
-  assert_equal(2, length(x))
-  assert_equal(2, length(names(x)))
+  assert_equal(2L, length(x))
+  assert_equal(2L, length(names(x)))
   assert_equal(c("123", "hey"), sort(names(x)))
   assert_equal("man", x$hey)
 }
@@ -48,12 +48,12 @@ test_should_type_uniform_sequences <- function() {
 
 test_should_merge_maps <- function() {
   x <- yaml.load("foo: bar\n<<: {baz: boo}", TRUE)
-  assert_equal(2, length(x))
+  assert_equal(2L, length(x))
   assert_equal("boo", x$baz)
   assert_equal("foo", x$bar)
 
   x <- yaml.load("foo: bar\n<<: [{poo: poo}, {foo: doo}, {baz: boo}]", TRUE)
-  assert_equal(3, length(x))
+  assert_equal(3L, length(x))
   assert_equal("boo", x$baz)
   assert_equal("bar", x$foo)
   assert_equal("poo", x$poo)
@@ -61,7 +61,7 @@ test_should_merge_maps <- function() {
 
 test_should_handle_weird_merges <- function() {
   x <- yaml.load("foo: bar\n<<: [{leet: hax}, blargh, 123]", T)
-  assert_equal(3, length(x))
+  assert_equal(3L, length(x))
   assert_equal("hax", x$leet)
   assert_equal("blargh", x$`_yaml.merge_`)
 }
@@ -93,12 +93,12 @@ test_should_handle_bool_no_type <- function() {
 
 test_should_handle_int_hex_type <- function() {
   x <- yaml.load("0xF")
-  assert_equal(15, x)
+  assert_equal(15L, x)
 }
 
 test_should_handle_int_oct_type <- function() {
   x <- yaml.load("015")
-  assert_equal(13, x)
+  assert_equal(13L, x)
 }
 
 #test_should_handle_int_base60_type <- function() {
@@ -108,7 +108,12 @@ test_should_handle_int_oct_type <- function() {
 
 test_should_handle_int_type <- function() {
   x <- yaml.load("31337")
-  assert_equal(31337, x)
+  assert_equal(31337L, x)
+}
+
+test_should_handle_explicit_int_type <- function() {
+  x <- yaml.load("!!int 31337")
+  assert_equal(31337L, x)
 }
 
 #test_should_handle_float_base60_type <- function() {
@@ -241,10 +246,10 @@ test_should_use_custom_timestamp_iso8601_handler <- function() {
   assert_equal("argh!", x)
 }
 
-test_should_use_custom_timestamp_spaced_handler <- function() {
-  x <- yaml.load("!timestamp#spaced 2001-12-14 21:59:43.10 -5", handlers=list("timestamp#spaced"=function(x) { "argh!" }))
-  assert_equal("argh!", x)
-}
+#test_should_use_custom_timestamp_spaced_handler <- function() {
+#  x <- yaml.load('!"timestamp#spaced" 2001-12-14 21:59:43.10 -5', handlers=list("timestamp#spaced"=function(x) { "argh!" }))
+#  assert_equal("argh!", x)
+#}
 
 test_should_use_custom_timestamp_ymd_handler <- function() {
   x <- yaml.load("2008-03-03", handlers=list("timestamp#ymd"=function(x) { "argh!" }))
@@ -306,7 +311,7 @@ test_should_load_empty_documents <- function() {
 
 test_should_load_omap <- function() {
   x <- yaml.load("--- !omap\n- foo:\n  - 1\n  - 2\n- bar:\n  - 3\n  - 4")
-  assert_equal(2, length(x))
+  assert_equal(2L, length(x))
   assert_equal(c("foo", "bar"), names(x))
   assert_equal(1:2, x$foo)
   assert_equal(3:4, x$bar)

@@ -1,3 +1,9 @@
+v2.0.0
+  - switch from the Syck parser to the libyaml (0.1.4) parser
+  - changed behavior:
+    - sequences of sequences no longer collapse when they contain the same
+      type; ex: yaml.load("[1, [2, 3], 4]") returns list(1L, c(2L, 3L), 4L)
+
 v1.2.0
   - added support for loading R expressions (using the !expr tag)
   - added multiline string support

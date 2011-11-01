@@ -352,7 +352,7 @@ handle_sequence(event, stack, s_handlers)
 {
   s_stack_entry *stack_ptr;
   s_prot_object *obj;
-  int count, i, handled = 0;
+  int count, i, type, handled;
   char *tag;
   SEXP list, tmp_obj, handler;
 
@@ -368,9 +368,16 @@ handle_sequence(event, stack, s_handlers)
   PROTECT(list = allocVector(VECSXP, count));
 
   /* Populate the list, popping items off the stack as we go */
+  type = -2;
   for (i = count - 1; i >= 0; i--) {
     stack_pop(stack, &obj);
     SET_VECTOR_ELT(list, i, obj->obj);
+    if (type == -2) {
+      type = TYPEOF(obj->obj);
+    }
+    else if (type != -1 && (TYPEOF(obj->obj) != type || LENGTH(obj->obj) != 1)) {
+      type = -1;
+    }
     prune_prot_object(obj);
   }
 
@@ -384,6 +391,7 @@ handle_sequence(event, stack, s_handlers)
   }
 
   /* Look for a custom R handler */
+  handled = 0;
   handler = find_handler(s_handlers, tag);
   if (handler != R_NilValue) {
     if (run_handler(handler, list, &tmp_obj) != 0) {
@@ -399,6 +407,21 @@ handle_sequence(event, stack, s_handlers)
         PROTECT(tmp_obj);
       }
       list = tmp_obj;
+    }
+  }
+
+  if (!handled) {
+    /* Let's try to coerce this list! */
+    switch (type) {
+      case LGLSXP:
+      case INTSXP:
+      case REALSXP:
+      case STRSXP:
+        tmp_obj = coerceVector(list, type);
+        UNPROTECT_PTR(list);
+        PROTECT(tmp_obj);
+        list = tmp_obj;
+        break;
     }
   }
 

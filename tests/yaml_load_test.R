@@ -41,9 +41,11 @@ test_should_type_uniform_sequences <- function() {
 
   x <- yaml.load("- hey\n- hi\n- hello")
   assert_equal(c("hey", "hi", "hello"), x)
+}
 
+test_should_not_collapse_sequences <- function() {
   x <- yaml.load("- [1, 2]\n- 3\n- [4, 5]")
-  assert_equal(1:5, x)
+  assert_equal(list(1:2, 3L, 4:5), x)
 }
 
 test_should_merge_maps <- function() {

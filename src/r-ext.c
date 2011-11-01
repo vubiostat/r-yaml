@@ -26,6 +26,7 @@ typedef struct {
 typedef struct {
   s_prot_object *obj;
   int placeholder;
+  char *tag;
   void *prev;
 } s_stack_entry;
 
@@ -95,7 +96,7 @@ prune_prot_object(obj)
     return;
 
   if (obj->obj != NULL && obj->orphan == 1) {
-    /* obj is now part of list and is therefore protected */
+    /* obj is now part of another object and is therefore protected */
     UNPROTECT_PTR(obj->obj);
     obj->orphan = 0;
   }
@@ -107,8 +108,9 @@ prune_prot_object(obj)
 }
 
 static void
-stack_push(stack, placeholder, obj)
+stack_push(stack, placeholder, tag, obj)
   s_stack_entry **stack;
+  const char *tag;
   int placeholder;
   s_prot_object *obj;
 {
@@ -116,6 +118,12 @@ stack_push(stack, placeholder, obj)
 
   result = (s_stack_entry *)malloc(sizeof(s_stack_entry));
   result->placeholder = placeholder;
+  if (tag != NULL) {
+    result->tag = strdup(tag);
+  }
+  else {
+    result->tag = NULL;
+  }
   result->obj = obj;
   obj->refcount++;
   result->prev = *stack;
@@ -136,9 +144,30 @@ stack_pop(stack, obj)
   }
   top->obj->refcount--;
   result = (s_stack_entry *)top->prev;
+
+  if (top->tag != NULL) {
+    free(top->tag);
+  }
   free(top);
 
   *stack = result;
+}
+
+static char *
+process_tag(tag)
+  char *tag;
+{
+  char *retval = tag;
+
+  if (strncmp(retval, "tag:yaml.org,2002:", 18) == 0) {
+    retval = retval + 18;
+  }
+  else {
+    while (*retval == '!') {
+      retval++;
+    }
+  }
+  return retval;
 }
 
 static SEXP
@@ -166,6 +195,24 @@ find_handler(handlers, name)
 }
 
 static int
+run_handler(handler, arg, result)
+  SEXP handler;
+  SEXP arg;
+  SEXP *result;
+{
+  SEXP cmd;
+  int errorOccurred;
+
+  PROTECT(cmd = allocVector(LANGSXP, 2));
+  SETCAR(cmd, handler);
+  SETCADR(cmd, arg);
+  *result = R_tryEval(cmd, R_GlobalEnv, &errorOccurred);
+  UNPROTECT(1);
+
+  return errorOccurred;
+}
+
+static int
 handle_alias(event, stack, aliases)
   yaml_event_t *event;
   s_stack_entry **stack;
@@ -174,7 +221,7 @@ handle_alias(event, stack, aliases)
   s_alias_entry *alias = aliases;
   while (alias) {
     if (strcmp((char *)alias->name, event->data.alias.anchor) == 0) {
-      stack_push(stack, 0, alias->obj);
+      stack_push(stack, 0, NULL, alias->obj);
       break;
     }
   }
@@ -182,11 +229,11 @@ handle_alias(event, stack, aliases)
 }
 
 static int
-handle_start_event(event, stack)
-  yaml_event_t *event;
+handle_start_event(tag, stack)
+  const char *tag;
   s_stack_entry **stack;
 {
-  stack_push(stack, 1, new_prot_object(NULL, 1));
+  stack_push(stack, 1, tag, new_prot_object(NULL, 1));
   return 0;
 }
 
@@ -210,16 +257,7 @@ handle_scalar(event, stack, s_handlers)
     tag = find_implicit_tag(value, len);
   }
   else {
-    /* Explicit tag handling */
-
-    if (strncmp(tag, "tag:yaml.org,2002:", 18) == 0) {
-      tag = tag + 18;
-    }
-    else {
-      while (*tag == '!') {
-        tag++;
-      }
-    }
+    tag = process_tag(tag);
   }
 #if DEBUG
   printf("Value: (%s), Tag: (%s)\n", value, tag);
@@ -231,13 +269,7 @@ handle_scalar(event, stack, s_handlers)
     PROTECT_WITH_INDEX(obj = NEW_STRING(1), &ipx);
     SET_STRING_ELT(obj, 0, mkChar(value));
 
-    PROTECT(cmd = allocVector(LANGSXP, 2));
-    SETCAR(cmd, handler);
-    SETCADR(cmd, obj);
-    tmp_obj = R_tryEval(cmd, R_GlobalEnv, &errorOccurred);
-    UNPROTECT(1);
-
-    if (errorOccurred) {
+    if (run_handler(handler, obj, &tmp_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
       UNPROTECT(1);
     }
@@ -308,19 +340,21 @@ handle_scalar(event, stack, s_handlers)
     }
   }
 
-  stack_push(stack, 0, new_prot_object(obj, obj != R_NilValue));
+  stack_push(stack, 0, NULL, new_prot_object(obj, obj != R_NilValue));
   return 0;
 }
 
 static int
-handle_sequence(event, stack)
+handle_sequence(event, stack, s_handlers)
   yaml_event_t *event;
   s_stack_entry **stack;
+  SEXP s_handlers;
 {
   s_stack_entry *stack_ptr;
   s_prot_object *obj;
-  int count, i;
-  SEXP list;
+  int count, i, handled = 0;
+  char *tag;
+  SEXP list, tmp_obj, handler;
 
   /* Find out how many elements there are */
   stack_ptr = *stack;
@@ -331,8 +365,7 @@ handle_sequence(event, stack)
   }
 
   /* Initialize list */
-  list = allocVector(VECSXP, count);
-  PROTECT(list);
+  PROTECT(list = allocVector(VECSXP, count));
 
   /* Populate the list, popping items off the stack as we go */
   for (i = count - 1; i >= 0; i--) {
@@ -340,6 +373,35 @@ handle_sequence(event, stack)
     SET_VECTOR_ELT(list, i, obj->obj);
     prune_prot_object(obj);
   }
+
+  /* Tags! */
+  tag = (*stack)->tag;
+  if (tag == NULL) {
+    tag = "seq";
+  }
+  else {
+    tag = process_tag(tag);
+  }
+
+  /* Look for a custom R handler */
+  handler = find_handler(s_handlers, tag);
+  if (handler != R_NilValue) {
+    if (run_handler(handler, list, &tmp_obj) != 0) {
+      warning("an error occurred when handling type '%s'; using default handler", tag);
+    }
+    else {
+      handled = 1;
+      if (tmp_obj == R_NilValue) {
+        UNPROTECT(1);
+      }
+      else {
+        UNPROTECT_PTR(list);
+        PROTECT(tmp_obj);
+      }
+      list = tmp_obj;
+    }
+  }
+
   (*stack)->obj->obj = list;
   (*stack)->placeholder = 0;
   return 0;
@@ -355,7 +417,6 @@ handle_map(event, stack, coerce)
   s_stack_entry *stack_ptr;
   int count, i, j, orphan_key, dup_key = 0;
   SEXP list, keys, key, key_str;
-  PROTECT_INDEX ipx;
 
   /* Find out how many elements there are */
   stack_ptr = *stack;
@@ -366,8 +427,7 @@ handle_map(event, stack, coerce)
   }
 
   /* Initialize value list */
-  list = allocVector(VECSXP, count / 2);
-  PROTECT_WITH_INDEX(list, &ipx);
+  PROTECT(list = allocVector(VECSXP, count / 2));
 
   /* Initialize key list/vector */
   if (coerce) {
@@ -585,7 +645,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("SEQUENCE START: (%s)\n", event.data.sequence_start.tag);
 #endif
-          handle_start_event(&event, &stack);
+          handle_start_event(event.data.sequence_start.tag, &stack);
           possibly_record_alias(event.data.sequence_start.anchor, &aliases, stack->obj);
           break;
 
@@ -593,14 +653,14 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("SEQUENCE END\n");
 #endif
-          handle_sequence(&event, &stack);
+          handle_sequence(&event, &stack, s_handlers);
           break;
 
         case YAML_MAPPING_START_EVENT:
 #if DEBUG
           printf("MAPPING START: (%s)\n", event.data.mapping_start.tag);
 #endif
-          handle_start_event(&event, &stack);
+          handle_start_event(event.data.mapping_start.tag, &stack);
           possibly_record_alias(event.data.mapping_start.anchor, &aliases, stack->obj);
           break;
 

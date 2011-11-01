@@ -277,7 +277,7 @@ test_should_use_handler_for_weird_type <- function() {
 }
 
 test_should_use_custom_seq_handler <- function() {
-  x <- yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { as.integer(x) + 3 }))
+  x <- yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { as.integer(x) + 3L }))
   assert_equal(4:6, x)
 }
 

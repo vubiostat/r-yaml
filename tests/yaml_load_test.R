@@ -289,7 +289,7 @@ test_should_use_custom_map_handler <- function() {
 }
 
 test_should_use_custom_typed_seq_handler <- function() {
-  x <- yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1 }))
+  x <- yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1L }))
   assert_equal(2:3, x)
 }
 

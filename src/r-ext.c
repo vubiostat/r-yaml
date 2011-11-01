@@ -431,15 +431,17 @@ handle_sequence(event, stack, s_handlers)
 }
 
 static int
-handle_map(event, stack, coerce)
+handle_map(event, stack, coerce_keys, s_handlers)
   yaml_event_t *event;
   s_stack_entry **stack;
-  int coerce;
+  int coerce_keys;
+  SEXP s_handlers;
 {
   s_prot_object *obj;
   s_stack_entry *stack_ptr;
-  int count, i, j, orphan_key, dup_key = 0;
-  SEXP list, keys, key, key_str;
+  int count, i, j, orphan_key, dup_key = 0, handled;
+  SEXP list, keys, key, key_str, handler, tmp_obj;
+  char *tag;
 
   /* Find out how many elements there are */
   stack_ptr = *stack;
@@ -453,7 +455,7 @@ handle_map(event, stack, coerce)
   PROTECT(list = allocVector(VECSXP, count / 2));
 
   /* Initialize key list/vector */
-  if (coerce) {
+  if (coerce_keys) {
     PROTECT(keys = NEW_STRING(count / 2));
   }
   else {
@@ -472,7 +474,7 @@ handle_map(event, stack, coerce)
       dup_key = 0;
 
       /* map key */
-      if (coerce) {
+      if (coerce_keys) {
         key_str = AS_CHARACTER(obj->obj);
         orphan_key = (key_str != obj->obj);
         if (orphan_key) {
@@ -535,22 +537,55 @@ handle_map(event, stack, coerce)
     }
   }
 
-  if (!dup_key) {
-    if (coerce) {
-      SET_NAMES(list, keys);
-    }
-    else {
-      setAttrib(list, R_KeysSymbol, keys);
-    }
-    (*stack)->obj->obj = list;
-    (*stack)->placeholder = 0;
-    UNPROTECT(1); // keys
-  }
-  else {
+  if (dup_key) {
     UNPROTECT(2); // keys and list
+    return 1;
   }
 
-  return dup_key;
+  if (coerce_keys) {
+    SET_NAMES(list, keys);
+  }
+  else {
+    setAttrib(list, R_KeysSymbol, keys);
+  }
+  UNPROTECT(1); // keys
+
+  /* Tags! */
+  tag = (*stack)->tag;
+  if (tag == NULL) {
+    tag = "map";
+  }
+  else {
+    tag = process_tag(tag);
+  }
+
+  /* Look for a custom R handler */
+  handled = 0;
+  handler = find_handler(s_handlers, tag);
+  if (handler != R_NilValue) {
+    if (run_handler(handler, list, &tmp_obj) != 0) {
+      warning("an error occurred when handling type '%s'; using default handler", tag);
+    }
+    else {
+      handled = 1;
+      if (tmp_obj == R_NilValue) {
+        UNPROTECT(1);
+      }
+      else {
+        UNPROTECT_PTR(list);
+        PROTECT(tmp_obj);
+      }
+      list = tmp_obj;
+    }
+  }
+
+  if (!handled) {
+  }
+
+  (*stack)->obj->obj = list;
+  (*stack)->placeholder = 0;
+
+  return 0;
 }
 
 static void
@@ -691,7 +726,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("MAPPING END\n");
 #endif
-          errorOccurred = handle_map(&event, &stack, use_named);
+          errorOccurred = handle_map(&event, &stack, use_named, s_handlers);
           if (errorOccurred) {
             retval = R_NilValue;
             done = 1;

@@ -335,6 +335,16 @@ test_should_load_omap_without_named <- function() {
   assert_equal(3:4, x[[2]])
 }
 
+test_should_error_when_named_omap_has_duplicate_key  <- function() {
+  x <- try(yaml.load("--- !omap\n- foo:\n  - 1\n  - 2\n- foo:\n  - 3\n  - 4"))
+  assert(inherits(x, "try-error"))
+}
+
+test_should_error_when_unnamed_omap_has_duplicate_key  <- function() {
+  x <- try(yaml.load("--- !omap\n- foo:\n  - 1\n  - 2\n- foo:\n  - 3\n  - 4", FALSE))
+  assert(inherits(x, "try-error"))
+}
+
 test_should_error_when_omap_is_invalid <- function() {
   x <- try(yaml.load("--- !omap\nhey!"))
   assert(inherits(x, "try-error"))

@@ -249,9 +249,9 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   SEXP s_handlers;
   int coerce_keys;
 {
-  SEXP handler, obj, new_obj, elt, keys, expr, text, call, pcall, Rfn;
+  SEXP handler, obj, new_obj, elt, keys, key, expr, text, call, pcall, Rfn;
 
-  int handled, coercionError, base, i, len, total_len, idx, elt_len, j;
+  int handled, coercionError, base, i, len, total_len, idx, elt_len, j, k, dup_key;
   const char *nptr;
   char *endptr;
   double f;
@@ -383,7 +383,6 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         }
 
         /* Construct the list! */
-        /* FIXME: should check for duplicate keys, probably */
         PROTECT(new_obj = allocVector(VECSXP, total_len));
         if (coerce_keys) {
           keys = allocVector(STRSXP, total_len);
@@ -394,20 +393,46 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           setAttrib(new_obj, R_KeysSymbol, keys);
         }
 
-        for (i = 0, idx = 0; i < len; i++) {
+        dup_key = 0;
+        for (i = 0, idx = 0; i < len && dup_key == 0; i++) {
           elt = VECTOR_ELT(obj, i);
           elt_len = length(elt);
-          for (j = 0; j < elt_len; j++) {
+          for (j = 0; j < elt_len && dup_key == 0; j++) {
             SET_VECTOR_ELT(new_obj, idx, VECTOR_ELT(elt, j));
 
             if (coerce_keys) {
-              SET_STRING_ELT(keys, idx, STRING_ELT(GET_NAMES(elt), j));
+              key = STRING_ELT(GET_NAMES(elt), j);
+              SET_STRING_ELT(keys, idx, key);
+
+              for (k = 0; k < idx; k++) {
+                if (strcmp(CHAR(key), CHAR(STRING_ELT(keys, k))) == 0) {
+                  /* Duplicate found */
+                  dup_key = 1;
+                  sprintf(error_msg, "Duplicate omap key: '%s'", CHAR(key));
+                  break;
+                }
+              }
             }
             else {
-              SET_VECTOR_ELT(keys, idx, VECTOR_ELT(getAttrib(elt, R_KeysSymbol), j));
+              key = VECTOR_ELT(getAttrib(elt, R_KeysSymbol), j);
+              SET_VECTOR_ELT(keys, idx, key);
+
+              for (k = 0; k < idx; k++) {
+                if (Rcmp(key, VECTOR_ELT(keys, k)) == 0) {
+                  /* Duplicate found */
+                  dup_key = 1;
+                  sprintf(error_msg, "Duplicate omap key: %s", Rformat(key));
+                  break;
+                }
+              }
             }
             idx++;
           }
+        }
+
+        if (dup_key == 1) {
+          UNPROTECT(1); // new_obj
+          coercionError = 1;
         }
       }
       else {
@@ -475,7 +500,9 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   }
 
   if (coercionError == 1) {
-    sprintf(error_msg, "Invalid tag: %s for %s", tag, (event_type == YAML_SCALAR_EVENT ? "scalar" : (event_type == YAML_SEQUENCE_END_EVENT ? "sequence" : "map")));
+    if (error_msg[0] == 0) {
+      sprintf(error_msg, "Invalid tag: %s for %s", tag, (event_type == YAML_SCALAR_EVENT ? "scalar" : (event_type == YAML_SEQUENCE_END_EVENT ? "sequence" : "map")));
+    }
     return 1;
   }
 

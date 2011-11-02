@@ -43,6 +43,14 @@ test_should_type_uniform_sequences <- function() {
   assert_equal(c("hey", "hi", "hello"), x)
 }
 
+test_shows_error_with_tag_type_conflicts <- function() {
+  x <- try(yaml.load("!!str [1, 2, 3]"))
+  assert(inherits(x, "try-error"))
+
+  x <- try(yaml.load("!!str {foo: bar}"))
+  assert(inherits(x, "try-error"))
+}
+
 test_should_not_collapse_sequences <- function() {
   x <- yaml.load("- [1, 2]\n- 3\n- [4, 5]")
   assert_equal(list(1:2, 3L, 4:5), x)

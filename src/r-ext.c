@@ -17,6 +17,9 @@ typedef struct {
   int refcount;
   SEXP obj;
 
+  /* For storing sequence types */
+  int seq_type;
+
   /* This is for tracking whether or not this object has a parent.
    * If there is no parent, that means this object should be UNPROTECT'd
    * when assigned to a parent SEXP object */
@@ -74,16 +77,16 @@ Rformat(x)
 }
 
 static s_prot_object *
-new_prot_object(obj, orphan)
+new_prot_object(obj)
   SEXP obj;
-  int orphan;
 {
   s_prot_object *result;
 
   result = (s_prot_object *)malloc(sizeof(s_prot_object));
   result->refcount = 0;
   result->obj = obj;
-  result->orphan = orphan;
+  result->orphan = 1;
+  result->seq_type = -1;
 
   return result;
 }
@@ -110,8 +113,8 @@ prune_prot_object(obj)
 static void
 stack_push(stack, placeholder, tag, obj)
   s_stack_entry **stack;
-  const char *tag;
   int placeholder;
+  const char *tag;
   s_prot_object *obj;
 {
   s_stack_entry *result;
@@ -233,128 +236,223 @@ handle_start_event(tag, stack)
   const char *tag;
   s_stack_entry **stack;
 {
-  stack_push(stack, 1, tag, new_prot_object(NULL, 1));
+  stack_push(stack, 1, tag, new_prot_object(NULL));
+  return 0;
+}
+
+/* Call this on a just created object. */
+static int
+convert_object(event_type, s_obj, tag, s_handlers)
+  yaml_event_type_t event_type;
+  s_prot_object *s_obj;
+  yaml_char_t *tag;
+  SEXP s_handlers;
+{
+  SEXP handler, obj, new_obj;
+  int handled, coercionError, base, i;
+  const char *nptr;
+  char *endptr;
+  double f;
+
+  /* Look for a custom R handler */
+  handler = find_handler(s_handlers, tag);
+  handled = 0;
+  obj = s_obj->obj;
+  new_obj = NULL;
+  if (handler != R_NilValue) {
+    if (run_handler(handler, obj, &new_obj) != 0) {
+      warning("an error occurred when handling type '%s'; using default handler", tag);
+    }
+    else {
+      handled = 1;
+      if (new_obj != R_NilValue) {
+        PROTECT(new_obj);
+      }
+    }
+  }
+
+  coercionError = 0;
+  if (!handled) {
+    /* default handlers, ordered by most-used */
+
+    if (strcmp(tag, "str") == 0) {
+      /* if this is a scalar, then it's already a string */
+      coercionError = event_type != YAML_SCALAR_EVENT;
+    }
+    else if (strcmp(tag, "seq") == 0) {
+      /* Let's try to coerce this list! */
+      switch (s_obj->seq_type) {
+        case LGLSXP:
+        case INTSXP:
+        case REALSXP:
+        case STRSXP:
+          PROTECT(new_obj = coerceVector(obj, s_obj->seq_type));
+          break;
+      }
+    }
+    else if (strcmp(tag, "int") == 0 || strncmp(tag, "int#", 4) == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        base = -1;
+        if (strcmp(tag, "int") == 0) {
+          base = 10;
+        }
+        else if (strcmp(tag, "int#hex") == 0) {
+          base = 16;
+        }
+        else if (strcmp(tag, "int#oct") == 0) {
+          base = 8;
+        }
+
+        if (base >= 0) {
+          nptr = CHAR(STRING_ELT(obj, 0));
+          i = (int)strtol(nptr, &endptr, base);
+          if (*endptr != 0) {
+            /* strtol is perfectly happy converting partial strings to
+             * integers, but R isn't. If you call as.integer() on a
+             * string that isn't completely an integer, you get back
+             * an NA. So I'm reproducing that behavior here. */
+
+            printf("Original: (%p), Leftover: (%p)\n", nptr, endptr);
+            warning("NAs introduced by coercion: %s is not an integer", nptr);
+            i = NA_INTEGER;
+          }
+
+          PROTECT(new_obj = NEW_INTEGER(1));
+          INTEGER(new_obj)[0] = i;
+        }
+        else {
+          /* Don't do anything, we don't know how to handle this type */
+        }
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        nptr = CHAR(STRING_ELT(obj, 0));
+        f = strtod(nptr, &endptr);
+        if (*endptr != 0) {
+          /* No valid floats found (see note above about integers) */
+          warning("NAs introduced by coercion: %s is not a real", nptr);
+          f = NA_REAL;
+        }
+
+        PROTECT(new_obj = NEW_NUMERIC(1));
+        REAL(new_obj)[0] = f;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "bool#yes") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_LOGICAL(1));
+        LOGICAL(new_obj)[0] = 1;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "bool#no") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_LOGICAL(1));
+        LOGICAL(new_obj)[0] = 0;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "float#nan") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_NUMERIC(1));
+        REAL(new_obj)[0] = R_NaN;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "float#inf") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_NUMERIC(1));
+        REAL(new_obj)[0] = R_PosInf;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "float#neginf") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_NUMERIC(1));
+        REAL(new_obj)[0] = R_NegInf;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "null") == 0) {
+      new_obj = R_NilValue;
+    }
+  }
+
+  if (coercionError == 1) {
+    sprintf(error_msg, "Invalid tag: %s for %s", tag, (event_type == YAML_SCALAR_EVENT ? "scalar" : (event_type == YAML_SEQUENCE_END_EVENT ? "sequence" : "map")));
+    return 1;
+  }
+
+  if (new_obj != NULL) {
+    UNPROTECT_PTR(obj);
+    s_obj->obj = new_obj;
+    s_obj->orphan = new_obj != R_NilValue;
+  }
+
   return 0;
 }
 
 static int
-handle_scalar(event, stack, s_handlers)
+handle_scalar(event, stack, return_tag)
   yaml_event_t *event;
   s_stack_entry **stack;
-  SEXP s_handlers;
+  yaml_char_t **return_tag;
 {
-  SEXP obj, names, cmd, tmp_obj, handler;
-  yaml_char_t *tag, *value;
+  SEXP obj;
+  yaml_char_t *value, *tag;
   size_t len;
-  int errorOccurred = 0, handled = 0, str = 0, i;
-  double f;
-  PROTECT_INDEX ipx;
 
   tag = event->data.scalar.tag;
   value = event->data.scalar.value;
   if (tag == NULL || strcmp(tag, "!") == 0) {
     /* If there's no tag, try to tag it */
+    len = event->data.scalar.length;
     tag = find_implicit_tag(value, len);
   }
   else {
     tag = process_tag(tag);
   }
+  *return_tag = tag;
+
 #if DEBUG
   printf("Value: (%s), Tag: (%s)\n", value, tag);
 #endif
 
-  /* Look for a custom R handler */
-  handler = find_handler(s_handlers, tag);
-  if (handler != R_NilValue) {
-    PROTECT_WITH_INDEX(obj = NEW_STRING(1), &ipx);
-    SET_STRING_ELT(obj, 0, mkChar(value));
+  PROTECT(obj = NEW_STRING(1));
+  SET_STRING_ELT(obj, 0, mkChar(value));
 
-    if (run_handler(handler, obj, &tmp_obj) != 0) {
-      warning("an error occurred when handling type '%s'; using default handler", tag);
-      UNPROTECT(1);
-    }
-    else {
-      handled = 1;
-      obj = tmp_obj;
-      if (obj == R_NilValue) {
-        UNPROTECT(1);
-      }
-      else {
-        REPROTECT(obj, ipx);
-      }
-    }
-  }
-
-  if (!handled) {
-    /* default handlers, ordered by most-used */
-    if (strcmp(tag, "str") == 0) {
-      str = 1;
-    }
-    else if (strcmp(tag, "int") == 0) {
-      PROTECT(obj = NEW_INTEGER(1));
-      INTEGER(obj)[0] = (int)strtol((char *)value, NULL, 10);
-    }
-    else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0) {
-      f = strtod((char *)value, NULL);
-      PROTECT(obj = NEW_NUMERIC(1));
-      REAL(obj)[0] = f;
-    }
-    else if (strcmp(tag, "bool#yes") == 0) {
-      PROTECT(obj = NEW_LOGICAL(1));
-      LOGICAL(obj)[0] = 1;
-    }
-    else if (strcmp(tag, "bool#no") == 0) {
-      PROTECT(obj = NEW_LOGICAL(1));
-      LOGICAL(obj)[0] = 0;
-    }
-    else if (strcmp(tag, "int#hex") == 0) {
-      PROTECT(obj = NEW_INTEGER(1));
-      INTEGER(obj)[0] = (int)strtol((char *)value, NULL, 16);
-    }
-    else if (strcmp(tag, "int#oct") == 0) {
-      PROTECT(obj = NEW_INTEGER(1));
-      INTEGER(obj)[0] = (int)strtol((char *)value, NULL, 8);
-    }
-    else if (strcmp(tag, "float#nan") == 0) {
-      PROTECT(obj = NEW_NUMERIC(1));
-      REAL(obj)[0] = R_NaN;
-    }
-    else if (strcmp(tag, "float#inf") == 0) {
-      PROTECT(obj = NEW_NUMERIC(1));
-      REAL(obj)[0] = R_PosInf;
-    }
-    else if (strcmp(tag, "float#neginf") == 0) {
-      PROTECT(obj = NEW_NUMERIC(1));
-      REAL(obj)[0] = R_NegInf;
-    }
-    else if (strcmp(tag, "null") == 0) {
-      obj = R_NilValue;
-    }
-    else {
-      str = 1;
-    }
-
-    if (str == 1) {
-      PROTECT(obj = NEW_STRING(1));
-      SET_STRING_ELT(obj, 0, mkChar((char *)value));
-    }
-  }
-
-  stack_push(stack, 0, NULL, new_prot_object(obj, obj != R_NilValue));
+  stack_push(stack, 0, NULL, new_prot_object(obj));
   return 0;
 }
 
 static int
-handle_sequence(event, stack, s_handlers)
+handle_sequence(event, stack, return_tag)
   yaml_event_t *event;
   s_stack_entry **stack;
-  SEXP s_handlers;
+  char **return_tag;
 {
   s_stack_entry *stack_ptr;
   s_prot_object *obj;
-  int count, i, type, handled;
+  int count, i, type;
   char *tag;
-  SEXP list, tmp_obj, handler;
+  SEXP list;
 
   /* Find out how many elements there are */
   stack_ptr = *stack;
@@ -389,58 +487,25 @@ handle_sequence(event, stack, s_handlers)
   else {
     tag = process_tag(tag);
   }
-
-  /* Look for a custom R handler */
-  handled = 0;
-  handler = find_handler(s_handlers, tag);
-  if (handler != R_NilValue) {
-    if (run_handler(handler, list, &tmp_obj) != 0) {
-      warning("an error occurred when handling type '%s'; using default handler", tag);
-    }
-    else {
-      handled = 1;
-      if (tmp_obj == R_NilValue) {
-        UNPROTECT(1);
-      }
-      else {
-        UNPROTECT_PTR(list);
-        PROTECT(tmp_obj);
-      }
-      list = tmp_obj;
-    }
-  }
-
-  if (!handled) {
-    /* Let's try to coerce this list! */
-    switch (type) {
-      case LGLSXP:
-      case INTSXP:
-      case REALSXP:
-      case STRSXP:
-        tmp_obj = coerceVector(list, type);
-        UNPROTECT_PTR(list);
-        PROTECT(tmp_obj);
-        list = tmp_obj;
-        break;
-    }
-  }
+  *return_tag = tag;
 
   (*stack)->obj->obj = list;
+  (*stack)->obj->seq_type = type;
   (*stack)->placeholder = 0;
   return 0;
 }
 
 static int
-handle_map(event, stack, coerce_keys, s_handlers)
+handle_map(event, stack, return_tag, coerce_keys)
   yaml_event_t *event;
   s_stack_entry **stack;
+  char **return_tag;
   int coerce_keys;
-  SEXP s_handlers;
 {
   s_prot_object *obj;
   s_stack_entry *stack_ptr;
-  int count, i, j, orphan_key, dup_key = 0, handled;
-  SEXP list, keys, key, key_str, handler, tmp_obj;
+  int count, i, j, orphan_key, dup_key = 0;
+  SEXP list, keys, key, key_str;
   char *tag;
 
   /* Find out how many elements there are */
@@ -558,33 +623,10 @@ handle_map(event, stack, coerce_keys, s_handlers)
   else {
     tag = process_tag(tag);
   }
-
-  /* Look for a custom R handler */
-  handled = 0;
-  handler = find_handler(s_handlers, tag);
-  if (handler != R_NilValue) {
-    if (run_handler(handler, list, &tmp_obj) != 0) {
-      warning("an error occurred when handling type '%s'; using default handler", tag);
-    }
-    else {
-      handled = 1;
-      if (tmp_obj == R_NilValue) {
-        UNPROTECT(1);
-      }
-      else {
-        UNPROTECT_PTR(list);
-        PROTECT(tmp_obj);
-      }
-      list = tmp_obj;
-    }
-  }
-
-  if (!handled) {
-  }
+  *return_tag = tag;
 
   (*stack)->obj->obj = list;
   (*stack)->placeholder = 0;
-
   return 0;
 }
 
@@ -625,13 +667,13 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   SEXP s_handlers;
 {
   s_prot_object *obj;
-  SEXP retval, R_hndlr, cmd, names;
+  SEXP retval, R_hndlr, names;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *str, *name;
+  const char *str, *name, *tag;
   long len;
   int use_named, i, done = 0, errorOccurred;
-  s_stack_entry *stack = NULL, *stack_ptr;
+  s_stack_entry *stack = NULL;
   s_alias_entry *aliases = NULL, *alias;
 
   if (!isString(s_str) || length(s_str) != 1) {
@@ -683,6 +725,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   error_msg[0] = 0;
   while (!done) {
     if (yaml_parser_parse(&parser, &event)) {
+      errorOccurred = 0;
+
       switch (event.type) {
         case YAML_ALIAS_EVENT:
 #if DEBUG
@@ -695,7 +739,10 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
 #endif
-          handle_scalar(&event, &stack, s_handlers);
+          errorOccurred = handle_scalar(&event, &stack, &tag);
+          if (!errorOccurred) {
+            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers);
+          }
           possibly_record_alias(event.data.scalar.anchor, &aliases, stack->obj);
           break;
 
@@ -711,7 +758,10 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("SEQUENCE END\n");
 #endif
-          handle_sequence(&event, &stack, s_handlers);
+          errorOccurred = handle_sequence(&event, &stack, &tag);
+          if (!errorOccurred) {
+            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers);
+          }
           break;
 
         case YAML_MAPPING_START_EVENT:
@@ -726,10 +776,9 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           printf("MAPPING END\n");
 #endif
-          errorOccurred = handle_map(&event, &stack, use_named, s_handlers);
-          if (errorOccurred) {
-            retval = R_NilValue;
-            done = 1;
+          errorOccurred = handle_map(&event, &stack, &tag, use_named);
+          if (!errorOccurred) {
+            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers);
           }
 
           break;
@@ -746,6 +795,12 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
           done = 1;
           break;
+      }
+
+      if (errorOccurred) {
+        sprintf(error_msg, "Balls!");
+        retval = R_NilValue;
+        done = 1;
       }
     }
     else {

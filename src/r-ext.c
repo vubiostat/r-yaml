@@ -242,13 +242,14 @@ handle_start_event(tag, stack)
 
 /* Call this on a just created object. */
 static int
-convert_object(event_type, s_obj, tag, s_handlers)
+convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   yaml_event_type_t event_type;
   s_prot_object *s_obj;
   yaml_char_t *tag;
   SEXP s_handlers;
+  int coerce_keys;
 {
-  SEXP handler, obj, new_obj, elt, names, expr, text, call, pcall, Rfn;
+  SEXP handler, obj, new_obj, elt, keys, expr, text, call, pcall, Rfn;
 
   int handled, coercionError, base, i, len, total_len, idx, elt_len, j;
   const char *nptr;
@@ -382,17 +383,29 @@ convert_object(event_type, s_obj, tag, s_handlers)
         }
 
         /* Construct the list! */
-        /* FIXME: this currently assumes use_named is TRUE */
         /* FIXME: should check for duplicate keys, probably */
         PROTECT(new_obj = allocVector(VECSXP, total_len));
-        names = allocVector(STRSXP, total_len);
-        SET_NAMES(new_obj, names);
+        if (coerce_keys) {
+          keys = allocVector(STRSXP, total_len);
+          SET_NAMES(new_obj, keys);
+        }
+        else {
+          keys = allocVector(VECSXP, total_len);
+          setAttrib(new_obj, R_KeysSymbol, keys);
+        }
+
         for (i = 0, idx = 0; i < len; i++) {
           elt = VECTOR_ELT(obj, i);
           elt_len = length(elt);
           for (j = 0; j < elt_len; j++) {
             SET_VECTOR_ELT(new_obj, idx, VECTOR_ELT(elt, j));
-            SET_STRING_ELT(names, idx, STRING_ELT(GET_NAMES(elt), j));
+
+            if (coerce_keys) {
+              SET_STRING_ELT(keys, idx, STRING_ELT(GET_NAMES(elt), j));
+            }
+            else {
+              SET_VECTOR_ELT(keys, idx, VECTOR_ELT(getAttrib(elt, R_KeysSymbol), j));
+            }
             idx++;
           }
         }
@@ -808,7 +821,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #endif
           errorOccurred = handle_scalar(&event, &stack, &tag);
           if (!errorOccurred) {
-            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers);
+            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
           }
           possibly_record_alias(event.data.scalar.anchor, &aliases, stack->obj);
           break;
@@ -827,7 +840,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #endif
           errorOccurred = handle_sequence(&event, &stack, &tag);
           if (!errorOccurred) {
-            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers);
+            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
           }
           break;
 
@@ -845,7 +858,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #endif
           errorOccurred = handle_map(&event, &stack, &tag, use_named);
           if (!errorOccurred) {
-            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers);
+            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
           }
 
           break;

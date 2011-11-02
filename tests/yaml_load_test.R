@@ -327,6 +327,14 @@ test_should_load_omap <- function() {
   assert_equal(3:4, x$bar)
 }
 
+test_should_load_omap_without_named <- function() {
+  x <- yaml.load("--- !omap\n- 123:\n  - 1\n  - 2\n- bar:\n  - 3\n  - 4", FALSE)
+  assert_equal(2L, length(x))
+  assert_equal(list(123L, "bar"), attr(x, "keys"))
+  assert_equal(1:2, x[[1]])
+  assert_equal(3:4, x[[2]])
+}
+
 test_should_error_when_omap_is_invalid <- function() {
   x <- try(yaml.load("--- !omap\nhey!"))
   assert(inherits(x, "try-error"))

@@ -248,7 +248,8 @@ convert_object(event_type, s_obj, tag, s_handlers)
   yaml_char_t *tag;
   SEXP s_handlers;
 {
-  SEXP handler, obj, new_obj, elt, names;
+  SEXP handler, obj, new_obj, elt, names, expr, text, call, pcall, Rfn;
+
   int handled, coercionError, base, i, len, total_len, idx, elt_len, j;
   const char *nptr;
   char *endptr;
@@ -429,6 +430,34 @@ convert_object(event_type, s_obj, tag, s_handlers)
     }
     else if (strcmp(tag, "null") == 0) {
       new_obj = R_NilValue;
+    }
+    else if (strcmp(tag, "expr") == 0) {
+      /* call parse() */
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(Rfn = findFun(install("parse"), R_BaseEnv));
+        PROTECT(pcall = call = allocList(2));
+        SET_TYPEOF(call, LANGSXP);
+        SETCAR(pcall, Rfn); pcall = CDR(pcall);
+        SETCAR(pcall, obj);
+        SET_TAG(pcall, install("text"));
+        SET_NAMED(CAR(pcall), 2);
+        expr = eval(call, R_GlobalEnv);
+        UNPROTECT(2);
+        PROTECT(expr);
+
+        /* call eval() to evaluate the expression */
+        PROTECT(Rfn = findFun(install("eval"), R_BaseEnv));
+        PROTECT(pcall = call = allocList(2));
+        SET_TYPEOF(call, LANGSXP);
+        SETCAR(pcall, Rfn); pcall = CDR(pcall);
+        SETCAR(pcall, expr);
+        new_obj = eval(call, R_GlobalEnv);
+        UNPROTECT(3);
+        PROTECT(new_obj);
+      }
+      else {
+        coercionError = 1;
+      }
     }
   }
 

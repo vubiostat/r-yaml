@@ -248,8 +248,8 @@ convert_object(event_type, s_obj, tag, s_handlers)
   yaml_char_t *tag;
   SEXP s_handlers;
 {
-  SEXP handler, obj, new_obj;
-  int handled, coercionError, base, i;
+  SEXP handler, obj, new_obj, elt, names;
+  int handled, coercionError, base, i, len, total_len, idx, elt_len, j;
   const char *nptr;
   char *endptr;
   double f;
@@ -358,6 +358,43 @@ convert_object(event_type, s_obj, tag, s_handlers)
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = 0;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "omap") == 0) {
+      /* NOTE: This is here mostly because of backwards compatibility
+       * with R yaml 1.x package. All maps are ordered in 2.x, so there's
+       * no real need to use omap */
+
+      if (event_type == YAML_SEQUENCE_END_EVENT) {
+        len = length(obj);
+        total_len = 0;
+        for (i = 0; i < len; i++) {
+          elt = VECTOR_ELT(obj, i);
+          if (TYPEOF(elt) != VECSXP) {
+            sprintf(error_msg, "omap must be a sequence of maps");
+            return 1;
+          }
+          total_len += length(elt);
+        }
+
+        /* Construct the list! */
+        /* FIXME: this currently assumes use_named is TRUE */
+        /* FIXME: should check for duplicate keys, probably */
+        PROTECT(new_obj = allocVector(VECSXP, total_len));
+        names = allocVector(STRSXP, total_len);
+        SET_NAMES(new_obj, names);
+        for (i = 0, idx = 0; i < len; i++) {
+          elt = VECTOR_ELT(obj, i);
+          elt_len = length(elt);
+          for (j = 0; j < elt_len; j++) {
+            SET_VECTOR_ELT(new_obj, idx, VECTOR_ELT(elt, j));
+            SET_STRING_ELT(names, idx, STRING_ELT(GET_NAMES(elt), j));
+            idx++;
+          }
+        }
       }
       else {
         coercionError = 1;
@@ -670,7 +707,8 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   SEXP retval, R_hndlr, names;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *str, *name, *tag;
+  const char *str, *name;
+  char *tag;
   long len;
   int use_named, i, done = 0, errorOccurred;
   s_stack_entry *stack = NULL;
@@ -798,7 +836,6 @@ load_yaml_str(s_str, s_use_named, s_handlers)
       }
 
       if (errorOccurred) {
-        sprintf(error_msg, "Balls!");
         retval = R_NilValue;
         done = 1;
       }

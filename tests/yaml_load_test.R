@@ -62,11 +62,11 @@ test_should_merge_maps <- function() {
   assert_equal("boo", x$baz)
   assert_equal("foo", x$bar)
 
-  x <- yaml.load("foo: bar\n<<: [{poo: poo}, {foo: doo}, {baz: boo}]", TRUE)
+  x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {baz: boo}]", TRUE)
   assert_equal(3L, length(x))
   assert_equal("boo", x$baz)
   assert_equal("bar", x$foo)
-  assert_equal("poo", x$poo)
+  assert_equal("quux", x$quux)
 }
 
 test_should_handle_weird_merges <- function() {
@@ -171,7 +171,7 @@ test_should_handle_float_type <- function() {
 #  assert_equal("2001-12-14t21:59:43.10-05:00", x)
 #}
 
-test_should_handle_merge_type <- function() {
+test_should_handle_alias <- function() {
   x <- yaml.load("- &foo bar\n- *foo")
   assert_equal(c("bar", "bar"), x)
 }
@@ -306,7 +306,7 @@ test_should_use_custom_typed_map_handler <- function() {
   assert_lists_equal(list(uno="uno", dos="dos"), x)
 }
 
-# NOTE: this works, but it looks like R_tryEval doesn't behave correctly when called in the context of try()
+# NOTE: this works, but R_tryEval doesn't return when called non-interactively
 #test_should_handle_a_bad_handler <- function() {
 #  x <- yaml.load("foo", handlers=list(str=function(x) { blargh }))
 #  str(x)
@@ -363,5 +363,11 @@ test_should_error_for_bad_expressions <- function() {
   x <- try(yaml.load("!expr |\n  1+"))
   assert(inherits(x, "try-error"))
 }
+
+# NOTE: this works, but R_tryEval doesn't return when called non-interactively
+#test_should_error_for_expressions_with_eval_errors <- function() {
+#  x <- try(yaml.load("!expr |\n  1 + non.existent.variable"))
+#  assert(inherits(x, "try-error"))
+#}
 
 source("test_runner.r")

@@ -3,6 +3,7 @@
 #include "R.h"
 #include "Rdefines.h"
 #include "R_ext/Rdynload.h"
+#include "R_ext/Parse.h"
 #include "yaml.h"
 #include "yaml_private.h"
 
@@ -40,7 +41,7 @@ typedef struct {
 } s_alias_entry;
 
 static int
-Rcmp(x, y)
+R_cmp(x, y)
   SEXP x;
   SEXP y;
 {
@@ -63,8 +64,86 @@ Rcmp(x, y)
   return retval;
 }
 
+static int
+R_index(haystack, needle, character, upper_bound)
+  SEXP haystack;
+  SEXP needle;
+  int character;
+  int upper_bound;
+{
+  int i;
+
+  if (character) {
+    for (i = 0; i < upper_bound; i++) {
+      if (strcmp(CHAR(needle), CHAR(STRING_ELT(haystack, i))) == 0) {
+        return i;
+      }
+    }
+  }
+  else {
+    for (i = 0; i < upper_bound; i++) {
+      if (R_cmp(needle, VECTOR_ELT(haystack, i)) == 0) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+
+static int
+R_rindex(haystack, needle, character, lower_bound)
+  SEXP haystack;
+  SEXP needle;
+  int character;
+  int lower_bound;
+{
+  int i;
+
+  if (character) {
+    for (i = LENGTH(haystack) - 1; i > lower_bound; i--) {
+      if (strcmp(CHAR(needle), CHAR(STRING_ELT(haystack, i))) == 0) {
+        return i;
+      }
+    }
+  }
+  else {
+    for (i = LENGTH(haystack) - 1; i > lower_bound; i--) {
+      if (R_cmp(needle, VECTOR_ELT(haystack, i)) == 0) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+
+static int
+R_is_named_list(obj)
+  SEXP obj;
+{
+  SEXP names;
+  if (TYPEOF(obj) != VECSXP)
+    return 0;
+
+  names = GET_NAMES(obj);
+  return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
+}
+
+static int
+R_is_pseudo_hash(obj)
+  SEXP obj;
+{
+  SEXP keys;
+  if (TYPEOF(obj) != VECSXP)
+    return 0;
+
+  keys = getAttrib(obj, R_KeysSymbol);
+  return (keys != R_NilValue && TYPEOF(keys) == VECSXP);
+}
+
 static const char *
-Rformat(x)
+R_format(x)
   SEXP x;
 {
   SEXP call, result;
@@ -74,6 +153,45 @@ Rformat(x)
   UNPROTECT(1);
 
   return CHAR(STRING_ELT(result, 0));
+}
+
+static void
+R_set_str_attrib( obj, sym, str )
+  SEXP obj;
+  SEXP sym;
+  char *str;
+{
+  SEXP val;
+  PROTECT(val = NEW_STRING(1));
+  SET_STRING_ELT(val, 0, mkChar(str));
+  setAttrib(obj, sym, val);
+  UNPROTECT(1);
+}
+
+static void
+R_set_class( obj, name )
+  SEXP obj;
+  char *name;
+{
+  R_set_str_attrib(obj, R_ClassSymbol, name);
+}
+
+static int
+R_class_of( obj, name )
+  SEXP obj;
+  char *name;
+{
+  int i;
+  SEXP class = GET_CLASS(obj);
+  if (TYPEOF(class) == STRSXP) {
+    for (i = 0; i < length(class); i++) {
+      if (strcmp(CHAR(STRING_ELT(GET_CLASS(obj), i)), name) == 0) {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
 }
 
 static s_prot_object *
@@ -250,11 +368,11 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   int coerce_keys;
 {
   SEXP handler, obj, new_obj, elt, keys, key, expr, text, call, pcall, Rfn;
-
   int handled, coercionError, base, i, len, total_len, idx, elt_len, j, k, dup_key;
   const char *nptr;
   char *endptr;
   double f;
+  ParseStatus parseStatus;
 
   /* Look for a custom R handler */
   handler = find_handler(s_handlers, tag);
@@ -375,7 +493,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         total_len = 0;
         for (i = 0; i < len; i++) {
           elt = VECTOR_ELT(obj, i);
-          if (TYPEOF(elt) != VECSXP) {
+          if ((coerce_keys && !R_is_named_list(elt)) || (!coerce_keys && !R_is_pseudo_hash(elt))) {
             sprintf(error_msg, "omap must be a sequence of maps");
             return 1;
           }
@@ -404,26 +522,18 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
               key = STRING_ELT(GET_NAMES(elt), j);
               SET_STRING_ELT(keys, idx, key);
 
-              for (k = 0; k < idx; k++) {
-                if (strcmp(CHAR(key), CHAR(STRING_ELT(keys, k))) == 0) {
-                  /* Duplicate found */
-                  dup_key = 1;
-                  sprintf(error_msg, "Duplicate omap key: '%s'", CHAR(key));
-                  break;
-                }
+              if (R_index(keys, key, 1, idx) >= 0) {
+                dup_key = 1;
+                sprintf(error_msg, "Duplicate omap key: '%s'", CHAR(key));
               }
             }
             else {
               key = VECTOR_ELT(getAttrib(elt, R_KeysSymbol), j);
               SET_VECTOR_ELT(keys, idx, key);
 
-              for (k = 0; k < idx; k++) {
-                if (Rcmp(key, VECTOR_ELT(keys, k)) == 0) {
-                  /* Duplicate found */
-                  dup_key = 1;
-                  sprintf(error_msg, "Duplicate omap key: %s", Rformat(key));
-                  break;
-                }
+              if (R_index(keys, key, 0, idx) >= 0) {
+                dup_key = 1;
+                sprintf(error_msg, "Duplicate omap key: %s", R_format(key));
               }
             }
             idx++;
@@ -434,6 +544,17 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           UNPROTECT(1); // new_obj
           coercionError = 1;
         }
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp(tag, "merge") == 0) {
+      /* see http://yaml.org/type/merge.html */
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_STRING(1));
+        SET_STRING_ELT(new_obj, 0, mkChar("_yaml.merge_"));
+        R_set_class(new_obj, "_yaml.merge_");
       }
       else {
         coercionError = 1;
@@ -470,28 +591,30 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
       new_obj = R_NilValue;
     }
     else if (strcmp(tag, "expr") == 0) {
-      /* call parse() */
       if (event_type == YAML_SCALAR_EVENT) {
-        PROTECT(Rfn = findFun(install("parse"), R_BaseEnv));
-        PROTECT(pcall = call = allocList(2));
-        SET_TYPEOF(call, LANGSXP);
-        SETCAR(pcall, Rfn); pcall = CDR(pcall);
-        SETCAR(pcall, obj);
-        SET_TAG(pcall, install("text"));
-        SET_NAMED(CAR(pcall), 2);
-        expr = eval(call, R_GlobalEnv);
-        UNPROTECT(2);
-        PROTECT(expr);
+        PROTECT(expr = R_ParseVector(obj, -1, &parseStatus, R_NilValue));
+        if (parseStatus != PARSE_OK) {
+          UNPROTECT(1); // expr
+          sprintf(error_msg, "Could not parse expression: %s", CHAR(STRING_ELT(obj, 0)));
+          coercionError = 1;
+        }
+        else {
+          /* NOTE: R_tryEval will not return if R_Interactive is FALSE. */
+          for (i = 0; i < length(expr); i++) {
+            new_obj = R_tryEval(VECTOR_ELT(expr, i), R_GlobalEnv, &coercionError);
+            if (coercionError) {
+              break;
+            }
+          }
+          UNPROTECT(1); // expr
 
-        /* call eval() to evaluate the expression */
-        PROTECT(Rfn = findFun(install("eval"), R_BaseEnv));
-        PROTECT(pcall = call = allocList(2));
-        SET_TYPEOF(call, LANGSXP);
-        SETCAR(pcall, Rfn); pcall = CDR(pcall);
-        SETCAR(pcall, expr);
-        new_obj = eval(call, R_GlobalEnv);
-        UNPROTECT(3);
-        PROTECT(new_obj);
+          if (coercionError) {
+            sprintf(error_msg, "Could not evaluate expression: %s", CHAR(STRING_ELT(obj, 0)));
+          }
+          else {
+            PROTECT(new_obj);
+          }
+        }
       }
       else {
         coercionError = 1;
@@ -611,7 +734,7 @@ handle_map(event, stack, return_tag, coerce_keys)
   s_prot_object *obj;
   s_stack_entry *stack_ptr;
   int count, i, j, orphan_key, dup_key = 0;
-  SEXP list, keys, key, key_str;
+  SEXP list, keys, key, key_str, value;
   char *tag;
 
   /* Find out how many elements there are */
@@ -627,10 +750,12 @@ handle_map(event, stack, return_tag, coerce_keys)
 
   /* Initialize key list/vector */
   if (coerce_keys) {
-    PROTECT(keys = NEW_STRING(count / 2));
+    keys = NEW_STRING(count / 2);
+    SET_NAMES(list, keys);
   }
   else {
-    PROTECT(keys = allocVector(VECSXP, count / 2));
+    keys = allocVector(VECSXP, count / 2);
+    setAttrib(list, R_KeysSymbol, keys);
   }
 
   /* Populate the list, popping items off the stack as we go */
@@ -666,13 +791,10 @@ handle_map(event, stack, return_tag, coerce_keys)
         }
 
         /* Look for duplicate keys */
-        for (j = (count / 2) - 1; j > i; j--) {
-          if (strcmp(CHAR(key), CHAR(STRING_ELT(keys, j))) == 0) {
-            /* Duplicate found */
-            dup_key = 1;
-            sprintf(error_msg, "Duplicate map key: '%s'", CHAR(key));
-            break;
-          }
+        if (R_rindex(keys, key, 1, i) >= 0) {
+          /* Duplicate found */
+          dup_key = 1;
+          sprintf(error_msg, "Duplicate map key: '%s'", CHAR(key));
         }
 
         if (!dup_key) {
@@ -685,21 +807,17 @@ handle_map(event, stack, return_tag, coerce_keys)
       }
       else {
         /* Look for duplicate keys */
-        for (j = (count / 2) - 1; j > i; j--) {
-          if (Rcmp(VECTOR_ELT(keys, j), obj->obj) == 0) {
-            /* Duplicate found */
-            dup_key = 1;
-            /* FIXME: doesn't print lists properly */
-            sprintf(error_msg, "Duplicate map key: %s", Rformat(obj->obj));
-            break;
-          }
+        if (R_rindex(keys, key, 0, i) >= 0) {
+          /* Duplicate found */
+          dup_key = 1;
+          /* FIXME: doesn't print lists properly */
+          sprintf(error_msg, "Duplicate map key: %s", R_format(obj->obj));
         }
 
         if (!dup_key) {
           SET_VECTOR_ELT(keys, i / 2, obj->obj);
         }
       }
-
     }
     prune_prot_object(obj);
 
@@ -709,17 +827,9 @@ handle_map(event, stack, return_tag, coerce_keys)
   }
 
   if (dup_key) {
-    UNPROTECT(2); // keys and list
+    UNPROTECT(1); // list
     return 1;
   }
-
-  if (coerce_keys) {
-    SET_NAMES(list, keys);
-  }
-  else {
-    setAttrib(list, R_KeysSymbol, keys);
-  }
-  UNPROTECT(1); // keys
 
   /* Tags! */
   tag = (*stack)->tag;
@@ -752,18 +862,6 @@ possibly_record_alias(anchor, aliases, obj)
     alias->prev = *aliases;
     *aliases = alias;
   }
-}
-
-static int
-R_is_named_list(obj)
-  SEXP obj;
-{
-  SEXP names;
-  if (TYPEOF(obj) != VECSXP)
-    return 0;
-
-  names = GET_NAMES(obj);
-  return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
 }
 
 SEXP

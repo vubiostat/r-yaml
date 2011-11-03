@@ -731,7 +731,7 @@ handle_map(event, stack, return_tag, coerce_keys)
   char **return_tag;
   int coerce_keys;
 {
-  s_prot_object *obj;
+  s_prot_object *value_obj, *key_obj;
   s_stack_entry *stack_ptr;
   int count, i, j, orphan_key, dup_key = 0;
   SEXP list, keys, key, key_str, value;
@@ -744,82 +744,80 @@ handle_map(event, stack, return_tag, coerce_keys)
     count++;
     stack_ptr = stack_ptr->prev;
   }
+  count /= 2;
 
   /* Initialize value list */
-  PROTECT(list = allocVector(VECSXP, count / 2));
+  PROTECT(list = allocVector(VECSXP, count));
 
   /* Initialize key list/vector */
   if (coerce_keys) {
-    keys = NEW_STRING(count / 2);
+    keys = NEW_STRING(count);
     SET_NAMES(list, keys);
   }
   else {
-    keys = allocVector(VECSXP, count / 2);
+    keys = allocVector(VECSXP, count);
     setAttrib(list, R_KeysSymbol, keys);
   }
 
   /* Populate the list, popping items off the stack as we go */
   for (i = count - 1; i >= 0; i--) {
-    stack_pop(stack, &obj);
+    stack_pop(stack, &value_obj);
+    stack_pop(stack, &key_obj);
 
-    if (i % 2 == 1) {
-      /* map value */
-      SET_VECTOR_ELT(list, i / 2, obj->obj);
+    SET_VECTOR_ELT(list, i, value_obj->obj);
+    dup_key = 0;
+
+    /* map key */
+    if (coerce_keys) {
+      key_str = AS_CHARACTER(key_obj->obj);
+      orphan_key = (key_str != key_obj->obj);
+      if (orphan_key) {
+        /* This key has been coerced into a character, and is a new object. */
+        PROTECT(key_str);
+      }
+
+      switch (LENGTH(key_str)) {
+        case 0:
+          warning("Empty character vector used as a list name");
+          key = mkChar("");
+          break;
+        default:
+          warning("Character vector of length greater than 1 used as a list name");
+        case 1:
+          key = STRING_ELT(key_str, 0);
+          break;
+      }
+
+      /* Look for duplicate keys */
+      if (R_rindex(keys, key, 1, i) >= 0) {
+        /* Duplicate found */
+        dup_key = 1;
+        sprintf(error_msg, "Duplicate map key: '%s'", CHAR(key));
+      }
+
+      if (!dup_key) {
+        SET_STRING_ELT(keys, i, key);
+      }
+
+      if (orphan_key) {
+        UNPROTECT(1);
+      }
     }
     else {
-      dup_key = 0;
-
-      /* map key */
-      if (coerce_keys) {
-        key_str = AS_CHARACTER(obj->obj);
-        orphan_key = (key_str != obj->obj);
-        if (orphan_key) {
-          /* This key has been coerced into a character, and is a new object. */
-          PROTECT(key_str);
-        }
-
-        switch (LENGTH(key_str)) {
-          case 0:
-            warning("Empty character vector used as a list name");
-            key = mkChar("");
-            break;
-          default:
-            warning("Character vector of length greater than 1 used as a list name");
-          case 1:
-            key = STRING_ELT(key_str, 0);
-            break;
-        }
-
-        /* Look for duplicate keys */
-        if (R_rindex(keys, key, 1, i) >= 0) {
-          /* Duplicate found */
-          dup_key = 1;
-          sprintf(error_msg, "Duplicate map key: '%s'", CHAR(key));
-        }
-
-        if (!dup_key) {
-          SET_STRING_ELT(keys, i / 2, key);
-        }
-
-        if (orphan_key) {
-          UNPROTECT(1);
-        }
+      /* Look for duplicate keys */
+      if (R_rindex(keys, key, 0, i) >= 0) {
+        /* Duplicate found */
+        dup_key = 1;
+        /* FIXME: doesn't print lists properly */
+        sprintf(error_msg, "Duplicate map key: %s", R_format(key_obj->obj));
       }
-      else {
-        /* Look for duplicate keys */
-        if (R_rindex(keys, key, 0, i) >= 0) {
-          /* Duplicate found */
-          dup_key = 1;
-          /* FIXME: doesn't print lists properly */
-          sprintf(error_msg, "Duplicate map key: %s", R_format(obj->obj));
-        }
 
-        if (!dup_key) {
-          SET_VECTOR_ELT(keys, i / 2, obj->obj);
-        }
+      if (!dup_key) {
+        SET_VECTOR_ELT(keys, i, key_obj->obj);
       }
     }
-    prune_prot_object(obj);
+    prune_prot_object(key_obj);
+    prune_prot_object(value_obj);
 
     if (dup_key) {
       break;

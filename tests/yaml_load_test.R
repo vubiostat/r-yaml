@@ -56,24 +56,57 @@ test_should_not_collapse_sequences <- function() {
   assert_equal(list(1:2, 3L, 4:5), x)
 }
 
-test_should_merge_maps <- function() {
+test_should_merge_named_maps <- function() {
   x <- yaml.load("foo: bar\n<<: {baz: boo}", TRUE)
+  print(x)
   assert_equal(2L, length(x))
+  assert_equal("bar", x$foo)
   assert_equal("boo", x$baz)
-  assert_equal("foo", x$bar)
 
-  x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {baz: boo}]", TRUE)
+  x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {foo: junk}, {baz: blah}, {baz: boo}]", TRUE)
   assert_equal(3L, length(x))
-  assert_equal("boo", x$baz)
+  assert_equal("blah", x$baz)
   assert_equal("bar", x$foo)
   assert_equal("quux", x$quux)
+
+  x <- yaml.load("foo: bar\n<<: {foo: baz}\n<<: {foo: quux}")
+  assert_equal(1L, length(x))
+  assert_equal("bar", x$foo)
+
+  x <- yaml.load("<<: {foo: baz}\n<<: {foo: quux}\nfoo: bar")
+  assert_equal(1L, length(x))
+  assert_equal("baz", x$foo)
+}
+
+test_should_merge_unnamed_maps <- function() {
+  x <- yaml.load("foo: bar\n<<: {baz: boo}", FALSE)
+  assert_equal(2L, length(x))
+  assert_equal(list("foo", "baz"), attr(x, 'keys'))
+  assert_equal("bar", x[[1]])
+  assert_equal("boo", x[[2]])
+
+  x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {baz: boo}]", FALSE)
+  assert_equal(3L, length(x))
+  assert_equal(list("foo", "quux", "baz"), attr(x, 'keys'))
+  assert_equal("bar", x[[1]])
+  assert_equal("quux", x[[2]])
+  assert_equal("boo", x[[3]])
+}
+
+test_should_fail_on_duplicate_keys_with_merge <- function() {
+  x <- try(yaml.load("foo: bar\nfoo: baz\n<<: {foo: quux}", TRUE))
+  assert(inherits(x, "try-error"))
 }
 
 test_should_handle_weird_merges <- function() {
-  x <- yaml.load("foo: bar\n<<: [{leet: hax}, blargh, 123]", T)
-  assert_equal(3L, length(x))
-  assert_equal("hax", x$leet)
-  assert_equal("blargh", x$`_yaml.merge_`)
+  x <- try(yaml.load("foo: bar\n<<: [{leet: hax}, blargh, 123]", TRUE))
+  assert(inherits(x, "try-error"))
+
+  x <- try(yaml.load("foo: bar\n<<: [123, blargh, {leet: hax}]", TRUE))
+  assert(inherits(x, "try-error"))
+
+  x <- try(yaml.load("foo: bar\n<<: junk", TRUE))
+  assert(inherits(x, "try-error"))
 }
 
 test_should_handle_syntax_errors <- function() {

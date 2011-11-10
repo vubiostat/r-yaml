@@ -40,6 +40,14 @@ typedef struct {
   void *prev;
 } s_alias_entry;
 
+typedef struct {
+  s_prot_object *key;
+  s_prot_object *value;
+  int merged;
+  void *prev;
+  void *next;
+} s_map_entry;
+
 static int
 R_cmp(x, y)
   SEXP x;
@@ -92,33 +100,6 @@ R_index(haystack, needle, character, upper_bound)
 }
 
 static int
-R_rindex(haystack, needle, character, lower_bound)
-  SEXP haystack;
-  SEXP needle;
-  int character;
-  int lower_bound;
-{
-  int i;
-
-  if (character) {
-    for (i = LENGTH(haystack) - 1; i > lower_bound; i--) {
-      if (strcmp(CHAR(needle), CHAR(STRING_ELT(haystack, i))) == 0) {
-        return i;
-      }
-    }
-  }
-  else {
-    for (i = LENGTH(haystack) - 1; i > lower_bound; i--) {
-      if (R_cmp(needle, VECTOR_ELT(haystack, i)) == 0) {
-        return i;
-      }
-    }
-  }
-
-  return -1;
-}
-
-static int
 R_is_named_list(obj)
   SEXP obj;
 {
@@ -142,6 +123,7 @@ R_is_pseudo_hash(obj)
   return (keys != R_NilValue && TYPEOF(keys) == VECSXP);
 }
 
+/* FIXME: doesn't print lists properly */
 static const char *
 R_format(x)
   SEXP x;
@@ -358,7 +340,7 @@ handle_start_event(tag, stack)
   return 0;
 }
 
-/* Call this on a just created object. */
+/* Call this on a just created object to handle tag conversions. */
 static int
 convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   yaml_event_type_t event_type;
@@ -367,8 +349,8 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   SEXP s_handlers;
   int coerce_keys;
 {
-  SEXP handler, obj, new_obj, elt, keys, key, expr, text, call, pcall, Rfn;
-  int handled, coercionError, base, i, len, total_len, idx, elt_len, j, k, dup_key;
+  SEXP handler, obj, new_obj, elt, keys, key, expr;
+  int handled, coercionError, base, i, len, total_len, idx, elt_len, j, dup_key;
   const char *nptr;
   char *endptr;
   double f;
@@ -724,6 +706,137 @@ handle_sequence(event, stack, return_tag)
   return 0;
 }
 
+static s_map_entry *
+new_map_entry(key, value, merged, prev)
+  s_prot_object *key;
+  s_prot_object *value;
+  int merged;
+  void *prev;
+{
+  s_map_entry *result;
+
+  result = malloc(sizeof(s_map_entry));
+  result->key = key;
+  result->value = value;
+  result->merged = merged;
+  result->prev = prev;
+  result->next = NULL;
+
+  return result;
+}
+
+static s_map_entry *
+find_map_entry(map_head, key, character)
+  s_map_entry *map_head;
+  SEXP key;
+  int character;
+{
+  s_map_entry *map_cur;
+
+  map_cur = map_head;
+  if (character) {
+    while (map_cur != NULL) {
+      if (strcmp(CHAR(key), CHAR(map_cur->key->obj)) == 0) {
+        return map_cur;
+      }
+      map_cur = map_cur->prev;
+    }
+  }
+  else {
+    while (map_cur != NULL) {
+      if (R_cmp(key, map_cur->key->obj) == 0) {
+        return map_cur;
+      }
+      map_cur = map_cur->prev;
+    }
+  }
+
+  return NULL;
+}
+
+static void
+unlink_map_entry(ptr)
+  s_map_entry *ptr;
+{
+  s_map_entry *prev, *next;
+
+  prev = ptr->prev;
+  next = ptr->next;
+  prune_prot_object(ptr->key);
+  prune_prot_object(ptr->value);
+
+  if (next != NULL) {
+    next->prev = ptr->prev;
+  }
+  if (prev != NULL) {
+    prev->next = ptr->next;
+  }
+  free(ptr);
+}
+
+static int
+expand_merge(merge_list, coerce_keys, map_head)
+  SEXP merge_list;
+  int coerce_keys;
+  s_map_entry **map_head;
+{
+  SEXP merge_keys, value, key;
+  s_prot_object *key_obj, *value_obj;
+  s_map_entry *map_tmp;
+  int i, count;
+
+  count = 0;
+  merge_keys = coerce_keys ? GET_NAMES(merge_list) : getAttrib(merge_list, R_KeysSymbol);
+  for (i = 0; i < length(merge_list); i++) {
+    if (coerce_keys) {
+      PROTECT(key = STRING_ELT(merge_keys, i));
+    }
+    else {
+      PROTECT(key = VECTOR_ELT(merge_keys, i));
+    }
+    PROTECT(value = VECTOR_ELT(merge_list, i));
+
+    map_tmp = find_map_entry(*map_head, key, coerce_keys);
+    if (map_tmp != NULL) {
+      /* Unlink any previous entry with the same key.
+       *
+       * XXX: Should ALL keys be overritten? I'm not sure yet. If someone
+       * does this, for example:
+       *
+       *   <<: {foo: quux}
+       *   foo: baz
+       *   foo: bar
+       *
+       * I think it should still be a duplicate key error. */
+      if (*map_head == map_tmp) {
+        *map_head = map_tmp->prev;
+      }
+      unlink_map_entry(map_tmp);
+      count--;
+    }
+
+    key_obj = new_prot_object(key);
+    value_obj = new_prot_object(value);
+
+    map_tmp = new_map_entry(key_obj, value_obj, 1, *map_head);
+    if (*map_head != NULL) {
+      (*map_head)->next = map_tmp;
+    }
+    *map_head = map_tmp;
+    count++;
+  }
+
+  return count;
+}
+
+static int
+is_mergable(merge_list, coerce_keys)
+  SEXP merge_list;
+  int coerce_keys;
+{
+  return (coerce_keys && R_is_named_list(merge_list)) || (!coerce_keys && R_is_pseudo_hash(merge_list));
+}
+
 static int
 handle_map(event, stack, return_tag, coerce_keys)
   yaml_event_t *event;
@@ -732,115 +845,181 @@ handle_map(event, stack, return_tag, coerce_keys)
   int coerce_keys;
 {
   s_prot_object *value_obj, *key_obj;
-  s_stack_entry *stack_ptr;
-  int count, i, j, orphan_key, dup_key = 0;
-  SEXP list, keys, key, key_str, value;
+  s_map_entry *map_head, *map_tmp;
+  int count, i, orphan_key, dup_key, bad_merge;
+  SEXP list, keys, key, coerced_key, value, merge_list;
   char *tag;
 
-  /* Find out how many elements there are */
-  stack_ptr = *stack;
+  /* Find out how many pairs there are, and handle merges */
   count = 0;
-  while (!stack_ptr->placeholder) {
-    count++;
-    stack_ptr = stack_ptr->prev;
-  }
-  count /= 2;
-
-  /* Initialize value list */
-  PROTECT(list = allocVector(VECSXP, count));
-
-  /* Initialize key list/vector */
-  if (coerce_keys) {
-    keys = NEW_STRING(count);
-    SET_NAMES(list, keys);
-  }
-  else {
-    keys = allocVector(VECSXP, count);
-    setAttrib(list, R_KeysSymbol, keys);
-  }
-
-  /* Populate the list, popping items off the stack as we go */
-  for (i = count - 1; i >= 0; i--) {
+  bad_merge = 0;
+  dup_key = 0;
+  map_head = NULL;
+  while (!(*stack)->placeholder && !bad_merge && !dup_key) {
     stack_pop(stack, &value_obj);
     stack_pop(stack, &key_obj);
 
-    SET_VECTOR_ELT(list, i, value_obj->obj);
-    dup_key = 0;
+    if (R_class_of(key_obj->obj, "_yaml.merge_")) {
+      /* Expand out the merge */
+      prune_prot_object(key_obj);
 
-    /* map key */
-    if (coerce_keys) {
-      key_str = AS_CHARACTER(key_obj->obj);
-      orphan_key = (key_str != key_obj->obj);
-      if (orphan_key) {
-        /* This key has been coerced into a character, and is a new object. */
-        PROTECT(key_str);
+      merge_list = value_obj->obj;
+      if (is_mergable(merge_list, coerce_keys)) {
+        /* i.e.
+         *    - &bar { hey: dude }
+         *    - foo:
+         *        hello: friend
+         *        <<: *bar
+         */
+        count += expand_merge(merge_list, coerce_keys, &map_head);
       }
+      else if (TYPEOF(merge_list) == VECSXP) {
+        /* i.e.
+         *    - &bar { hey: dude }
+         *    - &baz { hi: buddy }
+         *    - foo:
+         *        hello: friend
+         *        <<: [*bar, *baz]
+         */
+        for (i = length(merge_list) - 1; i >= 0; i--) {
+          /* Go backwards to be consistent */
 
-      switch (LENGTH(key_str)) {
-        case 0:
-          warning("Empty character vector used as a list name");
-          key = mkChar("");
-          break;
-        default:
-          warning("Character vector of length greater than 1 used as a list name");
-        case 1:
-          key = STRING_ELT(key_str, 0);
-          break;
+          value = VECTOR_ELT(merge_list, i);
+          if (is_mergable(value, coerce_keys)) {
+            count += expand_merge(value, coerce_keys, &map_head);
+          }
+          else {
+            /* Illegal merge */
+            sprintf(error_msg, "Illegal merge: %s", R_format(value));
+            bad_merge = 1;
+            break;
+          }
+        }
       }
-
-      /* Look for duplicate keys */
-      if (R_rindex(keys, key, 1, i) >= 0) {
-        /* Duplicate found */
-        dup_key = 1;
-        sprintf(error_msg, "Duplicate map key: '%s'", CHAR(key));
+      else {
+        /* Illegal merge */
+        bad_merge = 1;
+        sprintf(error_msg, "Illegal merge: %s", R_format(merge_list));
       }
-
-      if (!dup_key) {
-        SET_STRING_ELT(keys, i, key);
-      }
-
-      if (orphan_key) {
-        UNPROTECT(1);
-      }
+      prune_prot_object(value_obj);
     }
     else {
-      /* Look for duplicate keys */
-      if (R_rindex(keys, key, 0, i) >= 0) {
-        /* Duplicate found */
-        dup_key = 1;
-        /* FIXME: doesn't print lists properly */
-        sprintf(error_msg, "Duplicate map key: %s", R_format(key_obj->obj));
+      /* Normal map entry */
+      if (coerce_keys) {
+        /* (Possibly) convert this key to a character vector, and then save
+         * the first element in the vector (CHARSXP element). Throw away
+         * the containing vector, since we don't need it anymore. */
+        coerced_key = AS_CHARACTER(key_obj->obj);
+        orphan_key = (coerced_key != key_obj->obj);
+        if (orphan_key) {
+          /* This key has been coerced into a character and is a new
+           * object. The only reason to protect it is because of the
+           * mkChar() call below. */
+          PROTECT(coerced_key);
+        }
+
+        switch (LENGTH(coerced_key)) {
+          case 0:
+            warning("Empty character vector used as a list name");
+            key = PROTECT(mkChar(""));
+            break;
+          default:
+            warning("Character vector of length greater than 1 used as a list name");
+          case 1:
+            key = PROTECT(STRING_ELT(coerced_key, 0));
+            break;
+        }
+
+        if (orphan_key) {
+          UNPROTECT_PTR(coerced_key);
+        }
+        prune_prot_object(key_obj);
+
+        key_obj = new_prot_object(key);
+      }
+      else {
+        key = key_obj->obj;
       }
 
-      if (!dup_key) {
+      map_tmp = find_map_entry(map_head, key, coerce_keys);
+      if (map_tmp != NULL) {
+        if (map_tmp->merged == 0) {
+          dup_key = 1;
+          sprintf(error_msg, "Duplicate map key: '%s'", coerce_keys ? CHAR(key) : R_format(key));
+        }
+        else {
+          /* Overwrite the found key by unlinking it. */
+          if (map_head == map_tmp) {
+            map_head = map_tmp->prev;
+          }
+          unlink_map_entry(map_tmp);
+          count--;
+        }
+      }
+
+      map_tmp = new_map_entry(key_obj, value_obj, 0, map_head);
+      map_head = map_tmp;
+      count++;
+    }
+  }
+
+  if (!bad_merge && !dup_key) {
+    /* Initialize value list */
+    PROTECT(list = allocVector(VECSXP, count));
+
+    /* Initialize key list/vector */
+    if (coerce_keys) {
+      keys = NEW_STRING(count);
+      SET_NAMES(list, keys);
+    }
+    else {
+      keys = allocVector(VECSXP, count);
+      setAttrib(list, R_KeysSymbol, keys);
+    }
+
+    for (i = 0; i < count; i++) {
+      value_obj = map_head->value;
+      key_obj = map_head->key;
+      map_tmp = map_head->prev;
+      free(map_head);
+      map_head = map_tmp;
+
+      SET_VECTOR_ELT(list, i, value_obj->obj);
+
+      /* map key */
+      if (coerce_keys) {
+        SET_STRING_ELT(keys, i, key_obj->obj);
+      }
+      else {
         SET_VECTOR_ELT(keys, i, key_obj->obj);
       }
+      prune_prot_object(key_obj);
+      prune_prot_object(value_obj);
     }
-    prune_prot_object(key_obj);
-    prune_prot_object(value_obj);
 
-    if (dup_key) {
-      break;
+    /* Tags! */
+    tag = (*stack)->tag;
+    if (tag == NULL) {
+      tag = "map";
     }
+    else {
+      tag = process_tag(tag);
+    }
+    *return_tag = tag;
+
+    (*stack)->obj->obj = list;
+    (*stack)->placeholder = 0;
   }
 
-  if (dup_key) {
-    UNPROTECT(1); // list
-    return 1;
+  /* Clean up leftover map entries*/
+  while (map_head != NULL) {
+    prune_prot_object(map_head->key);
+    prune_prot_object(map_head->value);
+    map_tmp = map_head->prev;
+    free(map_head);
+    map_head = map_tmp;
   }
 
-  /* Tags! */
-  tag = (*stack)->tag;
-  if (tag == NULL) {
-    tag = "map";
-  }
-  else {
-    tag = process_tag(tag);
-  }
-  *return_tag = tag;
-
-  (*stack)->obj->obj = list;
-  (*stack)->placeholder = 0;
   return 0;
 }
 

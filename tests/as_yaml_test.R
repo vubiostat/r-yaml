@@ -32,9 +32,9 @@ function() {
   assert_equal(x$c, y$c)
 
   y <- yaml.load(as.yaml(x, column.major = FALSE))
-  assert_equal(5,   y[[5]]$a)
+  assert_equal(5L,  y[[5]]$a)
   assert_equal("e", y[[5]]$b)
-  assert_equal(15,  y[[5]]$c)
+  assert_equal(15L, y[[5]]$c)
 }
 
 test_should_convert_empty_nested_list <-

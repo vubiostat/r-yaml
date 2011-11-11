@@ -30,7 +30,7 @@ typedef struct {
 typedef struct {
   s_prot_object *obj;
   int placeholder;
-  char *tag;
+  yaml_char_t *tag;
   void *prev;
 } s_stack_entry;
 
@@ -222,7 +222,7 @@ stack_push(stack, placeholder, tag, obj)
   result = (s_stack_entry *)malloc(sizeof(s_stack_entry));
   result->placeholder = placeholder;
   if (tag != NULL) {
-    result->tag = strdup(tag);
+    result->tag = (yaml_char_t *)strdup((char *)tag);
   }
   else {
     result->tag = NULL;
@@ -256,13 +256,13 @@ stack_pop(stack, obj)
   *stack = result;
 }
 
-static char *
+static yaml_char_t *
 process_tag(tag)
-  char *tag;
+  yaml_char_t *tag;
 {
-  char *retval = tag;
+  yaml_char_t *retval = tag;
 
-  if (strncmp(retval, "tag:yaml.org,2002:", 18) == 0) {
+  if (strncmp((char *)retval, "tag:yaml.org,2002:", 18) == 0) {
     retval = retval + 18;
   }
   else {
@@ -326,7 +326,7 @@ handle_alias(event, stack, aliases)
   SEXP new_obj;
 
   while (alias) {
-    if (strcmp((char *)alias->name, event->data.alias.anchor) == 0) {
+    if (strcmp((char *)alias->name, (char *)event->data.alias.anchor) == 0) {
       stack_push(stack, 0, NULL, alias->obj);
       handled = 1;
       break;
@@ -389,11 +389,11 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   if (!handled) {
     /* default handlers, ordered by most-used */
 
-    if (strcmp(tag, "str") == 0) {
+    if (strcmp((char *)tag, "str") == 0) {
       /* if this is a scalar, then it's already a string */
       coercionError = event_type != YAML_SCALAR_EVENT;
     }
-    else if (strcmp(tag, "seq") == 0) {
+    else if (strcmp((char *)tag, "seq") == 0) {
       /* Let's try to coerce this list! */
       switch (s_obj->seq_type) {
         case LGLSXP:
@@ -404,16 +404,16 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           break;
       }
     }
-    else if (strcmp(tag, "int") == 0 || strncmp(tag, "int#", 4) == 0) {
+    else if (strcmp((char *)tag, "int") == 0 || strncmp((char *)tag, "int#", 4) == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         base = -1;
-        if (strcmp(tag, "int") == 0) {
+        if (strcmp((char *)tag, "int") == 0) {
           base = 10;
         }
-        else if (strcmp(tag, "int#hex") == 0) {
+        else if (strcmp((char *)tag, "int#hex") == 0) {
           base = 16;
         }
-        else if (strcmp(tag, "int#oct") == 0) {
+        else if (strcmp((char *)tag, "int#oct") == 0) {
           base = 8;
         }
 
@@ -442,7 +442,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0) {
+    else if (strcmp((char *)tag, "float") == 0 || strcmp((char *)tag, "float#fix") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         nptr = CHAR(STRING_ELT(obj, 0));
         f = strtod(nptr, &endptr);
@@ -459,7 +459,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "bool#yes") == 0) {
+    else if (strcmp((char *)tag, "bool#yes") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = 1;
@@ -468,7 +468,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "bool#no") == 0) {
+    else if (strcmp((char *)tag, "bool#no") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = 0;
@@ -477,7 +477,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "omap") == 0) {
+    else if (strcmp((char *)tag, "omap") == 0) {
       /* NOTE: This is here mostly because of backwards compatibility
        * with R yaml 1.x package. All maps are ordered in 2.x, so there's
        * no real need to use omap */
@@ -543,7 +543,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "merge") == 0) {
+    else if (strcmp((char *)tag, "merge") == 0) {
       /* see http://yaml.org/type/merge.html */
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_STRING(1));
@@ -554,7 +554,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "float#nan") == 0) {
+    else if (strcmp((char *)tag, "float#nan") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_NaN;
@@ -563,7 +563,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "float#inf") == 0) {
+    else if (strcmp((char *)tag, "float#inf") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_PosInf;
@@ -572,7 +572,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "float#neginf") == 0) {
+    else if (strcmp((char *)tag, "float#neginf") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_NegInf;
@@ -581,10 +581,10 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp(tag, "null") == 0) {
+    else if (strcmp((char *)tag, "null") == 0) {
       new_obj = R_NilValue;
     }
-    else if (strcmp(tag, "expr") == 0) {
+    else if (strcmp((char *)tag, "expr") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(expr = R_ParseVector(obj, -1, &parseStatus, R_NilValue));
         if (parseStatus != PARSE_OK) {
@@ -644,7 +644,7 @@ handle_scalar(event, stack, return_tag)
 
   tag = event->data.scalar.tag;
   value = event->data.scalar.value;
-  if (tag == NULL || strcmp(tag, "!") == 0) {
+  if (tag == NULL || strcmp((char *)tag, "!") == 0) {
     /* If there's no tag, try to tag it */
     len = event->data.scalar.length;
     tag = find_implicit_tag(value, len);
@@ -659,7 +659,7 @@ handle_scalar(event, stack, return_tag)
 #endif
 
   PROTECT(obj = NEW_STRING(1));
-  SET_STRING_ELT(obj, 0, mkChar(value));
+  SET_STRING_ELT(obj, 0, mkChar((char *)value));
 
   stack_push(stack, 0, NULL, new_prot_object(obj));
   return 0;
@@ -669,12 +669,12 @@ static int
 handle_sequence(event, stack, return_tag)
   yaml_event_t *event;
   s_stack_entry **stack;
-  char **return_tag;
+  yaml_char_t **return_tag;
 {
   s_stack_entry *stack_ptr;
   s_prot_object *obj;
   int count, i, type;
-  char *tag;
+  yaml_char_t *tag;
   SEXP list;
 
   /* Find out how many elements there are */
@@ -705,7 +705,7 @@ handle_sequence(event, stack, return_tag)
   /* Tags! */
   tag = (*stack)->tag;
   if (tag == NULL) {
-    tag = "seq";
+    tag = (yaml_char_t *)"seq";
   }
   else {
     tag = process_tag(tag);
@@ -853,14 +853,14 @@ static int
 handle_map(event, stack, return_tag, coerce_keys)
   yaml_event_t *event;
   s_stack_entry **stack;
-  char **return_tag;
+  yaml_char_t **return_tag;
   int coerce_keys;
 {
   s_prot_object *value_obj, *key_obj;
   s_map_entry *map_head, *map_tmp;
   int count, i, orphan_key, dup_key, bad_merge;
   SEXP list, keys, key, coerced_key, value, merge_list;
-  char *tag;
+  yaml_char_t *tag;
 
   /* Find out how many pairs there are, and handle merges */
   count = 0;
@@ -1012,7 +1012,7 @@ handle_map(event, stack, return_tag, coerce_keys)
     /* Tags! */
     tag = (*stack)->tag;
     if (tag == NULL) {
-      tag = "map";
+      tag = (yaml_char_t *)"map";
     }
     else {
       tag = process_tag(tag);
@@ -1115,7 +1115,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   use_named = LOGICAL(s_use_named)[0];
 
   yaml_parser_initialize(&parser);
-  yaml_parser_set_input_string(&parser, str, len);
+  yaml_parser_set_input_string(&parser, (const unsigned char *)str, len);
 
   error_msg[0] = 0;
   while (!done) {
@@ -1123,6 +1123,12 @@ load_yaml_str(s_str, s_use_named, s_handlers)
       errorOccurred = 0;
 
       switch (event.type) {
+        case YAML_NO_EVENT:
+        case YAML_STREAM_START_EVENT:
+        case YAML_DOCUMENT_START_EVENT:
+        case YAML_DOCUMENT_END_EVENT:
+          break;
+
         case YAML_ALIAS_EVENT:
 #if DEBUG
           printf("ALIAS: %s\n", event.data.alias.anchor);
@@ -1208,42 +1214,44 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_READER_ERROR:
           if (parser.problem_value != -1) {
-            sprintf(error_msg, "Reader error: %s: #%X at %zd", parser.problem,
-              parser.problem_value, parser.problem_offset);
+            sprintf(error_msg, "Reader error: %s: #%X at %d", parser.problem,
+              parser.problem_value, (int)parser.problem_offset);
           }
           else {
-            sprintf(error_msg, "Reader error: %s at %zd", parser.problem,
-              parser.problem_offset);
+            sprintf(error_msg, "Reader error: %s at %d", parser.problem,
+              (int)parser.problem_offset);
           }
           break;
 
         case YAML_SCANNER_ERROR:
           if (parser.context) {
-            sprintf(error_msg, "Scanner error: %s at line %zd, column %zd"
-              "%s at line %zd, column %zd\n", parser.context,
-              parser.context_mark.line+1, parser.context_mark.column+1,
-              parser.problem, parser.problem_mark.line+1,
-              parser.problem_mark.column+1);
+            sprintf(error_msg, "Scanner error: %s at line %d, column %d"
+              "%s at line %d, column %d\n", parser.context,
+              (int)parser.context_mark.line+1,
+              (int)parser.context_mark.column+1,
+              parser.problem, (int)parser.problem_mark.line+1,
+              (int)parser.problem_mark.column+1);
           }
           else {
-            sprintf(error_msg, "Scanner error: %s at line %zd, column %zd",
-              parser.problem, parser.problem_mark.line+1,
-              parser.problem_mark.column+1);
+            sprintf(error_msg, "Scanner error: %s at line %d, column %d",
+              parser.problem, (int)parser.problem_mark.line+1,
+              (int)parser.problem_mark.column+1);
           }
           break;
 
         case YAML_PARSER_ERROR:
           if (parser.context) {
-            sprintf(error_msg, "Parser error: %s at line %zd, column %zd"
-              "%s at line %zd, column %zd", parser.context,
-              parser.context_mark.line+1, parser.context_mark.column+1,
-              parser.problem, parser.problem_mark.line+1,
-              parser.problem_mark.column+1);
+            sprintf(error_msg, "Parser error: %s at line %d, column %d"
+              "%s at line %d, column %d", parser.context,
+              (int)parser.context_mark.line+1,
+              (int)parser.context_mark.column+1,
+              parser.problem, (int)parser.problem_mark.line+1,
+              (int)parser.problem_mark.column+1);
           }
           else {
-            sprintf(error_msg, "Parser error: %s at line %zd, column %zd",
-              parser.problem, parser.problem_mark.line+1,
-              parser.problem_mark.column+1);
+            sprintf(error_msg, "Parser error: %s at line %d, column %d",
+              parser.problem, (int)parser.problem_mark.line+1,
+              (int)parser.problem_mark.column+1);
           }
           break;
 

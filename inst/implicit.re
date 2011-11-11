@@ -53,45 +53,45 @@ TIMECANON = YEAR "-" MON "-" MON "T" MON ":" MON ":" MON ( "." DIGIT* [1-9]+ )? 
 MERGE = "<<" ;
 DEFAULTKEY = "=" ;
 
-NULLTYPE NULL       {   return "null"; }
+NULLTYPE NULL       {   return (yaml_char_t *)"null"; }
 
-BOOLYES NULL        {   return "bool#yes"; }
+BOOLYES NULL        {   return (yaml_char_t *)"bool#yes"; }
 
-BOOLNO NULL         {   return "bool#no"; }
+BOOLNO NULL         {   return (yaml_char_t *)"bool#no"; }
 
-INTHEX NULL         {   return "int#hex"; }
+INTHEX NULL         {   return (yaml_char_t *)"int#hex"; }
 
-INTOCT NULL         {   return "int#oct"; }
+INTOCT NULL         {   return (yaml_char_t *)"int#oct"; }
 
-INTSIXTY NULL       {   return "int#base60"; }
+INTSIXTY NULL       {   return (yaml_char_t *)"int#base60"; }
 
-INTCANON NULL       {   return "int"; }
+INTCANON NULL       {   return (yaml_char_t *)"int"; }
 
-FLOATFIX NULL       {   return "float#fix"; }
+FLOATFIX NULL       {   return (yaml_char_t *)"float#fix"; }
 
-FLOATEXP NULL       {   return "float#exp"; }
+FLOATEXP NULL       {   return (yaml_char_t *)"float#exp"; }
 
-FLOATSIXTY NULL     {   return "float#base60"; }
+FLOATSIXTY NULL     {   return (yaml_char_t *)"float#base60"; }
 
-FLOATINF NULL       {   return "float#inf"; }
+FLOATINF NULL       {   return (yaml_char_t *)"float#inf"; }
 
-FLOATNEGINF NULL    {   return "float#neginf"; }
+FLOATNEGINF NULL    {   return (yaml_char_t *)"float#neginf"; }
 
-FLOATNAN NULL       {   return "float#nan"; }
+FLOATNAN NULL       {   return (yaml_char_t *)"float#nan"; }
 
-TIMEYMD NULL        {   return "timestamp#ymd"; }
+TIMEYMD NULL        {   return (yaml_char_t *)"timestamp#ymd"; }
 
-TIMEISO NULL        {   return "timestamp#iso8601"; }
+TIMEISO NULL        {   return (yaml_char_t *)"timestamp#iso8601"; }
 
-TIMESPACED NULL     {   return "timestamp#spaced"; }
+TIMESPACED NULL     {   return (yaml_char_t *)"timestamp#spaced"; }
 
-TIMECANON NULL      {   return "timestamp"; }
+TIMECANON NULL      {   return (yaml_char_t *)"timestamp"; }
 
-DEFAULTKEY NULL     {   return "default"; }
+DEFAULTKEY NULL     {   return (yaml_char_t *)"default"; }
 
-MERGE NULL          {   return "merge"; }
+MERGE NULL          {   return (yaml_char_t *)"merge"; }
 
-ANY                 {   return "str"; }
+ANY                 {   return (yaml_char_t *)"str"; }
 
 */
 

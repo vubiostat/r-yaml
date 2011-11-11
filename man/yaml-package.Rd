@@ -6,15 +6,15 @@
   Methods to convert R to YAML and back
 }
 \description{
-  This package implements the Syck YAML parser for R.  There are also methods to convert
+  This package implements the libyaml YAML parser for R.  There are also methods to convert
   R objects into YAML.
 }
 \details{
 \tabular{ll}{
 Package: \tab yaml\cr
 Type: \tab Package\cr
-Version: \tab 1.1.0\cr
-Date: \tab 2009-09-11\cr
+Version: \tab 2.0.0\cr
+Date: \tab 2011-11-11\cr
 License: \tab BSD\cr
 }
 Use \code{\link{as.yaml}} to convert R objects into YAML and \code{\link{yaml.load}} or
@@ -25,8 +25,7 @@ Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 }
 \references{
   YAML: http://yaml.org
-
-  Syck YAML Parser: (formerly) http://whytheluckystiff.net/syck/
+  libyaml: http://pyyaml.org/wiki/LibYAML
 }
 \keyword{ package }
 \keyword{ programming }

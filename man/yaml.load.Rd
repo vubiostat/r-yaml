@@ -4,8 +4,7 @@
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Convert a YAML string into R objects }
 \description{
-  This function implements the Syck YAML parser for R.  It parses a YAML string
-  into R objects.
+  Parse a YAML string and return R objects.
 }
 \usage{
   yaml.load(string, as.named.list = TRUE, handlers = NULL)
@@ -33,12 +32,14 @@
 
   You can specify custom handler functions via the \code{handlers} argument.  This argument
   must be a named list of functions, where the names are the YAML types (i.e., 'int', 'float',
-  'timestamp\#iso8601', etc).  The functions you provide will be passed one argument.  Custom
+  'seq', etc).  The functions you provide will be passed one argument.  Custom
   handler functions for string types (all types except sequence and map) will receive a
   character vector of length 1.  Custom sequence functions will be passed a list of objects.
   Custom map functions will be passed the object that the internal map handler creates, which
   is either a named list or a list with a 'keys' attribute (depending on \code{as.named.list}).
   ALL functions you provide must return an object.  See the examples for custom handler use.
+
+  This function uses the YAML parser provided by libyaml.
 }
 \value{
   If the root YAML object is a map, a named list or list with an attribute of 'keys' is
@@ -47,7 +48,7 @@
 }
 \references{
   YAML: http://yaml.org
-  Syck YAML Parser: (formerly) http://whytheluckystiff.net/syck/
+  libyaml: http://pyyaml.org/wiki/LibYAML
 }
 \author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu }
 \seealso{ \code{\link{as.yaml}} }

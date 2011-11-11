@@ -321,13 +321,25 @@ handle_alias(event, stack, aliases)
   s_stack_entry **stack;
   s_alias_entry *aliases;
 {
+  int handled = 0;
   s_alias_entry *alias = aliases;
+  SEXP new_obj;
+
   while (alias) {
     if (strcmp((char *)alias->name, event->data.alias.anchor) == 0) {
       stack_push(stack, 0, NULL, alias->obj);
+      handled = 1;
       break;
     }
   }
+
+  if (!handled) {
+    PROTECT(new_obj = NEW_STRING(1));
+    SET_STRING_ELT(new_obj, 0, mkChar("_yaml.bad-anchor_"));
+    R_set_class(new_obj, "_yaml.bad-anchor_");
+    stack_push(stack, 0, NULL, new_prot_object(new_obj));
+  }
+
   return 0;
 }
 
@@ -787,7 +799,7 @@ expand_merge(merge_list, coerce_keys, map_head)
 
   count = 0;
   merge_keys = coerce_keys ? GET_NAMES(merge_list) : getAttrib(merge_list, R_KeysSymbol);
-  for (i = 0; i < length(merge_list); i++) {
+  for (i = length(merge_list) - 1; i >= 0; i--) {
     if (coerce_keys) {
       PROTECT(key = STRING_ELT(merge_keys, i));
     }
@@ -1048,7 +1060,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   SEXP s_handlers;
 {
   s_prot_object *obj;
-  SEXP retval, R_hndlr, names;
+  SEXP retval, R_hndlr, names, handlers_copy;
   yaml_parser_t parser;
   yaml_event_t event;
   const char *str, *name;
@@ -1076,25 +1088,26 @@ load_yaml_str(s_str, s_use_named, s_handlers)
     return R_NilValue;
   }
   else {
+    PROTECT(handlers_copy = allocVector(VECSXP, length(s_handlers)));
     names = GET_NAMES(s_handlers);
-    for (i = 0; i < LENGTH(names); i++) {
+    SET_NAMES(handlers_copy, names);
+    for (i = 0; i < length(s_handlers); i++) {
       name = CHAR(STRING_ELT(names, i));
       R_hndlr = VECTOR_ELT(s_handlers, i);
 
       if (TYPEOF(R_hndlr) != CLOSXP) {
         warning("your handler for '%s' is not a function; using default", name);
-        continue;
+        R_hndlr = R_NilValue;
+      }
+      else if (strcmp(name, "merge") == 0 || strcmp(name, "default") == 0) {
+        /* custom handlers for merge and default are illegal */
+        warning("custom handling of %s type is not allowed; handler ignored", name);
+        R_hndlr = R_NilValue;
       }
 
-      /* custom handlers for merge, default, and anchor#bad are illegal */
-      if ( strcmp( name, "merge" ) == 0   ||
-           strcmp( name, "default" ) == 0 ||
-           strcmp( name, "anchor#bad" ) == 0 )
-      {
-        warning("custom handling of %s type is not allowed; handler ignored", name);
-        continue;
-      }
+      SET_VECTOR_ELT(handlers_copy, i, R_hndlr);
     }
+    s_handlers = handlers_copy;
   }
 
   str = CHAR(STRING_ELT(s_str, 0));
@@ -1265,6 +1278,10 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
   if (error_msg[0] != 0) {
     error(error_msg);
+  }
+
+  if (s_handlers != R_NilValue) {
+    UNPROTECT(1);
   }
 
   return retval;

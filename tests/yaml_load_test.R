@@ -58,7 +58,6 @@ test_should_not_collapse_sequences <- function() {
 
 test_should_merge_named_maps <- function() {
   x <- yaml.load("foo: bar\n<<: {baz: boo}", TRUE)
-  print(x)
   assert_equal(2L, length(x))
   assert_equal("bar", x$foo)
   assert_equal("boo", x$baz)
@@ -216,7 +215,9 @@ test_should_handle_str_type <- function() {
 
 test_should_handle_a_bad_anchor <- function() {
   x <- yaml.load("*blargh")
-  print(x)
+  expected <- "_yaml.bad-anchor_"
+  class(expected) <- "_yaml.bad-anchor_"
+  assert_equal(expected, x)
 }
 
 test_should_use_custom_null_handler <- function() {
@@ -307,11 +308,6 @@ test_should_NOT_use_custom_merge_handler <- function() {
 test_should_use_custom_str_handler <- function() {
   x <- yaml.load("lickety split", handlers=list("str"=function(x) { "argh!" }))
   assert_equal("argh!", x)
-}
-
-test_should_NOT_use_custom_bad_anchor_handler <- function() {
-  x <- yaml.load("*blargh", handlers=list("anchor#bad"=function(x) { "argh!" }))
-  assert_equal("_yaml.bad-anchor_", x)
 }
 
 test_should_use_handler_for_weird_type <- function() {

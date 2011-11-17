@@ -1,77 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include "R.h"
-#include "Rdefines.h"
-#include "R_ext/Rdynload.h"
-#include "R_ext/Parse.h"
-#include "yaml.h"
-#include "yaml_private.h"
-
-static SEXP R_KeysSymbol = NULL;
-static SEXP R_IdenticalFunc = NULL;
-static SEXP R_FormatFunc = NULL;
-static SEXP R_PasteFunc = NULL;
-static SEXP R_CollapseSymbol = NULL;
-static char error_msg[255];
-
-/* From implicit.c */
-yaml_char_t *find_implicit_tag(yaml_char_t *value, size_t size);
-
-/* For keeping track of R objects in the stack */
-typedef struct {
-  int refcount;
-  SEXP obj;
-
-  /* For storing sequence types */
-  int seq_type;
-
-  /* This is for tracking whether or not this object has a parent.
-   * If there is no parent, that means this object should be UNPROTECT'd
-   * when assigned to a parent SEXP object */
-  int orphan;
-} s_prot_object;
-
-/* Stack entry */
-typedef struct {
-  /* The R object wrapper. May be NULL if this is a placeholder */
-  s_prot_object *obj;
-
-  /* This is 1 when this entry is a placeholder for a map or a
-   * sequence. (YAML_SEQUENCE_START_EVENT and YAML_MAPPING_START_EVENT) */
-  int placeholder;
-
-  /* The YAML tag for this node */
-  yaml_char_t *tag;
-
-  void *prev;
-} s_stack_entry;
-
-/* Alias entry */
-typedef struct {
-  /* Anchor name */
-  yaml_char_t *name;
-
-  /* R object wrapper */
-  s_prot_object *obj;
-
-  void *prev;
-} s_alias_entry;
-
-/* Used when building a map */
-typedef struct {
-  /* R object that represents the key */
-  s_prot_object *key;
-
-  /* R object that represents the value */
-  s_prot_object *value;
-
-  /* Tracks whether or not this object is from a merge. If it is,
-   * this value could potentially get overwritten by an earlier key. */
-  int merged;
-
-  void *prev;
-  void *next;
-} s_map_entry;
+#include "r-ext.h"
 
 /* Compare two R objects (with the R identical function).
  * Returns 0 or 1 */
@@ -1351,9 +1278,99 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   return retval;
 }
 
+static int
+as_yaml_write_handler(data, buffer, size)
+  void *data;
+  unsigned char *buffer;
+  size_t size;
+{
+  s_emitter_output *output = (s_emitter_output *)data;
+  if (output->size + size > output->capa) {
+    output->capa = (output->capa + size) * 2;
+    output->buffer = (char *)realloc(output->buffer, output->capa * sizeof(char));
+
+    if (output->buffer == NULL) {
+      return 0;
+    }
+  }
+  memcpy((void *)(output->buffer + output->size), (void *)buffer, size);
+  output->size += size;
+
+  return 1;
+}
+
+SEXP
+as_yaml(s_obj)
+  SEXP s_obj;
+{
+  SEXP chr, retval;
+  yaml_emitter_t emitter;
+  yaml_event_t event;
+  s_emitter_output output;
+  int status, i;
+
+  s_obj = AS_CHARACTER(s_obj); // derp
+
+  yaml_emitter_initialize(&emitter);
+
+  output.buffer = NULL;
+  output.size = output.capa = 0;
+  yaml_emitter_set_output(&emitter, as_yaml_write_handler, &output);
+
+  /* FIXME: get the encoding from R */
+  yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
+  if (!(status = yaml_emitter_emit(&emitter, &event)))
+    goto done;
+
+  yaml_document_start_event_initialize(&event, NULL, NULL, NULL, 1);
+  if (!(status = yaml_emitter_emit(&emitter, &event)))
+    goto done;
+
+  for (i = 0; i < length(s_obj); i++) {
+    chr = STRING_ELT(s_obj, i);
+    yaml_scalar_event_initialize(&event, NULL, NULL,
+        (yaml_char_t *)CHAR(chr), LENGTH(chr), 1, 1,
+        YAML_ANY_SCALAR_STYLE);
+
+    if (!(status = yaml_emitter_emit(&emitter, &event)))
+      goto done;
+  }
+
+  yaml_document_end_event_initialize(&event, 1);
+  if (!(status = yaml_emitter_emit(&emitter, &event)))
+    goto done;
+
+  yaml_stream_end_event_initialize(&event);
+  status = yaml_emitter_emit(&emitter, &event);
+
+done:
+
+  if (status) {
+    PROTECT(retval = allocVector(STRSXP, 1));
+    SET_STRING_ELT(retval, 0, mkCharLen(output.buffer, output.size));
+    UNPROTECT(1);
+  }
+  else {
+    sprintf(error_msg, "Emitter error: %s", emitter.problem);
+    retval = R_NilValue;
+  }
+
+  yaml_emitter_delete(&emitter);
+
+  if (status) {
+    free(output.buffer);
+  }
+  else {
+    error(error_msg);
+  }
+
+  return retval;
+}
+
 R_CallMethodDef callMethods[] = {
-  {"yaml.load",(DL_FUNC)&load_yaml_str, 3},
-  {NULL,NULL, 0}
+  {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
+  {"as.yaml",   (DL_FUNC)&as_yaml,       1},
+  {NULL, NULL, 0}
 };
 
 void R_init_yaml(DllInfo *dll) {

@@ -111,4 +111,10 @@ function() {
   assert_equal(expected, result)
 }
 
+test_should_escape_pound_signs_in_strings <-
+function() {
+  result <- as.yaml("foo # bar")
+  assert_equal('"foo # bar"', result)
+}
+
 source("test_runner.r")

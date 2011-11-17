@@ -10,10 +10,14 @@
 static SEXP R_KeysSymbol = NULL;
 static SEXP R_IdenticalFunc = NULL;
 static SEXP R_FormatFunc = NULL;
+static SEXP R_PasteFunc = NULL;
+static SEXP R_CollapseSymbol = NULL;
 static char error_msg[255];
 
+/* From implicit.c */
 yaml_char_t *find_implicit_tag(yaml_char_t *value, size_t size);
 
+/* For keeping track of R objects in the stack */
 typedef struct {
   int refcount;
   SEXP obj;
@@ -27,27 +31,50 @@ typedef struct {
   int orphan;
 } s_prot_object;
 
+/* Stack entry */
 typedef struct {
+  /* The R object wrapper. May be NULL if this is a placeholder */
   s_prot_object *obj;
+
+  /* This is 1 when this entry is a placeholder for a map or a
+   * sequence. (YAML_SEQUENCE_START_EVENT and YAML_MAPPING_START_EVENT) */
   int placeholder;
+
+  /* The YAML tag for this node */
   yaml_char_t *tag;
+
   void *prev;
 } s_stack_entry;
 
+/* Alias entry */
 typedef struct {
+  /* Anchor name */
   yaml_char_t *name;
+
+  /* R object wrapper */
   s_prot_object *obj;
+
   void *prev;
 } s_alias_entry;
 
+/* Used when building a map */
 typedef struct {
+  /* R object that represents the key */
   s_prot_object *key;
+
+  /* R object that represents the value */
   s_prot_object *value;
+
+  /* Tracks whether or not this object is from a merge. If it is,
+   * this value could potentially get overwritten by an earlier key. */
   int merged;
+
   void *prev;
   void *next;
 } s_map_entry;
 
+/* Compare two R objects (with the R identical function).
+ * Returns 0 or 1 */
 static int
 R_cmp(x, y)
   SEXP x;
@@ -72,6 +99,7 @@ R_cmp(x, y)
   return retval;
 }
 
+/* Returns the index of the first instance of needle in haystack */
 static int
 R_index(haystack, needle, character, upper_bound)
   SEXP haystack;
@@ -99,6 +127,7 @@ R_index(haystack, needle, character, upper_bound)
   return -1;
 }
 
+/* Returns true if obj is a named list */
 static int
 R_is_named_list(obj)
   SEXP obj;
@@ -111,6 +140,7 @@ R_is_named_list(obj)
   return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
 }
 
+/* Returns true if obj is a list with a keys attribute */
 static int
 R_is_pseudo_hash(obj)
   SEXP obj;
@@ -123,20 +153,35 @@ R_is_pseudo_hash(obj)
   return (keys != R_NilValue && TYPEOF(keys) == VECSXP);
 }
 
-/* FIXME: doesn't print lists properly */
+/* Return the result of the format() function on the obj */
 static const char *
-R_format(x)
-  SEXP x;
+R_format(obj)
+  SEXP obj;
 {
-  SEXP call, result;
+  SEXP call, pcall, str, result;
 
-  PROTECT(call = lang2(R_FormatFunc, x));
-  result = eval(call, R_GlobalEnv);
+  PROTECT(call = lang2(R_FormatFunc, obj));
+  str = eval(call, R_GlobalEnv);
   UNPROTECT(1);
+  PROTECT(str);
+
+  /* Using format/paste here is not really what I want, but without
+   * jumping through all kinds of hoops so that I can get the output
+   * of print(), this is the most effort I want to put into this. */
+  PROTECT(call = pcall = allocList(3));
+  SET_TYPEOF(call, LANGSXP);
+  SETCAR(pcall, R_PasteFunc); pcall = CDR(pcall);
+  SETCAR(pcall, str);         pcall = CDR(pcall);
+  SETCAR(pcall, PROTECT(allocVector(STRSXP, 1)));
+  SET_STRING_ELT(CAR(pcall), 0, mkChar(" "));
+  SET_TAG(pcall, R_CollapseSymbol);
+  result = eval(call, R_GlobalEnv);
+  UNPROTECT(3);
 
   return CHAR(STRING_ELT(result, 0));
 }
 
+/* Set a character attribute on an R object */
 static void
 R_set_str_attrib( obj, sym, str )
   SEXP obj;
@@ -150,6 +195,7 @@ R_set_str_attrib( obj, sym, str )
   UNPROTECT(1);
 }
 
+/* Set the R object's class attribute */
 static void
 R_set_class( obj, name )
   SEXP obj;
@@ -158,6 +204,7 @@ R_set_class( obj, name )
   R_set_str_attrib(obj, R_ClassSymbol, name);
 }
 
+/* Return 1 if obj is of the specified class */
 static int
 R_class_of( obj, name )
   SEXP obj;
@@ -176,6 +223,7 @@ R_class_of( obj, name )
   return 0;
 }
 
+/* Create an R object wrapper */
 static s_prot_object *
 new_prot_object(obj)
   SEXP obj;
@@ -191,6 +239,8 @@ new_prot_object(obj)
   return result;
 }
 
+/* If obj is an orphan, UNPROTECT its R object. If its refcount
+ * is 0, free it. */
 static void
 prune_prot_object(obj)
   s_prot_object *obj;
@@ -210,6 +260,8 @@ prune_prot_object(obj)
   }
 }
 
+/* Push a new entry onto the object stack. Changes the ptr value
+ * that stack points to. */
 static void
 stack_push(stack, placeholder, tag, obj)
   s_stack_entry **stack;
@@ -234,6 +286,9 @@ stack_push(stack, placeholder, tag, obj)
   *stack = result;
 }
 
+/* Pop the top entry from the stack. Changes the ptr value that stack
+ * points to. Sets the stack entry's s_prot_object to the ptr value that
+ * obj points to. */
 static void
 stack_pop(stack, obj)
   s_stack_entry **stack;
@@ -256,6 +311,7 @@ stack_pop(stack, obj)
   *stack = result;
 }
 
+/* Get the type part of the tag, throw away any !'s */
 static yaml_char_t *
 process_tag(tag)
   yaml_char_t *tag;
@@ -426,7 +482,6 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
              * string that isn't completely an integer, you get back
              * an NA. So I'm reproducing that behavior here. */
 
-            printf("Original: (%p), Leftover: (%p)\n", nptr, endptr);
             warning("NAs introduced by coercion: %s is not an integer", nptr);
             i = NA_INTEGER;
           }
@@ -1032,7 +1087,7 @@ handle_map(event, stack, return_tag, coerce_keys)
     map_head = map_tmp;
   }
 
-  return 0;
+  return bad_merge || dup_key;
 }
 
 static void
@@ -1121,6 +1176,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   while (!done) {
     if (yaml_parser_parse(&parser, &event)) {
       errorOccurred = 0;
+      tag = NULL;
 
       switch (event.type) {
         case YAML_NO_EVENT:
@@ -1302,7 +1358,9 @@ R_CallMethodDef callMethods[] = {
 
 void R_init_yaml(DllInfo *dll) {
   R_KeysSymbol = install("keys");
+  R_CollapseSymbol = install("collapse");
   R_IdenticalFunc = findFun(install("identical"), R_GlobalEnv);
   R_FormatFunc = findFun(install("format"), R_GlobalEnv);
+  R_PasteFunc = findFun(install("paste"), R_GlobalEnv);
   R_registerRoutines(dll,NULL,callMethods,NULL,NULL);
 }

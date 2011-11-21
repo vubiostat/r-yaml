@@ -7,6 +7,7 @@
 #include "Rdefines.h"
 #include "R_ext/Rdynload.h"
 #include "R_ext/Parse.h"
+#include "R_ext/Print.h"
 #include "yaml.h"
 #include "yaml_private.h"
 
@@ -15,6 +16,8 @@ static SEXP R_IdenticalFunc = NULL;
 static SEXP R_FormatFunc = NULL;
 static SEXP R_PasteFunc = NULL;
 static SEXP R_CollapseSymbol = NULL;
+static SEXP R_DeparseFunc = NULL;
+static SEXP R_NSmallSymbol = NULL;
 static char error_msg[255];
 
 /* From implicit.c */
@@ -82,5 +85,7 @@ typedef struct {
   size_t size;
   size_t capa;
 } s_emitter_output;
+
+SEXP R_data_class(SEXP, Rboolean);
 
 #endif

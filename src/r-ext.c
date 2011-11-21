@@ -80,32 +80,125 @@ R_is_pseudo_hash(obj)
   return (keys != R_NilValue && TYPEOF(keys) == VECSXP);
 }
 
-/* Return the result of the format() function on the obj */
+/* Call R's paste() function with collapse */
+SEXP
+R_collapse(obj, collapse)
+  SEXP obj;
+  char *collapse;
+{
+  SEXP call, pcall, retval;
+
+  PROTECT(call = pcall = allocList(3));
+  SET_TYPEOF(call, LANGSXP);
+  SETCAR(pcall, R_PasteFunc); pcall = CDR(pcall);
+  SETCAR(pcall, obj);         pcall = CDR(pcall);
+  SETCAR(pcall, PROTECT(allocVector(STRSXP, 1)));
+  SET_STRING_ELT(CAR(pcall), 0, mkChar(collapse));
+  SET_TAG(pcall, R_CollapseSymbol);
+  retval = eval(call, R_GlobalEnv);
+  UNPROTECT(2);
+
+  return retval;
+}
+
+SEXP
+R_deparse_function(f)
+  SEXP f;
+{
+  SEXP call, result, chr;
+  int len, i, j;
+  char *head, *cur, *tail, c;
+
+  PROTECT(call = lang2(R_DeparseFunc, f));
+  result = eval(call, R_GlobalEnv);
+  UNPROTECT(1);
+
+  for (i = len = 0; i < length(result); i++) {
+    len += length(STRING_ELT(result, i));
+  }
+  len += length(result);  // for newlines
+
+  /* The point of this is to collapse the deparsed function whilst
+   * eliminating trailing spaces. LibYAML's emitter won't output
+   * a string with trailing spaces as a multiline scalar. */
+  head = cur = tail = (char *)malloc(sizeof(char) * len);
+  for (i = 0; i < length(result); i++) {
+    chr = STRING_ELT(result, i);
+    len = length(chr);
+    for (j = 0; j < len; j++) {
+      c = CHAR(chr)[j];
+      switch (c) {
+        case ' ':
+          /* Ignore "space breaks" */
+          break;
+
+        case '\n':
+          tail = ++cur;
+          break;
+
+        default:
+          cur = tail;
+          break;
+      }
+
+      *tail = c;
+      tail++;
+    }
+
+    tail = ++cur;
+    *tail = '\n';
+    tail++;
+  }
+  *tail = 0;
+
+  PROTECT(result = allocVector(STRSXP, 1));
+  SET_STRING_ELT(result, 0, mkChar(head));
+  UNPROTECT(1);
+  free(head);
+
+  return result;
+}
+
+/* Return a string representation of the object for error messages */
 static const char *
-R_format(obj)
+R_inspect(obj)
   SEXP obj;
 {
-  SEXP call, pcall, str, result;
-
-  PROTECT(call = lang2(R_FormatFunc, obj));
-  str = eval(call, R_GlobalEnv);
-  UNPROTECT(1);
-  PROTECT(str);
+  SEXP call, str, result;
 
   /* Using format/paste here is not really what I want, but without
    * jumping through all kinds of hoops so that I can get the output
    * of print(), this is the most effort I want to put into this. */
-  PROTECT(call = pcall = allocList(3));
-  SET_TYPEOF(call, LANGSXP);
-  SETCAR(pcall, R_PasteFunc); pcall = CDR(pcall);
-  SETCAR(pcall, str);         pcall = CDR(pcall);
-  SETCAR(pcall, PROTECT(allocVector(STRSXP, 1)));
-  SET_STRING_ELT(CAR(pcall), 0, mkChar(" "));
-  SET_TAG(pcall, R_CollapseSymbol);
-  result = eval(call, R_GlobalEnv);
-  UNPROTECT(3);
+
+  PROTECT(call = lang2(R_FormatFunc, obj));
+  str = eval(call, R_GlobalEnv);
+  UNPROTECT(1);
+
+  PROTECT(str);
+  result = R_collapse(str, " ");
+  UNPROTECT(1);
 
   return CHAR(STRING_ELT(result, 0));
+}
+
+/* Format a real with nsmall = 1 */
+static SEXP
+R_format_real(obj)
+  SEXP obj;
+{
+  SEXP call, pcall, retval;
+
+  PROTECT(call = pcall = allocList(3));
+  SET_TYPEOF(call, LANGSXP);
+  SETCAR(pcall, R_FormatFunc); pcall = CDR(pcall);
+  SETCAR(pcall, obj);          pcall = CDR(pcall);
+  SETCAR(pcall, PROTECT(allocVector(INTSXP, 1)));
+  INTEGER(CAR(pcall))[0] = 1;
+  SET_TAG(pcall, R_NSmallSymbol);
+  retval = eval(call, R_GlobalEnv);
+  UNPROTECT(2);
+
+  return retval;
 }
 
 /* Set a character attribute on an R object */
@@ -133,7 +226,7 @@ R_set_class( obj, name )
 
 /* Return 1 if obj is of the specified class */
 static int
-R_class_of( obj, name )
+R_has_class( obj, name )
   SEXP obj;
   char *name;
 {
@@ -148,6 +241,65 @@ R_class_of( obj, name )
   }
 
   return 0;
+}
+
+/* Take a CHARSXP, return a scalar style (for emitting) */
+static yaml_scalar_style_t
+R_scalar_style(obj)
+  SEXP obj;
+{
+  const char *chr = CHAR(obj);
+  int len = length(obj), j;
+
+  /* Change to literal if there's a newline in this string */
+  for (j = 0; j < len; j++) {
+    if (chr[j] == '\n') {
+      return YAML_LITERAL_SCALAR_STYLE;
+    }
+  }
+  return YAML_ANY_SCALAR_STYLE;
+}
+
+/* Take an atomic vector and return another vector of size 1 */
+static SEXP
+R_yoink(vec, index)
+  SEXP vec;
+  int index;
+{
+  SEXP tmp, names;
+  int type, factor;
+
+  type = TYPEOF(vec);
+  factor = type == INTSXP && R_has_class(vec, "factor");
+  tmp = allocVector(factor ? STRSXP : type, 1);
+
+  switch(type) {
+    case LGLSXP:
+      LOGICAL(tmp)[0] = LOGICAL(vec)[index];
+      break;
+    case INTSXP:
+      if (factor) {
+        SET_STRING_ELT(tmp, 0, STRING_ELT(GET_LEVELS(vec), INTEGER(vec)[index] - 1));
+      }
+      else {
+        INTEGER(tmp)[0] = INTEGER(vec)[index];
+      }
+      break;
+    case REALSXP:
+      REAL(tmp)[0] = REAL(vec)[index];
+      break;
+    case CPLXSXP:
+      COMPLEX(tmp)[0] = COMPLEX(vec)[index];
+      break;
+    case STRSXP:
+      SET_STRING_ELT(tmp, 0, STRING_ELT(vec, index));
+      break;
+    case RAWSXP:
+      RAW(tmp)[0] = RAW(vec)[index];
+      break;
+  }
+
+  return tmp;
 }
 
 /* Create an R object wrapper */
@@ -509,7 +661,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
               if (R_index(keys, key, 0, idx) >= 0) {
                 dup_key = 1;
-                sprintf(error_msg, "Duplicate omap key: %s", R_format(key));
+                sprintf(error_msg, "Duplicate omap key: %s", R_inspect(key));
               }
             }
             idx++;
@@ -853,7 +1005,7 @@ handle_map(event, stack, return_tag, coerce_keys)
     stack_pop(stack, &value_obj);
     stack_pop(stack, &key_obj);
 
-    if (R_class_of(key_obj->obj, "_yaml.merge_")) {
+    if (R_has_class(key_obj->obj, "_yaml.merge_")) {
       /* Expand out the merge */
       prune_prot_object(key_obj);
 
@@ -884,7 +1036,7 @@ handle_map(event, stack, return_tag, coerce_keys)
           }
           else {
             /* Illegal merge */
-            sprintf(error_msg, "Illegal merge: %s", R_format(value));
+            sprintf(error_msg, "Illegal merge: %s", R_inspect(value));
             bad_merge = 1;
             break;
           }
@@ -893,7 +1045,7 @@ handle_map(event, stack, return_tag, coerce_keys)
       else {
         /* Illegal merge */
         bad_merge = 1;
-        sprintf(error_msg, "Illegal merge: %s", R_format(merge_list));
+        sprintf(error_msg, "Illegal merge: %s", R_inspect(merge_list));
       }
       prune_prot_object(value_obj);
     }
@@ -939,7 +1091,7 @@ handle_map(event, stack, return_tag, coerce_keys)
       if (map_tmp != NULL) {
         if (map_tmp->merged == 0) {
           dup_key = 1;
-          sprintf(error_msg, "Duplicate map key: '%s'", coerce_keys ? CHAR(key) : R_format(key));
+          sprintf(error_msg, "Duplicate map key: '%s'", coerce_keys ? CHAR(key) : R_inspect(key));
         }
         else {
           /* Overwrite the found key by unlinking it. */
@@ -1299,17 +1451,268 @@ as_yaml_write_handler(data, buffer, size)
   return 1;
 }
 
-SEXP
-as_yaml(s_obj)
-  SEXP s_obj;
+static int
+emit_char(emitter, event, obj, tag, implicit_tag, scalar_style)
+  yaml_emitter_t *emitter;
+  yaml_event_t *event;
+  SEXP obj;
+  yaml_char_t *tag;
+  int implicit_tag;
+  yaml_scalar_style_t scalar_style;
 {
-  SEXP chr, retval;
+  yaml_scalar_event_initialize(event, NULL, tag,
+      (yaml_char_t *)CHAR(obj), LENGTH(obj),
+      implicit_tag, implicit_tag, scalar_style);
+
+  if (!yaml_emitter_emit(emitter, event))
+    return 0;
+
+  return 1;
+}
+
+static int
+emit_factor(emitter, event, obj)
+  yaml_emitter_t *emitter;
+  yaml_event_t *event;
+  SEXP obj;
+{
+  SEXP levels, level_chr;
+  yaml_scalar_style_t *scalar_styles;
+  int i, len, level_idx, retval, *scalar_style_is_set;
+
+  levels = GET_LEVELS(obj);
+  len = length(levels);
+  scalar_styles = (yaml_scalar_style_t *)malloc(sizeof(yaml_scalar_style_t) * len);
+  scalar_style_is_set = (int *)calloc(len, sizeof(int));
+
+  retval = 1;
+  for (i = 0; i < length(obj); i++) {
+    level_idx = INTEGER(obj)[i] - 1;
+    level_chr = STRING_ELT(levels, level_idx);
+    if (!scalar_style_is_set[level_idx]) {
+      scalar_styles[level_idx] = R_scalar_style(level_chr);
+    }
+
+    if (!emit_char(emitter, event, level_chr, NULL, 1, scalar_styles[level_idx])) {
+      retval = 0;
+      break;
+    }
+  }
+  free(scalar_styles);
+  free(scalar_style_is_set);
+  return retval;
+}
+
+static int
+emit_object(emitter, event, obj, tag, omap, column_major)
+  yaml_emitter_t *emitter;
+  yaml_event_t *event;
+  SEXP obj;
+  yaml_char_t *tag;
+  int omap;
+  int column_major;
+{
+  SEXP chr, names, thing, tmp;
+  yaml_scalar_style_t scalar_style;
+  int implicit_tag, rows, cols, i, j;
+
+  /*Rprintf("=== Emitting ===\n");*/
+  /*PrintValue(obj);*/
+
+  scalar_style = YAML_ANY_SCALAR_STYLE;
+  implicit_tag = 1;
+  tag = NULL;
+  switch (TYPEOF(obj)) {
+    case NILSXP:
+      yaml_scalar_event_initialize(event, NULL, tag,
+          (yaml_char_t *)"~", 1,
+          implicit_tag, implicit_tag, scalar_style);
+
+      if (!yaml_emitter_emit(emitter, event))
+        return 0;
+      break;
+
+    case CLOSXP:
+    case SPECIALSXP:
+    case BUILTINSXP:
+      /* Function! Deparse, then fall through */
+      tag = (yaml_char_t *)"!expr";
+      implicit_tag = 0;
+      obj = R_deparse_function(obj);
+      scalar_style = YAML_LITERAL_SCALAR_STYLE;
+
+    case LGLSXP:
+    case REALSXP:
+    case INTSXP:
+    case STRSXP:
+      if (length(obj) != 1) {
+        yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
+        if (!yaml_emitter_emit(emitter, event))
+          return 0;
+      }
+
+      if (length(obj) >= 1) {
+        if (R_has_class(obj, "factor")) {
+          if (!emit_factor(emitter, event, obj))
+            return 0;
+        }
+        else {
+          if (TYPEOF(obj) == REALSXP) {
+            obj = R_format_real(obj);
+          }
+          else {
+            obj = coerceVector(obj, STRSXP);
+          }
+
+          for (i = 0; i < length(obj); i++) {
+            chr = STRING_ELT(obj, i);
+
+            if (!emit_char(emitter, event, chr, tag, implicit_tag, R_scalar_style(chr)))
+              return 0;
+          }
+        }
+      }
+
+      if (length(obj) != 1) {
+        yaml_sequence_end_event_initialize(event);
+        if (!yaml_emitter_emit(emitter, event))
+          return 0;
+      }
+      break;
+
+    case VECSXP:
+      if (R_has_class(obj, "data.frame") && length(obj) > 0 && !column_major) {
+        rows = length(VECTOR_ELT(obj, 0));
+        cols = length(obj);
+        names = GET_NAMES(obj);
+
+        yaml_sequence_start_event_initialize(event, NULL, tag,
+            implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+        if (!yaml_emitter_emit(emitter, event))
+          return 0;
+
+        for (i = 0; i < rows; i++) {
+          yaml_mapping_start_event_initialize(event, NULL, tag,
+              implicit_tag, YAML_ANY_MAPPING_STYLE);
+
+          if (!yaml_emitter_emit(emitter, event))
+            return 0;
+
+          for (j = 0; j < cols; j++) {
+            if (!emit_char(emitter, event, STRING_ELT(names, j), NULL, 1, YAML_ANY_SCALAR_STYLE))
+              return 0;
+
+            /* Need to create a vector of size one, then emit it */
+            thing = VECTOR_ELT(obj, j);
+            if (!emit_object(emitter, event, R_yoink(thing, i), NULL, omap, column_major))
+              return 0;
+          }
+
+          yaml_mapping_end_event_initialize(event);
+          if (!yaml_emitter_emit(emitter, event))
+            return 0;
+        }
+
+        yaml_sequence_end_event_initialize(event);
+        if (!yaml_emitter_emit(emitter, event))
+          return 0;
+      }
+      else if (R_is_named_list(obj)) {
+        if (omap) {
+          yaml_sequence_start_event_initialize(event, NULL,
+              (yaml_char_t *)"!omap", 0, YAML_ANY_SEQUENCE_STYLE);
+
+          if (!yaml_emitter_emit(emitter, event))
+            return 0;
+        }
+        else {
+          yaml_mapping_start_event_initialize(event, NULL, tag,
+              implicit_tag, YAML_ANY_MAPPING_STYLE);
+
+          if (!yaml_emitter_emit(emitter, event))
+            return 0;
+        }
+
+        names = GET_NAMES(obj);
+        for (i = 0; i < length(obj); i++) {
+          if (omap) {
+            yaml_mapping_start_event_initialize(event, NULL, tag,
+                implicit_tag, YAML_ANY_MAPPING_STYLE);
+
+            if (!yaml_emitter_emit(emitter, event))
+              return 0;
+          }
+
+          if (!emit_char(emitter, event, STRING_ELT(names, i), NULL, 1, YAML_ANY_SCALAR_STYLE))
+            return 0;
+
+          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major))
+            return 0;
+
+          if (omap) {
+            yaml_mapping_end_event_initialize(event);
+            if (!yaml_emitter_emit(emitter, event))
+              return 0;
+          }
+        }
+
+        if (omap) {
+          yaml_sequence_end_event_initialize(event);
+          if (!yaml_emitter_emit(emitter, event))
+            return 0;
+        }
+        else {
+          yaml_mapping_end_event_initialize(event);
+          if (!yaml_emitter_emit(emitter, event))
+            return 0;
+        }
+      }
+      else {
+        yaml_sequence_start_event_initialize(event, NULL, tag, 1, YAML_ANY_SEQUENCE_STYLE);
+        if (!yaml_emitter_emit(emitter, event))
+          return 0;
+
+        for (i = 0; i < length(obj); i++) {
+          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major))
+            return 0;
+        }
+        yaml_sequence_end_event_initialize(event);
+        if (!yaml_emitter_emit(emitter, event))
+          return 0;
+      }
+      break;
+
+    default:
+      printf("Type: %d, Class: %s\n", TYPEOF(obj), CHAR(STRING_ELT(R_data_class(obj, FALSE), 0)));
+      break;
+  }
+
+  return 1;
+}
+
+SEXP
+as_yaml(s_obj, s_omap, s_column_major)
+  SEXP s_obj;
+  SEXP s_omap;
+  SEXP s_column_major;
+{
+  SEXP retval;
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
-  int status, i;
+  int status, omap, column_major;
 
-  s_obj = AS_CHARACTER(s_obj); // derp
+  if (!isLogical(s_omap) || length(s_omap) != 1) {
+    error("argument `omap` must be either TRUE or FALSE");
+    return R_NilValue;
+  }
+  omap = LOGICAL(s_omap)[0];
+
+  if (!isLogical(s_column_major) || length(s_column_major) != 1) {
+    error("argument `column.major` must be either TRUE or FALSE");
+    return R_NilValue;
+  }
+  column_major = LOGICAL(s_column_major)[0];
 
   yaml_emitter_initialize(&emitter);
 
@@ -1326,15 +1729,8 @@ as_yaml(s_obj)
   if (!(status = yaml_emitter_emit(&emitter, &event)))
     goto done;
 
-  for (i = 0; i < length(s_obj); i++) {
-    chr = STRING_ELT(s_obj, i);
-    yaml_scalar_event_initialize(&event, NULL, NULL,
-        (yaml_char_t *)CHAR(chr), LENGTH(chr), 1, 1,
-        YAML_ANY_SCALAR_STYLE);
-
-    if (!(status = yaml_emitter_emit(&emitter, &event)))
-      goto done;
-  }
+  if (!(status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major)))
+    goto done;
 
   yaml_document_end_event_initialize(&event, 1);
   if (!(status = yaml_emitter_emit(&emitter, &event)))
@@ -1369,7 +1765,7 @@ done:
 
 R_CallMethodDef callMethods[] = {
   {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
-  {"as.yaml",   (DL_FUNC)&as_yaml,       1},
+  {"as.yaml",   (DL_FUNC)&as_yaml,       3},
   {NULL, NULL, 0}
 };
 
@@ -1379,5 +1775,7 @@ void R_init_yaml(DllInfo *dll) {
   R_IdenticalFunc = findFun(install("identical"), R_GlobalEnv);
   R_FormatFunc = findFun(install("format"), R_GlobalEnv);
   R_PasteFunc = findFun(install("paste"), R_GlobalEnv);
+  R_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
+  R_NSmallSymbol = install("nsmall");
   R_registerRoutines(dll,NULL,callMethods,NULL,NULL);
 }

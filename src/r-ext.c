@@ -462,8 +462,10 @@ handle_alias(event, stack, aliases)
 
   while (alias) {
     if (strcmp((char *)alias->name, (char *)event->data.alias.anchor) == 0) {
-      stack_push(stack, 0, NULL, alias->obj);
-      handled = 1;
+      if (alias->obj->obj != NULL) {
+        stack_push(stack, 0, NULL, alias->obj);
+        handled = 1;
+      }
       break;
     }
   }
@@ -1545,6 +1547,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
     case REALSXP:
     case INTSXP:
     case STRSXP:
+      /* FIXME: add complex and raw, use 'yes' and 'no' for LGLSXP */
       if (length(obj) != 1) {
         yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
         if (!yaml_emitter_emit(emitter, event))

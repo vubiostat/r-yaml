@@ -399,4 +399,13 @@ test_should_error_for_bad_expressions <- function() {
 #  assert(inherits(x, "try-error"))
 #}
 
+test_maps_should_be_ordered <- function() {
+  x <- yaml.load("{a: 1, b: 2, c: 3}")
+  assert_equal(c('a', 'b', 'c'), names(x))
+}
+
+test_handles_recursive_illegal_anchor <- function() {
+  x <- yaml.load('&foo {foo: *foo}')
+}
+
 source("test_runner.r")

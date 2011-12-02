@@ -34,7 +34,7 @@ Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 \examples{
   x <- data.frame(a=sample(1:100, 10), b=sample(letters, 10))
   as.yaml(x)
-  yaml.load("foo: bar\njunk:\n  - stuff\n  - blah")
+  yaml.load("foo: 123\nbar:\n  - 3.14\n  - 2.71")
 \dontrun{
   yaml.load_file("foo.yml")
 }

@@ -48,9 +48,10 @@
 }
 \references{
   YAML: http://yaml.org
+
   libyaml: http://pyyaml.org/wiki/LibYAML
 }
-\author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu }
+\author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu> }
 \seealso{ \code{\link{as.yaml}} }
 \examples{
   yaml.load("- hey\n- hi\n- hello")
@@ -65,7 +66,7 @@
   unlink("foo.yml") # tidy up
 }
 
-  # custom string-type handler
+  # custom scalar handler
   my.float.handler <- function(x) { as.numeric(x) + 123 }
   yaml.load("123.456", handlers=list("float#fix"=my.float.handler))
 

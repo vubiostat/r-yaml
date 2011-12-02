@@ -6,4 +6,4 @@ Date: 2012-12-02
 Author: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 Maintainer: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 License: BSD
-Description: This package implements the libyaml YAML parser (http://pyyaml.org/wiki/LibYAML) for R.  There are also methods to convert R objects into YAML.
+Description: This package implements the libyaml YAML parser and emitter (http://pyyaml.org/wiki/LibYAML) for R.

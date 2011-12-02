@@ -1,3 +1,9 @@
+v2.1.0
+  - re-wrote as.yaml in C (using libyaml's emitter)
+  - removed the `pre.indent` option to as.yaml, mainly because libyaml
+    doesn't support pre-indention and I'm not sure the option is useful
+    anymore; will revisit if requested
+
 v2.0.0
   - switch from the Syck parser to the libyaml (0.1.4) parser
   - changed behavior:

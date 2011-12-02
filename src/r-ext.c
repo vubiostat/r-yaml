@@ -1721,6 +1721,10 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major)
       line_sep = YAML_CR_BREAK;
     }
   }
+  else {
+    error("argument `line.sep` must be a either '\n', '\r\n', or '\r'");
+    return R_NilValue;
+  }
 
   if (isNumeric(s_indent) && length(s_indent) == 1) {
     s_indent = coerceVector(s_indent, INTSXP);

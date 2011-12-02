@@ -1,2 +1,4 @@
 .gitignore
 src/Makefile.test
+Session.vim
+foo.R

@@ -464,6 +464,7 @@ handle_alias(event, stack, aliases)
     if (strcmp((char *)alias->name, (char *)event->data.alias.anchor) == 0) {
       if (alias->obj->obj != NULL) {
         stack_push(stack, 0, NULL, alias->obj);
+        SET_NAMED(alias->obj->obj, 2);
         handled = 1;
       }
       break;

@@ -266,7 +266,7 @@ R_yoink(vec, index)
   SEXP vec;
   int index;
 {
-  SEXP tmp, names;
+  SEXP tmp;
   int type, factor;
 
   type = TYPEOF(vec);
@@ -1515,7 +1515,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
   int omap;
   int column_major;
 {
-  SEXP chr, names, thing, tmp;
+  SEXP chr, names, thing;
   yaml_scalar_style_t scalar_style;
   int implicit_tag, rows, cols, i, j;
 
@@ -1695,8 +1695,10 @@ emit_object(emitter, event, obj, tag, omap, column_major)
 }
 
 SEXP
-as_yaml(s_obj, s_omap, s_column_major)
+as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major)
   SEXP s_obj;
+  SEXP s_line_sep;
+  SEXP s_indent;
   SEXP s_omap;
   SEXP s_column_major;
 {
@@ -1704,7 +1706,38 @@ as_yaml(s_obj, s_omap, s_column_major)
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
-  int status, omap, column_major;
+  int status, line_sep, indent, omap, column_major;
+  const char *c_line_sep;
+
+  c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
+  if (c_line_sep[0] == '\n') {
+    line_sep = YAML_LN_BREAK;
+  }
+  else if (c_line_sep[0] == '\r') {
+    if (c_line_sep[1] == '\n') {
+      line_sep = YAML_CRLN_BREAK;
+    }
+    else {
+      line_sep = YAML_CR_BREAK;
+    }
+  }
+
+  if (isNumeric(s_indent) && length(s_indent) == 1) {
+    s_indent = coerceVector(s_indent, INTSXP);
+    indent = INTEGER(s_indent)[0];
+  }
+  else if (isInteger(s_indent) && length(s_indent) == 1) {
+    indent = INTEGER(s_indent)[0];
+  }
+  else {
+    error("argument `indent` must be a numeric or integer vector of length 1");
+    return R_NilValue;
+  }
+
+  if (indent <= 0) {
+    error("argument `indent` must be greater than 0");
+    return R_NilValue;
+  }
 
   if (!isLogical(s_omap) || length(s_omap) != 1) {
     error("argument `omap` must be either TRUE or FALSE");
@@ -1719,6 +1752,8 @@ as_yaml(s_obj, s_omap, s_column_major)
   column_major = LOGICAL(s_column_major)[0];
 
   yaml_emitter_initialize(&emitter);
+  yaml_emitter_set_break(&emitter, line_sep);
+  yaml_emitter_set_indent(&emitter, indent);
 
   output.buffer = NULL;
   output.size = output.capa = 0;
@@ -1769,7 +1804,7 @@ done:
 
 R_CallMethodDef callMethods[] = {
   {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
-  {"as.yaml",   (DL_FUNC)&as_yaml,       3},
+  {"as.yaml",   (DL_FUNC)&as_yaml,       5},
   {NULL, NULL, 0}
 };
 

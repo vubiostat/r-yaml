@@ -121,4 +121,25 @@ function() {
   assert_equal("~\n...\n", as.yaml(NULL))
 }
 
+test_explicit_linesep <- function() {
+  result <- as.yaml(c('foo', 'bar'), line.sep = "\n")
+  assert_equal("- foo\n- bar\n", result)
+
+  result <- as.yaml(c('foo', 'bar'), line.sep = "\r\n")
+  assert_equal("- foo\r\n- bar\r\n", result)
+
+  result <- as.yaml(c('foo', 'bar'), line.sep = "\r")
+  assert_equal("- foo\r- bar\r", result)
+}
+
+test_custom_indent <- function() {
+  result <- as.yaml(list(foo=list(bar=list('foo', 'bar'))), indent = 3)
+  assert_equal("foo:\n   bar:\n   - foo\n   - bar\n", result)
+}
+
+test_bad_indent <- function() {
+  result <- try(as.yaml(list(foo=list(bar=list('foo', 'bar'))), indent = 0))
+  assert(inherits(result, "try-error"))
+}
+
 source("test_runner.r")

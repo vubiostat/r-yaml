@@ -1,5 +1,3 @@
 .*swp
-src/*.o
-src/*.so
-src/Makefile.test
+build
 Session.vim

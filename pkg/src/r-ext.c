@@ -792,7 +792,7 @@ handle_scalar(event, stack, return_tag)
   *return_tag = tag;
 
 #if DEBUG
-  printf("Value: (%s), Tag: (%s)\n", value, tag);
+  Rprintf("Value: (%s), Tag: (%s)\n", value, tag);
 #endif
 
   PROTECT(obj = NEW_STRING(1));
@@ -1269,14 +1269,14 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_ALIAS_EVENT:
 #if DEBUG
-          printf("ALIAS: %s\n", event.data.alias.anchor);
+          Rprintf("ALIAS: %s\n", event.data.alias.anchor);
 #endif
           handle_alias(&event, &stack, aliases);
           break;
 
         case YAML_SCALAR_EVENT:
 #if DEBUG
-          printf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
+          Rprintf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
 #endif
           errorOccurred = handle_scalar(&event, &stack, &tag);
           if (!errorOccurred) {
@@ -1287,7 +1287,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_SEQUENCE_START_EVENT:
 #if DEBUG
-          printf("SEQUENCE START: (%s)\n", event.data.sequence_start.tag);
+          Rprintf("SEQUENCE START: (%s)\n", event.data.sequence_start.tag);
 #endif
           handle_start_event(event.data.sequence_start.tag, &stack);
           possibly_record_alias(event.data.sequence_start.anchor, &aliases, stack->obj);
@@ -1295,7 +1295,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_SEQUENCE_END_EVENT:
 #if DEBUG
-          printf("SEQUENCE END\n");
+          Rprintf("SEQUENCE END\n");
 #endif
           errorOccurred = handle_sequence(&event, &stack, &tag);
           if (!errorOccurred) {
@@ -1305,7 +1305,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_MAPPING_START_EVENT:
 #if DEBUG
-          printf("MAPPING START: (%s)\n", event.data.mapping_start.tag);
+          Rprintf("MAPPING START: (%s)\n", event.data.mapping_start.tag);
 #endif
           handle_start_event(event.data.mapping_start.tag, &stack);
           possibly_record_alias(event.data.mapping_start.anchor, &aliases, stack->obj);
@@ -1313,7 +1313,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 
         case YAML_MAPPING_END_EVENT:
 #if DEBUG
-          printf("MAPPING END\n");
+          Rprintf("MAPPING END\n");
 #endif
           errorOccurred = handle_map(&event, &stack, &tag, use_named);
           if (!errorOccurred) {
@@ -1687,8 +1687,8 @@ emit_object(emitter, event, obj, tag, omap, column_major)
       break;
 
     default:
-      printf("Type: %d, Class: %s\n", TYPEOF(obj), CHAR(STRING_ELT(R_data_class(obj, FALSE), 0)));
-      break;
+      warning("don't know how to emit object of type: %d, class: %s\n", TYPEOF(obj), CHAR(STRING_ELT(R_data_class(obj, FALSE), 0)));
+      return 0;
   }
 
   return 1;

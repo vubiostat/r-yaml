@@ -13,6 +13,7 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/src/yaml.h \
 	pkg/src/loader.c \
 	pkg/src/r-ext.c \
+	pkg/src/Makevars \
 	pkg/man/as.yaml.Rd \
 	pkg/man/yaml.load.Rd \
 	pkg/inst/THANKS \
@@ -43,6 +44,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/src/yaml.h \
 	     build/src/loader.c \
 	     build/src/r-ext.c \
+	     build/src/Makevars \
 	     build/man/as.yaml.Rd \
 	     build/man/yaml.load.Rd \
 	     build/inst/THANKS \
@@ -67,6 +69,7 @@ check: $(BUILD_SRCS)
 
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
+	R CMD check -o `mktemp -d` $@
 
 build/DESCRIPTION: pkg/DESCRIPTION.brew
 	mkdir -p $(dir $@)

@@ -49,6 +49,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/man/yaml.load.Rd \
 	     build/inst/THANKS \
 	     build/inst/CHANGELOG \
+	     build/inst/implicit.re \
 	     build/DESCRIPTION \
 	     build/COPYING \
 	     build/R/yaml.load.R \
@@ -79,6 +80,10 @@ build/src/implicit.c: pkg/src/implicit.re
 	mkdir -p $(dir $@)
 	cd $(dir $<); re2c -o $(notdir $@) --no-generation-date $(notdir $<)
 	mv $(dir $<)implicit.c $@
+
+build/inst/implicit.re: pkg/src/implicit.re
+	mkdir -p $(dir $@)
+	cp $< $@
 
 build/%: pkg/%
 	mkdir -p $(dir $@)

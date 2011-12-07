@@ -1,3 +1,8 @@
+v2.1.1
+  - remove redundant yaml-package help page
+  - fix solaris compilation error
+  - remove printf/assert symbols from the compiled library
+
 v2.1.0
   - re-wrote as.yaml in C (using libyaml's emitter)
   - removed the `pre.indent` option to as.yaml, mainly because libyaml

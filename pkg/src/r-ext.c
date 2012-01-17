@@ -469,6 +469,7 @@ handle_alias(event, stack, aliases)
       }
       break;
     }
+    alias = (s_alias_entry *)alias->prev;
   }
 
   if (!handled) {

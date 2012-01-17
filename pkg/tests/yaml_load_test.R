@@ -414,4 +414,8 @@ test_sets_named_properly_for_aliases <- function() {
   assert_equal(1L, x$bar$one)
 }
 
+test_anchor_issue <- function() {
+  x <- yaml.load('{foo: &foo {one: 1}, bar: &bar {one: 1}, baz: *foo, quux: *bar}')
+}
+
 source("test_runner.r")

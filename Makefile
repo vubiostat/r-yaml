@@ -29,7 +29,8 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/tests/test_runner.r \
 	pkg/tests/yaml_load_file_test.R \
 	pkg/tests/test_helper.r \
-	pkg/tests/yaml_load_test.R
+	pkg/tests/yaml_load_test.R \
+	pkg/tests/test.yml
 
 BUILD_SRCS = build/src/yaml_private.h \
 	     build/src/writer.c \
@@ -61,9 +62,12 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/tests/test_runner.r \
 	     build/tests/yaml_load_file_test.R \
 	     build/tests/test_helper.r \
-	     build/tests/yaml_load_test.R
+	     build/tests/yaml_load_test.R \
+	     build/tests/test.yml
 
-all: yaml_$(VERSION).tar.gz
+all: $(BUILD_SRCS)
+	R CMD COMPILE CFLAGS="-g3" build/src/*.c
+	R CMD SHLIB build/src/*.o -o build/src/yaml.so
 
 check: $(BUILD_SRCS)
 	R CMD check -o `mktemp -d` build

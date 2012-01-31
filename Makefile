@@ -74,11 +74,14 @@ compile: $(BUILD_SRCS)
 check: $(BUILD_SRCS)
 	R CMD check -o `mktemp -d` build
 
-test: compile
+test: compile check-changelog
 	cd build/tests; cat *.R | R --vanilla
 
-valgrind-test: compile
+valgrind-test: compile check-changelog
 	cd build/tests; cat *.R | R --vanilla -d "valgrind --leak-check=full"
+
+check-changelog: VERSION pkg/inst/CHANGELOG
+	if [ VERSION -nt pkg/inst/CHANGELOG ]; then echo "\033[31mWARNING: Changelog has not been updated\033[0m"; fi
 
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
@@ -104,4 +107,4 @@ build/%: pkg/%
 clean:
 	rm -fr yaml_*.tar.gz build
 
-.PHONY: all compile check test clean valgrind-test
+.PHONY: all compile check test clean valgrind-test check-changelog

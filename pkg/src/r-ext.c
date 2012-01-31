@@ -188,15 +188,24 @@ R_format_real(obj)
 {
   SEXP call, pcall, retval;
 
-  PROTECT(call = pcall = allocList(3));
+  PROTECT(call = pcall = allocList(4));
   SET_TYPEOF(call, LANGSXP);
   SETCAR(pcall, R_FormatFunc); pcall = CDR(pcall);
   SETCAR(pcall, obj);          pcall = CDR(pcall);
+
+  /* set nsmall = 1 */
   SETCAR(pcall, PROTECT(allocVector(INTSXP, 1)));
   INTEGER(CAR(pcall))[0] = 1;
   SET_TAG(pcall, R_NSmallSymbol);
+  pcall = CDR(pcall);
+
+  /* set trim = TRUE */
+  SETCAR(pcall, PROTECT(allocVector(LGLSXP, 1)));
+  LOGICAL(CAR(pcall))[0] = 1;
+  SET_TAG(pcall, R_TrimSymbol);
+
   retval = eval(call, R_GlobalEnv);
-  UNPROTECT(2);
+  UNPROTECT(3);
 
   return retval;
 }
@@ -1821,5 +1830,6 @@ void R_init_yaml(DllInfo *dll) {
   R_PasteFunc = findFun(install("paste"), R_GlobalEnv);
   R_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
   R_NSmallSymbol = install("nsmall");
+  R_TrimSymbol = install("trim");
   R_registerRoutines(dll,NULL,callMethods,NULL,NULL);
 }

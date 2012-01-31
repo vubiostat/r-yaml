@@ -78,7 +78,7 @@ function() {
 
 test_should_convert_numeric_correctly <-
 function() {
-  assert_equal("1.0\n...\n", as.yaml(1.0))
+  assert_equal("- 1.0\n- 5.0\n- 10.0\n- 15.0\n", as.yaml(c(1, 5, 10, 15)))
 }
 
 test_multiline_string <-

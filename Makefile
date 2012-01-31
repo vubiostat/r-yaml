@@ -65,18 +65,26 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/tests/yaml_load_test.R \
 	     build/tests/test.yml
 
-all: $(BUILD_SRCS)
+all: compile test
+
+compile: $(BUILD_SRCS)
 	R CMD COMPILE CFLAGS="-g3" build/src/*.c
 	R CMD SHLIB build/src/*.o -o build/src/yaml.so
 
 check: $(BUILD_SRCS)
 	R CMD check -o `mktemp -d` build
 
+test: compile
+	cd build/tests; cat *.R | R --vanilla
+
+valgrind-test: compile
+	cd build/tests; cat *.R | R --vanilla -d "valgrind --leak-check=full"
+
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
 	R CMD check -o `mktemp -d` $@
 
-build/DESCRIPTION: pkg/DESCRIPTION.brew
+build/DESCRIPTION: pkg/DESCRIPTION.brew VERSION
 	mkdir -p $(dir $@)
 	R --vanilla -e "VERSION <- '$(VERSION)'; library(brew); brew('$<', '$@');"
 
@@ -94,4 +102,6 @@ build/%: pkg/%
 	cp $< $@
 
 clean:
-	rm -fr yaml_$(VERSION).tar.gz build
+	rm -fr yaml_*.tar.gz build
+
+.PHONY: all compile check test clean valgrind-test

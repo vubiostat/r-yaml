@@ -18,6 +18,7 @@ static SEXP R_PasteFunc = NULL;
 static SEXP R_CollapseSymbol = NULL;
 static SEXP R_DeparseFunc = NULL;
 static SEXP R_NSmallSymbol = NULL;
+static SEXP R_TrimSymbol = NULL;
 static char error_msg[255];
 
 /* From implicit.c */

@@ -12,7 +12,7 @@ R_cmp(x, y)
 
   PROTECT(t = allocVector(LGLSXP, 1));
   LOGICAL(t)[0] = 1;
-  PROTECT(call = lang5(R_IdenticalFunc, x, y, t, t));
+  PROTECT(call = LCONS(R_IdenticalFunc, list4(x, y, t, t)));
   PROTECT(result = eval(call, R_GlobalEnv));
 
   arr = LOGICAL(result);

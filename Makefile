@@ -74,6 +74,9 @@ compile: $(BUILD_SRCS)
 check: $(BUILD_SRCS)
 	R CMD check -o `mktemp -d` build
 
+gct-check: $(BUILD_SRCS)
+	R CMD check --use-gct -o `mktemp -d` build
+
 test: compile check-changelog
 	cd build/tests; cat *.R | R --vanilla
 
@@ -82,6 +85,8 @@ valgrind-test: compile check-changelog
 
 check-changelog: VERSION pkg/inst/CHANGELOG
 	if [ VERSION -nt pkg/inst/CHANGELOG ]; then echo "\033[31mWARNING: Changelog has not been updated\033[0m"; fi
+
+tarball: yaml_$(VERSION).tar.gz
 
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
@@ -107,4 +112,4 @@ build/%: pkg/%
 clean:
 	rm -fr yaml_*.tar.gz build
 
-.PHONY: all compile check test clean valgrind-test check-changelog
+.PHONY: all compile check gtc-check test clean valgrind-test check-changelog tarball

@@ -1,3 +1,4 @@
+options(error=function() { traceback() })
 failure = FALSE
 for (i in ls(pattern = "^test")) {
   cat("running ", i, "...\n");

@@ -64,9 +64,9 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/tests/run-all.R
 
 ifdef DEBUG
-  CFLAGS = -g3 -DDEBUG
+  CFLAGS = -g3 -Wall -DDEBUG
 else
-  CFLAGS = -g3
+  CFLAGS = -g3 -Wall
 endif
 
 all: compile test

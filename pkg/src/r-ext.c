@@ -263,7 +263,7 @@ R_scalar_style(obj)
 
   /* If this element has an implicit tag, it needs to be quoted */
   tag = find_implicit_tag((yaml_char_t *) chr, len);
-  if (strcmp(tag, "str") != 0) {
+  if (strcmp((char *) tag, "str") != 0) {
     return YAML_SINGLE_QUOTED_SCALAR_STYLE;
   }
 
@@ -805,7 +805,7 @@ handle_scalar(event, stack, return_tag)
     switch (event->data.scalar.style) {
       case YAML_SINGLE_QUOTED_SCALAR_STYLE:
       case YAML_DOUBLE_QUOTED_SCALAR_STYLE:
-        tag = "str";
+        tag = (yaml_char_t *) "str";
         break;
       default:
         /* Try to tag it */

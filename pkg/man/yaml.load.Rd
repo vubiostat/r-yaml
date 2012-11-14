@@ -39,7 +39,8 @@
   is either a named list or a list with a 'keys' attribute (depending on \code{as.named.list}).
   ALL functions you provide must return an object.  See the examples for custom handler use.
 
-  This function uses the YAML parser provided by libyaml.
+  This function uses the YAML parser provided by libyaml, which conforms to the YAML 1.1
+  specification.
 }
 \value{
   If the root YAML object is a map, a named list or list with an attribute of 'keys' is

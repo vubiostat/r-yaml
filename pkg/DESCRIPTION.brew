@@ -2,6 +2,7 @@ Package: yaml
 Type: Package
 Title: Methods to convert R data to YAML and back
 Version: <%= VERSION %>
+Suggests: testthat
 Date: <%= format(Sys.Date()) %>
 Author: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
 Maintainer: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>

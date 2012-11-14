@@ -18,6 +18,10 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/man/yaml.load.Rd \
 	pkg/inst/THANKS \
 	pkg/inst/CHANGELOG \
+	pkg/inst/tests/test_yaml_load_file.R \
+	pkg/inst/tests/test_yaml_load.R \
+	pkg/inst/tests/test_yaml_load.R \
+	pkg/inst/tests/files/test.yml \
 	pkg/DESCRIPTION.brew \
 	pkg/COPYING \
 	pkg/R/yaml.load.R \
@@ -25,12 +29,7 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/R/yaml.load_file.R \
 	pkg/R/as.yaml.R \
 	pkg/NAMESPACE \
-	pkg/tests/as_yaml_test.R \
-	pkg/tests/test_runner.r \
-	pkg/tests/yaml_load_file_test.R \
-	pkg/tests/test_helper.r \
-	pkg/tests/yaml_load_test.R \
-	pkg/tests/test.yml
+	pkg/tests/run-all.R
 
 BUILD_SRCS = build/src/yaml_private.h \
 	     build/src/writer.c \
@@ -51,6 +50,10 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/inst/THANKS \
 	     build/inst/CHANGELOG \
 	     build/inst/implicit.re \
+	     build/inst/tests/test_yaml_load_file.R \
+	     build/inst/tests/test_yaml_load.R \
+	     build/inst/tests/test_yaml_load.R \
+	     build/inst/tests/files/test.yml \
 	     build/DESCRIPTION \
 	     build/COPYING \
 	     build/R/yaml.load.R \
@@ -58,20 +61,21 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/R/yaml.load_file.R \
 	     build/R/as.yaml.R \
 	     build/NAMESPACE \
-	     build/tests/as_yaml_test.R \
-	     build/tests/test_runner.r \
-	     build/tests/yaml_load_file_test.R \
-	     build/tests/test_helper.r \
-	     build/tests/yaml_load_test.R \
-	     build/tests/test.yml
+	     build/tests/run-all.R
+
+ifdef DEBUG
+  CFLAGS = -g3 -DDEBUG
+else
+  CFLAGS = -g3
+endif
 
 all: compile test
 
 compile: $(BUILD_SRCS)
-	R CMD COMPILE CFLAGS="-g3" build/src/*.c
+	R CMD COMPILE CFLAGS="$(CFLAGS)" build/src/*.c
 	R CMD SHLIB build/src/*.o -o build/src/yaml.so
 
-check: $(BUILD_SRCS)
+check: compile $(BUILD_SRCS)
 	R CMD check -o `mktemp -d` build
 
 gct-check: $(BUILD_SRCS)

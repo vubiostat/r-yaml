@@ -257,8 +257,15 @@ static yaml_scalar_style_t
 R_scalar_style(obj)
   SEXP obj;
 {
+  yaml_char_t *tag;
   const char *chr = CHAR(obj);
   int len = length(obj), j;
+
+  /* If this element has an implicit tag, it needs to be quoted */
+  tag = find_implicit_tag((yaml_char_t *) chr, len);
+  if (strcmp(tag, "str") != 0) {
+    return YAML_SINGLE_QUOTED_SCALAR_STYLE;
+  }
 
   /* Change to literal if there's a newline in this string */
   for (j = 0; j < len; j++) {
@@ -792,9 +799,19 @@ handle_scalar(event, stack, return_tag)
   tag = event->data.scalar.tag;
   value = event->data.scalar.value;
   if (tag == NULL || strcmp((char *)tag, "!") == 0) {
-    /* If there's no tag, try to tag it */
-    len = event->data.scalar.length;
-    tag = find_implicit_tag(value, len);
+    /* There's no tag! */
+
+    /* If this is a quoted string, leave it as a string */
+    switch (event->data.scalar.style) {
+      case YAML_SINGLE_QUOTED_SCALAR_STYLE:
+      case YAML_DOUBLE_QUOTED_SCALAR_STYLE:
+        tag = "str";
+        break;
+      default:
+        /* Try to tag it */
+        len = event->data.scalar.length;
+        tag = find_implicit_tag(value, len);
+    }
   }
   else {
     tag = process_tag(tag);

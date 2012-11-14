@@ -5,8 +5,8 @@ test_that("test should convert named list to yaml", {
 
   x <- list(foo=1:10, bar=c("junk", "test"))
   y <- yaml.load(as.yaml(x))
-  expect_equal(x$foo, y$foo)
-  expect_equal(x$bar, y$bar)
+  expect_equal(y$foo, x$foo)
+  expect_equal(y$bar, x$bar)
 
   x <- list(foo=1:10, bar=list(foo=11:20, bar=letters[1:10]))
   y <- yaml.load(as.yaml(x))
@@ -69,7 +69,7 @@ test_that("test should load omap", {
 })
 
 test_that("test should convert numeric correctly", {
-  expect_equal("- 1.0\n- 5.0\n- 10.0\n- 15.0\n", as.yaml(c(1, 5, 10, 15)))
+  expect_equal(as.yaml(c(1, 5, 10, 15)), "- 1.0\n- 5.0\n- 10.0\n- 15.0\n")
 })
 
 test_that("test multiline string", {
@@ -95,7 +95,7 @@ test_that("test list with unnamed items", {
   y: 4
 "
   result <- as.yaml(x)
-  expect_equal(expected, result)
+  expect_equal(result, expected)
 })
 
 test_that("test should escape pound signs in strings", {

@@ -20,7 +20,7 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/inst/CHANGELOG \
 	pkg/inst/tests/test_yaml_load_file.R \
 	pkg/inst/tests/test_yaml_load.R \
-	pkg/inst/tests/test_yaml_load.R \
+	pkg/inst/tests/test_as_yaml.R \
 	pkg/inst/tests/files/test.yml \
 	pkg/DESCRIPTION.brew \
 	pkg/COPYING \
@@ -52,7 +52,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/inst/implicit.re \
 	     build/inst/tests/test_yaml_load_file.R \
 	     build/inst/tests/test_yaml_load.R \
-	     build/inst/tests/test_yaml_load.R \
+	     build/inst/tests/test_as_yaml.R \
 	     build/inst/tests/files/test.yml \
 	     build/DESCRIPTION \
 	     build/COPYING \
@@ -82,7 +82,7 @@ gct-check: $(BUILD_SRCS)
 	R CMD check --use-gct -o `mktemp -d` build
 
 test: compile check-changelog
-	cd build/tests; cat *.R | R --vanilla
+	cd build; echo "library(devtools); test('.')" | R --vanilla
 
 valgrind-test: compile check-changelog
 	cd build/tests; cat *.R | R --vanilla -d "valgrind --leak-check=full"

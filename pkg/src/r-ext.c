@@ -254,7 +254,7 @@ R_has_class( obj, name )
 
 /* Take a CHARSXP, return a scalar style (for emitting) */
 static yaml_scalar_style_t
-R_scalar_style(obj)
+R_string_style(obj)
   SEXP obj;
 {
   yaml_char_t *tag;
@@ -1520,7 +1520,7 @@ emit_factor(emitter, event, obj)
     level_idx = INTEGER(obj)[i] - 1;
     level_chr = STRING_ELT(levels, level_idx);
     if (!scalar_style_is_set[level_idx]) {
-      scalar_styles[level_idx] = R_scalar_style(level_chr);
+      scalar_styles[level_idx] = R_string_style(level_chr);
     }
 
     if (!emit_char(emitter, event, level_chr, NULL, 1, scalar_styles[level_idx])) {
@@ -1587,6 +1587,14 @@ emit_object(emitter, event, obj, tag, omap, column_major)
           if (!emit_factor(emitter, event, obj))
             return 0;
         }
+        else if (TYPEOF(obj) == STRSXP) {
+          /* Might need to add quotes */
+          for (i = 0; i < length(obj); i++) {
+            chr = STRING_ELT(obj, i);
+            if (!emit_char(emitter, event, chr, tag, implicit_tag, R_string_style(chr)))
+              return 0;
+          }
+        }
         else {
           if (TYPEOF(obj) == REALSXP) {
             obj = R_format_real(obj);
@@ -1597,8 +1605,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
 
           for (i = 0; i < length(obj); i++) {
             chr = STRING_ELT(obj, i);
-
-            if (!emit_char(emitter, event, chr, tag, implicit_tag, R_scalar_style(chr)))
+            if (!emit_char(emitter, event, chr, tag, implicit_tag, YAML_ANY_SCALAR_STYLE))
               return 0;
           }
         }

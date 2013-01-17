@@ -132,3 +132,9 @@ test_that("test should escape strings", {
   result <- as.yaml("12345")
   expect_equal("'12345'\n", result)
 })
+
+test_that("unicode strings are not escaped", {
+  x <- list('име' = 'Александар', 'презиме' = 'Благотић')
+  result <- as.yaml(x, unicode = TRUE)
+  expect_equal("име: Александар\nпрезиме: Благотић\n", result, label = result)
+})

@@ -1729,18 +1729,19 @@ emit_object(emitter, event, obj, tag, omap, column_major)
 }
 
 SEXP
-as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major)
+as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
   SEXP s_omap;
   SEXP s_column_major;
+  SEXP s_unicode;
 {
   SEXP retval;
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
-  int status, line_sep, indent, omap, column_major;
+  int status, line_sep, indent, omap, column_major, unicode;
   const char *c_line_sep;
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
@@ -1789,7 +1790,14 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major)
   }
   column_major = LOGICAL(s_column_major)[0];
 
+  if (!isLogical(s_unicode) || length(s_unicode) != 1) {
+    error("argument `unicode` must be either TRUE or FALSE");
+    return R_NilValue;
+  }
+  unicode = LOGICAL(s_unicode)[0];
+
   yaml_emitter_initialize(&emitter);
+  yaml_emitter_set_unicode(&emitter, unicode);
   yaml_emitter_set_break(&emitter, line_sep);
   yaml_emitter_set_indent(&emitter, indent);
 
@@ -1798,7 +1806,7 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major)
   yaml_emitter_set_output(&emitter, as_yaml_write_handler, &output);
 
   /* FIXME: get the encoding from R */
-  yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
+  yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
   if (!(status = yaml_emitter_emit(&emitter, &event)))
     goto done;
 
@@ -1842,7 +1850,7 @@ done:
 
 R_CallMethodDef callMethods[] = {
   {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
-  {"as.yaml",   (DL_FUNC)&as_yaml,       5},
+  {"as.yaml",   (DL_FUNC)&as_yaml,       6},
   {NULL, NULL, 0}
 };
 

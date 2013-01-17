@@ -5,7 +5,7 @@
   Convert an R object into a YAML string
 }
 \usage{
-  as.yaml(x, line.sep = c("\n", "\r\n", "\r"), indent = 2, omap = FALSE, column.major = TRUE)
+  as.yaml(x, line.sep = c("\n", "\r\n", "\r"), indent = 2, omap = FALSE, column.major = TRUE, unicode = TRUE)
 }
 \arguments{
   \item{x}{ the object to be converted }
@@ -13,6 +13,7 @@
   \item{indent}{ the number of spaces to use for indenting }
   \item{omap}{ determines whether or not to convert a list to a YAML omap; see Details }
   \item{column.major}{ determines how to convert a data.frame; see Details }
+  \item{unicode}{ determines whether or not to allow unescaped unicode characters in output }
 }
 \details{
   If you set the \code{omap} option to TRUE, as.yaml will create ordered maps

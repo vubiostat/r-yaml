@@ -1,3 +1,7 @@
+v2.1.6
+  - add unicode option to as.yaml() (bug submissions by Gergely Daróczi
+    and Aleksandar Blagotić)
+
 v2.1.5
   - fix yaml.load() ignoring explicit quotes around strings (bug submitted
     by Jonas Zimmermann)

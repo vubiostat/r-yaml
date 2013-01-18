@@ -1,6 +1,6 @@
 context("yaml.load")
 
-test_that("test should not return named list", {
+test_that("named list is not returned", {
   x <- yaml.load("hey: man\n123: 456\n", FALSE)
   expect_equal(2L, length(x))
   expect_equal(2L, length(attr(x, "keys")))
@@ -16,11 +16,11 @@ test_that("test should not return named list", {
   expect_equal(2L, length(x[[1]]))
 })
 
-test_that("test should handle conflicts", {
+test_that("conflicts are handled", {
   expect_that(yaml.load("hey: buddy\nhey: guy"), throws_error());
 })
 
-test_that("test should return named list", {
+test_that("named list is returned", {
   x <- yaml.load("hey: man\n123: 456\n", TRUE)
   expect_equal(2L, length(x))
   expect_equal(2L, length(names(x)))
@@ -28,7 +28,7 @@ test_that("test should return named list", {
   expect_equal("man", x$hey)
 })
 
-test_that("test should type uniform sequences", {
+test_that("uniform sequences are coerced", {
   x <- yaml.load("- 1\n- 2\n- 3")
   expect_equal(1:3, x)
 
@@ -42,17 +42,17 @@ test_that("test should type uniform sequences", {
   expect_equal(c("hey", "hi", "hello"), x)
 })
 
-test_that("test shows error with tag type conflicts", {
+test_that("tag type conflicts throws error", {
   expect_that(yaml.load("!!str [1, 2, 3]"), throws_error())
   expect_that(yaml.load("!!str {foo: bar}"), throws_error())
 })
 
-test_that("test should not collapse sequences", {
+test_that("sequences are not collapsed", {
   x <- yaml.load("- [1, 2]\n- 3\n- [4, 5]")
   expect_equal(list(1:2, 3L, 4:5), x)
 })
 
-test_that("test should merge named maps", {
+test_that("named maps are merged", {
   x <- yaml.load("foo: bar\n<<: {baz: boo}", TRUE)
   expect_equal(2L, length(x))
   expect_equal("bar", x$foo)
@@ -73,7 +73,7 @@ test_that("test should merge named maps", {
   expect_equal("baz", x$foo)
 })
 
-test_that("test should merge unnamed maps", {
+test_that("unnamed maps are merged", {
   x <- yaml.load("foo: bar\n<<: {baz: boo}", FALSE)
   expect_equal(2L, length(x))
   expect_equal(list("foo", "baz"), attr(x, 'keys'))
@@ -88,12 +88,12 @@ test_that("test should merge unnamed maps", {
   expect_equal("boo", x[[3]])
 })
 
-test_that("test should fail on duplicate keys with merge", {
+test_that("merging duplicate keys throws an error", {
   expect_that(yaml.load("foo: bar\nfoo: baz\n<<: {foo: quux}", TRUE),
     throws_error())
 })
 
-test_that("test should handle weird merges", {
+test_that("invalid merges throw errors", {
   expect_that(yaml.load("foo: bar\n<<: [{leet: hax}, blargh, 123]", TRUE),
     throws_error())
 
@@ -104,12 +104,12 @@ test_that("test should handle weird merges", {
     throws_error())
 })
 
-test_that("test should handle syntax errors", {
+test_that("syntax errors throw errors", {
   expect_that(yaml.load("[whoa, this is some messed up]: yaml?!: dang"),
     throws_error())
 })
 
-test_that("test should handle null type", {
+test_that("null types are converted", {
   x <- yaml.load("~")
   expect_equal(NULL, x)
 })
@@ -119,22 +119,22 @@ test_that("test should handle null type", {
 #  expect_equal("0b101011", x)
 #}
 
-test_that("test should handle bool yes type", {
+test_that("bool yes type is converted", {
   x <- yaml.load("yes")
   expect_equal(TRUE, x)
 })
 
-test_that("test should handle bool no type", {
+test_that("bool no type is converted", {
   x <- yaml.load("no")
   expect_equal(FALSE, x)
 })
 
-test_that("test should handle int hex type", {
+test_that("int hex type is converted", {
   x <- yaml.load("0xF")
   expect_equal(15L, x)
 })
 
-test_that("test should handle int oct type", {
+test_that("int oct type is converted", {
   x <- yaml.load("015")
   expect_equal(13L, x)
 })
@@ -144,12 +144,12 @@ test_that("test should handle int oct type", {
 #  expect_equal("1:20", x)
 #}
 
-test_that("test should handle int type", {
+test_that("int type is converted", {
   x <- yaml.load("31337")
   expect_equal(31337L, x)
 })
 
-test_that("test should handle explicit int type", {
+test_that("explicit int type is converted", {
   x <- yaml.load("!!int 31337")
   expect_equal(31337L, x)
 })
@@ -159,22 +159,22 @@ test_that("test should handle explicit int type", {
 #  expect_equal("1:20.5", x)
 #}
 
-test_that("test should handle float nan type", {
+test_that("float nan type is converted", {
   x <- yaml.load(".NaN")
   expect_true(is.nan(x))
 })
 
-test_that("test should handle float inf type", {
+test_that("float inf type is converted", {
   x <- yaml.load(".inf")
   expect_equal(Inf, x)
 })
 
-test_that("test should handle float neginf type", {
+test_that("float neginf type is converted", {
   x <- yaml.load("-.inf")
   expect_equal(-Inf, x)
 })
 
-test_that("test should handle float type", {
+test_that("float type is converted", {
   x <- yaml.load("123.456")
   expect_equal(123.456, x)
 })
@@ -199,89 +199,89 @@ test_that("test should handle float type", {
 #  expect_equal("2001-12-14t21:59:43.10-05:00", x)
 #}
 
-test_that("test should handle alias", {
+test_that("aliases are handled", {
   x <- yaml.load("- &foo bar\n- *foo")
   expect_equal(c("bar", "bar"), x)
 })
 
-test_that("test should handle str type", {
+test_that("str type is converted", {
   x <- yaml.load("lickety split")
   expect_equal("lickety split", x)
 })
 
-test_that("test should handle a bad anchor", {
+test_that("bad anchors are handled", {
   x <- yaml.load("*blargh")
   expected <- "_yaml.bad-anchor_"
   class(expected) <- "_yaml.bad-anchor_"
   expect_equal(expected, x)
 })
 
-test_that("test should use custom null handler", {
+test_that("custom null handler is applied", {
   x <- yaml.load("~", handlers=list("null"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom binary handler", {
+test_that("custom binary handler is applied", {
   x <- yaml.load("!binary 0b101011", handlers=list("binary"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom bool yes handler", {
+test_that("custom bool yes handler is applied", {
   x <- yaml.load("yes", handlers=list("bool#yes"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom bool no handler", {
+test_that("custom bool no handler is applied", {
   x <- yaml.load("no", handlers=list("bool#no"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom int hex handler", {
+test_that("custom int hex handler is applied", {
   x <- yaml.load("0xF", handlers=list("int#hex"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom int oct handler", {
+test_that("custom int oct handler is applied", {
   x <- yaml.load("015", handlers=list("int#oct"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom int base60 handler", {
+test_that("custom int base60 handler is applied", {
   x <- yaml.load("1:20", handlers=list("int#base60"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom int handler", {
+test_that("custom int handler is applied", {
   x <- yaml.load("31337", handlers=list("int"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom float base60 handler", {
+test_that("custom float base60 handler is applied", {
   x <- yaml.load("1:20.5", handlers=list("float#base60"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom float nan handler", {
+test_that("custom float nan handler is applied", {
   x <- yaml.load(".NaN", handlers=list("float#nan"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom float inf handler", {
+test_that("custom float inf handler is applied", {
   x <- yaml.load(".inf", handlers=list("float#inf"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom float neginf handler", {
+test_that("custom float neginf handler is applied", {
   x <- yaml.load("-.inf", handlers=list("float#neginf"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom float handler", {
+test_that("custom float handler is applied", {
   x <- yaml.load("123.456", handlers=list("float#fix"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use custom timestamp iso8601 handler", {
+test_that("custom timestamp iso8601 handler is applied", {
   x <- yaml.load("2001-12-14t21:59:43.10-05:00", handlers=list("timestamp#iso8601"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
@@ -291,42 +291,42 @@ test_that("test should use custom timestamp iso8601 handler", {
 #  expect_equal("argh!", x)
 #}
 
-test_that("test should use custom timestamp ymd handler", {
+test_that("custom timestamp ymd handler is applied", {
   x <- yaml.load("2008-03-03", handlers=list("timestamp#ymd"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should NOT use custom merge handler", {
+test_that("custom merge handler is NOT applied", {
   x <- yaml.load("foo: &foo\n  bar: 123\n  baz: 456\n\njunk:\n  <<: *foo\n  bah: 789", handlers=list("merge"=function(x) { "argh!" }))
   expect_equal(list(foo=list(bar=123, baz=456), junk=list(bar=123, baz=456, bah=789)), x)
 })
 
-test_that("test should use custom str handler", {
+test_that("custom str handler is applied", {
   x <- yaml.load("lickety split", handlers=list("str"=function(x) { "argh!" }))
   expect_equal("argh!", x)
 })
 
-test_that("test should use handler for weird type", {
+test_that("handler for unknown type is applied", {
   x <- yaml.load("!viking pillage", handlers=list(viking=function(x) { paste(x, "the village") }))
   expect_equal("pillage the village", x)
 })
 
-test_that("test should use custom seq handler", {
+test_that("custom seq handler is applied", {
   x <- yaml.load("- 1\n- 2\n- 3", handlers=list(seq=function(x) { as.integer(x) + 3L }))
   expect_equal(4:6, x)
 })
 
-test_that("test should use custom map handler", {
+test_that("custom map handler is applied", {
   x <- yaml.load("foo: bar", handlers=list(map=function(x) { x$foo <- paste(x$foo, "yarr"); x }))
   expect_equal("bar yarr", x$foo)
 })
 
-test_that("test should use custom typed seq handler", {
+test_that("custom typed seq handler is applied", {
   x <- yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1L }))
   expect_equal(2:3, x)
 })
 
-test_that("test should use custom typed map handler", {
+test_that("custom typed map handler is applied", {
   x <- yaml.load("!foo\nuno: 1\ndos: 2", handlers=list(foo=function(x) { x$uno <- "uno"; x$dos <- "dos"; x }))
   expect_equal(list(uno="uno", dos="dos"), x)
 })
@@ -337,14 +337,14 @@ test_that("test should use custom typed map handler", {
 #  str(x)
 #}
 
-test_that("test should load empty documents", {
+test_that("empty documents are loaded", {
   x <- yaml.load("")
   expect_equal(NULL, x)
   x <- yaml.load("# this document only has\n   # wickedly awesome comments")
   expect_equal(NULL, x)
 })
 
-test_that("test should load omap", {
+test_that("omaps are loaded", {
   x <- yaml.load("--- !omap\n- foo:\n  - 1\n  - 2\n- bar:\n  - 3\n  - 4")
   expect_equal(2L, length(x))
   expect_equal(c("foo", "bar"), names(x))
@@ -352,7 +352,7 @@ test_that("test should load omap", {
   expect_equal(3:4, x$bar)
 })
 
-test_that("test should load omap without named", {
+test_that("omaps are loaded when named = FALSE", {
   x <- yaml.load("--- !omap\n- 123:\n  - 1\n  - 2\n- bar:\n  - 3\n  - 4", FALSE)
   expect_equal(2L, length(x))
   expect_equal(list(123L, "bar"), attr(x, "keys"))
@@ -360,17 +360,17 @@ test_that("test should load omap without named", {
   expect_equal(3:4, x[[2]])
 })
 
-test_that("test should error when named omap has duplicate key", {
+test_that("named opam with duplicate key causes error", {
   expect_that(yaml.load("--- !omap\n- foo:\n  - 1\n  - 2\n- foo:\n  - 3\n  - 4"),
     throws_error())
 })
 
-test_that("test should error when unnamed omap has duplicate key", {
+test_that("unnamed omap with duplicate key causes error", {
   expect_that(yaml.load("--- !omap\n- foo:\n  - 1\n  - 2\n- foo:\n  - 3\n  - 4", FALSE),
     throws_error())
 })
 
-test_that("test should error when omap is invalid", {
+test_that("invalid omap causes error", {
   expect_that(yaml.load("--- !omap\nhey!"),
     throws_error())
 
@@ -378,13 +378,13 @@ test_that("test should error when omap is invalid", {
     throws_error())
 })
 
-test_that("test should convert expressions", {
+test_that("expressions are converted", {
   x <- yaml.load("!expr |\n  function() \n  {\n    'hey!'\n  }")
   expect_equal("function", class(x))
   expect_equal("hey!", x())
 })
 
-test_that("test should error for bad expressions", {
+test_that("invalid expressions cause error", {
   expect_that(yaml.load("!expr |\n  1+"),
     throws_error())
 })
@@ -395,26 +395,29 @@ test_that("test should error for bad expressions", {
 #  assert(inherits(x, "try-error"))
 #}
 
-test_that("test maps should be ordered", {
+test_that("maps are in ordered", {
   x <- yaml.load("{a: 1, b: 2, c: 3}")
   expect_equal(c('a', 'b', 'c'), names(x))
 })
 
-test_that("test handles recursive illegal anchor", {
+test_that("illegal recursive anchor is handled", {
   x <- yaml.load('&foo {foo: *foo}')
+  expected <- "_yaml.bad-anchor_"
+  class(expected) <- "_yaml.bad-anchor_"
+  expect_equal(expected, x$foo)
 })
 
-test_that("test sets named properly for aliases", {
+test_that("dereferenced aliases have unshared names", {
   x <- yaml.load('{foo: &foo {one: 1, two: 2}, bar: *foo}')
   x$foo$one <- 'uno'
   expect_equal(1L, x$bar$one)
 })
 
-test_that("test anchor issue", {
+test_that("multiple anchors are handled", {
   x <- yaml.load('{foo: &foo {one: 1}, bar: &bar {one: 1}, baz: *foo, quux: *bar}')
 })
 
-test_that("test should not convert quoted string", {
+test_that("quoted strings are preserved", {
   x <- yaml.load("'12345'")
   expect_equal("12345", x)
 })

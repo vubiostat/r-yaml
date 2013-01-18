@@ -5,7 +5,8 @@
   Convert an R object into a YAML string
 }
 \usage{
-  as.yaml(x, line.sep = c("\n", "\r\n", "\r"), indent = 2, omap = FALSE, column.major = TRUE, unicode = TRUE)
+  as.yaml(x, line.sep = c("\n", "\r\n", "\r"), indent = 2, omap = FALSE,
+          column.major = TRUE, unicode = TRUE)
 }
 \arguments{
   \item{x}{ the object to be converted }

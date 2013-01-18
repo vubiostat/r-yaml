@@ -94,7 +94,7 @@ tarball: yaml_$(VERSION).tar.gz
 
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
-	R CMD check --as-cran -o `mktemp -d` $@
+	check_dir=`mktemp -d`; echo Check directory: $$check_dir; R CMD check --as-cran -o "$$check_dir" $@
 
 build/DESCRIPTION: pkg/DESCRIPTION.brew VERSION
 	mkdir -p $(dir $@)

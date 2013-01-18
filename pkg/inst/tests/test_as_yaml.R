@@ -144,3 +144,7 @@ test_that("unicode strings are escaped", {
   result <- as.yaml(x, unicode = FALSE)
   expect_equal("\"\\xE9\"\n", result, expected.label = result)
 })
+
+test_that("unknown objects cause error", {
+  expect_that(as.yaml(expression(foo <- bar)), throws_error())
+})

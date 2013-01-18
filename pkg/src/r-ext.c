@@ -1542,7 +1542,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
   int omap;
   int column_major;
 {
-  SEXP chr, names, thing;
+  SEXP chr, names, thing, type, class;
   yaml_scalar_style_t scalar_style;
   int implicit_tag, rows, cols, i, j;
 
@@ -1721,7 +1721,14 @@ emit_object(emitter, event, obj, tag, omap, column_major)
       break;
 
     default:
-      warning("don't know how to emit object of type: %d, class: %s\n", TYPEOF(obj), CHAR(STRING_ELT(R_data_class(obj, FALSE), 0)));
+      type = type2str(TYPEOF(obj));
+      class = GET_CLASS(obj);
+      if (TYPEOF(class) != STRSXP || LENGTH(class) == 0) {
+        warning("don't know how to emit object of type: '%s'\n", CHAR(type));
+      }
+      else {
+        warning("don't know how to emit object of type: '%s', class: %s\n", CHAR(type), R_inspect(class));
+      }
       return 0;
   }
 

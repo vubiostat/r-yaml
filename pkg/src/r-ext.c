@@ -1,5 +1,7 @@
 #include "r-ext.h"
 
+static SEXP R_yoink(SEXP vec, int index);
+
 /* Compare two R objects (with the R identical function).
  * Returns 0 or 1 */
 static int
@@ -181,17 +183,40 @@ R_inspect(obj)
   return CHAR(STRING_ELT(result, 0));
 }
 
-/* Format a real with nsmall = 1 */
+/* Format a vector of reals for emitting. Handle special numbers
+ * seperately (NaN, Inf, -Inf, NA) */
 static SEXP
 R_format_real(obj)
   SEXP obj;
 {
-  SEXP call, pcall, retval;
+  SEXP call, pcall, retval, elt, f_elt;
+  int i, finite;
+  double d;
 
+  /* Do an initial check for special numbers. If there are none, just pass
+   * in the whole R vector to format instead of passing in each element
+   * individually. */
+  finite = 1;
+  for (i = 0; i < length(obj); i++) {
+    if (!R_FINITE(REAL(obj)[i])) {
+      finite = 0;
+      break;
+    }
+  }
+
+  /* setup the R call */
   PROTECT(call = pcall = allocList(4));
   SET_TYPEOF(call, LANGSXP);
   SETCAR(pcall, R_FormatFunc); pcall = CDR(pcall);
-  SETCAR(pcall, obj);          pcall = CDR(pcall);
+
+  if (finite) {
+    SETCAR(pcall, obj);
+  }
+  else {
+    /* use null as a placeholder */
+    SETCAR(pcall, R_NilValue);
+  }
+  pcall = CDR(pcall);
 
   /* set nsmall = 1 */
   SETCAR(pcall, PROTECT(allocVector(INTSXP, 1)));
@@ -204,8 +229,102 @@ R_format_real(obj)
   LOGICAL(CAR(pcall))[0] = 1;
   SET_TAG(pcall, R_TrimSymbol);
 
-  retval = eval(call, R_GlobalEnv);
+  if (finite) {
+    retval = eval(call, R_GlobalEnv);
+  }
+  else {
+    /* iterate over vector, calling format() on each element
+     * unless it's a special value */
+    PROTECT(retval = allocVector(STRSXP, length(obj)));
+    for (i = 0; i < length(obj); i++) {
+      d = REAL(obj)[i];
+      if (d == R_PosInf) {
+        SET_STRING_ELT(retval, i, mkChar(".inf"));
+      }
+      else if (d == R_NegInf) {
+        SET_STRING_ELT(retval, i, mkChar("-.inf"));
+      }
+      else if (R_IsNA(d)) {
+        SET_STRING_ELT(retval, i, mkChar(".na.real"));
+      }
+      else if (R_IsNaN(d)) {
+        SET_STRING_ELT(retval, i, mkChar(".nan"));
+      }
+      else {
+        PROTECT(elt = R_yoink(obj, i));
+        SETCADR(call, elt);
+        f_elt = eval(call, R_GlobalEnv);
+        SET_STRING_ELT(retval, i, STRING_ELT(f_elt, 0));
+        UNPROTECT(1);
+      }
+    }
+    UNPROTECT(1);
+  }
+
   UNPROTECT(3);
+  return retval;
+}
+
+/* Format a vector of ints for emitting. Handle NAs. */
+static SEXP
+R_format_int(obj)
+  SEXP obj;
+{
+  SEXP retval;
+  int i;
+
+  PROTECT(retval = coerceVector(obj, STRSXP));
+  for (i = 0; i < length(obj); i++) {
+    if (INTEGER(obj)[i] == NA_INTEGER) {
+      SET_STRING_ELT(retval, i, mkChar(".na.integer"));
+    }
+  }
+  UNPROTECT(1);
+
+  return retval;
+}
+
+/* Format a vector of logicals for emitting. Handle NAs. */
+static SEXP
+R_format_logical(obj)
+  SEXP obj;
+{
+  SEXP retval;
+  int i, val;
+
+  PROTECT(retval = allocVector(STRSXP, length(obj)));
+  for (i = 0; i < length(obj); i++) {
+    val = LOGICAL(obj)[i];
+    if (val == NA_LOGICAL) {
+      SET_STRING_ELT(retval, i, mkChar(".na"));
+    }
+    else if (val == 0) {
+      SET_STRING_ELT(retval, i, mkChar("n"));
+    }
+    else {
+      SET_STRING_ELT(retval, i, mkChar("y"));
+    }
+  }
+  UNPROTECT(1);
+
+  return retval;
+}
+
+/* Format a vector of strings for emitting. Handle NAs. */
+static SEXP
+R_format_string(obj)
+  SEXP obj;
+{
+  SEXP retval;
+  int i;
+
+  PROTECT(retval = duplicate(obj));
+  for (i = 0; i < length(obj); i++) {
+    if (STRING_ELT(obj, i) == NA_STRING) {
+      SET_STRING_ELT(retval, i, mkChar(".na.character"));
+    }
+  }
+  UNPROTECT(1);
 
   return retval;
 }
@@ -261,9 +380,13 @@ R_string_style(obj)
   const char *chr = CHAR(obj);
   int len = length(obj), j;
 
-  /* If this element has an implicit tag, it needs to be quoted */
   tag = find_implicit_tag((yaml_char_t *) chr, len);
+  if (strcmp((char *) tag, "str#na") == 0) {
+    return YAML_ANY_SCALAR_STYLE;
+  }
+
   if (strcmp((char *) tag, "str") != 0) {
+    /* If this element has an implicit tag, it needs to be quoted */
     return YAML_SINGLE_QUOTED_SCALAR_STYLE;
   }
 
@@ -276,7 +399,7 @@ R_string_style(obj)
   return YAML_ANY_SCALAR_STYLE;
 }
 
-/* Take an atomic vector and return another vector of size 1 */
+/* Take a vector and an index and return another vector of size 1 */
 static SEXP
 R_yoink(vec, index)
   SEXP vec;
@@ -559,6 +682,15 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           break;
       }
     }
+    else if (strcmp((char *)tag, "int#na") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_INTEGER(1));
+        INTEGER(new_obj)[0] = NA_INTEGER;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
     else if (strcmp((char *)tag, "int") == 0 || strncmp((char *)tag, "int#", 4) == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         base = -1;
@@ -626,6 +758,15 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = 0;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp((char *)tag, "bool#na") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_LOGICAL(1));
+        LOGICAL(new_obj)[0] = NA_LOGICAL;
       }
       else {
         coercionError = 1;
@@ -708,6 +849,15 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
+    else if (strcmp((char *)tag, "float#na") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_NUMERIC(1));
+        REAL(new_obj)[0] = NA_REAL;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
     else if (strcmp((char *)tag, "float#nan") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
@@ -730,6 +880,15 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_NegInf;
+      }
+      else {
+        coercionError = 1;
+      }
+    }
+    else if (strcmp((char *)tag, "str#na") == 0) {
+      if (event_type == YAML_SCALAR_EVENT) {
+        PROTECT(new_obj = NEW_STRING(1));
+        SET_STRING_ELT(new_obj, 0, NA_STRING);
       }
       else {
         coercionError = 1;
@@ -1571,11 +1730,12 @@ emit_object(emitter, event, obj, tag, omap, column_major)
       obj = R_deparse_function(obj);
       scalar_style = YAML_LITERAL_SCALAR_STYLE;
 
+    /* atomic vector types */
     case LGLSXP:
     case REALSXP:
     case INTSXP:
     case STRSXP:
-      /* FIXME: add complex and raw, use 'yes' and 'no' for LGLSXP */
+      /* FIXME: add complex and raw */
       if (length(obj) != 1) {
         yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
         if (!yaml_emitter_emit(emitter, event))
@@ -1589,6 +1749,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
         }
         else if (TYPEOF(obj) == STRSXP) {
           /* Might need to add quotes */
+          obj = R_format_string(obj);
           for (i = 0; i < length(obj); i++) {
             chr = STRING_ELT(obj, i);
             if (!emit_char(emitter, event, chr, tag, implicit_tag, R_string_style(chr)))
@@ -1596,11 +1757,18 @@ emit_object(emitter, event, obj, tag, omap, column_major)
           }
         }
         else {
-          if (TYPEOF(obj) == REALSXP) {
-            obj = R_format_real(obj);
-          }
-          else {
-            obj = coerceVector(obj, STRSXP);
+          switch(TYPEOF(obj)) {
+            case REALSXP:
+              obj = R_format_real(obj);
+              break;
+
+            case INTSXP:
+              obj = R_format_int(obj);
+              break;
+
+            case LGLSXP:
+              obj = R_format_logical(obj);
+              break;
           }
 
           for (i = 0; i < length(obj); i++) {
@@ -1812,7 +1980,6 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode)
   output.size = output.capa = 0;
   yaml_emitter_set_output(&emitter, as_yaml_write_handler, &output);
 
-  /* FIXME: get the encoding from R */
   yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
   if (!(status = yaml_emitter_emit(&emitter, &event)))
     goto done;

@@ -43,8 +43,12 @@ FLOATINF = [+]? "." INF ;
 FLOATNEGINF = [-] "." INF ;
 FLOATNAN = "." ( "nan" | "NaN" | "NAN" ) ;
 NULLTYPE = ( "~" | "null" | "Null" | "NULL" )? ;
-BOOLYES = ( "yes" | "Yes" | "YES" | "true" | "True" | "TRUE" | "on" | "On" | "ON" ) ;
-BOOLNO = ( "no" | "No" | "NO" | "false" | "False" | "FALSE" | "off" | "Off" | "OFF" ) ;
+BOOLYES = ( "y" | "Y" | "yes" | "Yes" | "YES" | "true" | "True" | "TRUE" | "on" | "On" | "ON" ) ;
+BOOLNO = ( "n" | "N" | "no" | "No" | "NO" | "false" | "False" | "FALSE" | "off" | "Off" | "OFF" ) ;
+INTNA = ".na.integer" ;
+FLOATNA = ".na.real" ;
+STRNA = ".na.character" ;
+BOOLNA = ".na" ;
 TIMEZ = ( "Z" | [-+] DIGIT DIGIT ( ":" DIGIT DIGIT )? ) ;
 TIMEYMD = YEAR "-" MON "-" MON ;
 TIMEISO = YEAR "-" MON "-" MON [Tt] MON ":" MON ":" MON ( "." DIGIT* )? TIMEZ ;
@@ -59,11 +63,15 @@ BOOLYES NULL        {   return (yaml_char_t *)"bool#yes"; }
 
 BOOLNO NULL         {   return (yaml_char_t *)"bool#no"; }
 
+BOOLNA NULL         {   return (yaml_char_t *)"bool#na"; }
+
 INTHEX NULL         {   return (yaml_char_t *)"int#hex"; }
 
 INTOCT NULL         {   return (yaml_char_t *)"int#oct"; }
 
 INTSIXTY NULL       {   return (yaml_char_t *)"int#base60"; }
+
+INTNA NULL          {   return (yaml_char_t *)"int#na"; }
 
 INTCANON NULL       {   return (yaml_char_t *)"int"; }
 
@@ -79,6 +87,8 @@ FLOATNEGINF NULL    {   return (yaml_char_t *)"float#neginf"; }
 
 FLOATNAN NULL       {   return (yaml_char_t *)"float#nan"; }
 
+FLOATNA NULL        {   return (yaml_char_t *)"float#na"; }
+
 TIMEYMD NULL        {   return (yaml_char_t *)"timestamp#ymd"; }
 
 TIMEISO NULL        {   return (yaml_char_t *)"timestamp#iso8601"; }
@@ -86,6 +96,8 @@ TIMEISO NULL        {   return (yaml_char_t *)"timestamp#iso8601"; }
 TIMESPACED NULL     {   return (yaml_char_t *)"timestamp#spaced"; }
 
 TIMECANON NULL      {   return (yaml_char_t *)"timestamp"; }
+
+STRNA NULL          {   return (yaml_char_t *)"str#na"; }
 
 DEFAULTKEY NULL     {   return (yaml_char_t *)"default"; }
 

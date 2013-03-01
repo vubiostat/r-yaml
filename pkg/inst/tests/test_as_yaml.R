@@ -148,3 +148,48 @@ test_that("unicode strings are escaped", {
 test_that("unknown objects cause error", {
   expect_that(as.yaml(expression(foo <- bar)), throws_error())
 })
+
+test_that("Inf is emitted properly", {
+  result <- as.yaml(Inf)
+  expect_equal(".inf\n...\n", result, expected.label = result)
+})
+
+test_that("-Inf is emitted properly", {
+  result <- as.yaml(-Inf)
+  expect_equal("-.inf\n...\n", result, expected.label = result)
+})
+
+test_that("NaN is emitted properly", {
+  result <- as.yaml(NaN)
+  expect_equal(".nan\n...\n", result, expected.label = result)
+})
+
+test_that("NA (logical) is emitted properly", {
+  result <- as.yaml(NA)
+  expect_equal(".na\n...\n", result, expected.label = result)
+})
+
+test_that("NA (numeric) is emitted properly", {
+  result <- as.yaml(NA_real_)
+  expect_equal(".na.real\n...\n", result, expected.label = result)
+})
+
+test_that("NA (integer) is emitted properly", {
+  result <- as.yaml(NA_integer_)
+  expect_equal(".na.integer\n...\n", result, expected.label = result)
+})
+
+test_that("NA (string) is emitted properly", {
+  result <- as.yaml(NA_character_)
+  expect_equal(".na.character\n...\n", result, expected.label = result)
+})
+
+test_that("TRUE is emitted properly", {
+  result <- as.yaml(TRUE)
+  expect_equal("y\n...\n", result, expected.label = result)
+})
+
+test_that("FALSE is emitted properly", {
+  result <- as.yaml(FALSE)
+  expect_equal("n\n...\n", result, expected.label = result)
+})

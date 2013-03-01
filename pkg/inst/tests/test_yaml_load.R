@@ -421,3 +421,73 @@ test_that("quoted strings are preserved", {
   x <- yaml.load("'12345'")
   expect_equal("12345", x)
 })
+
+test_that("Inf is loaded properly", {
+  result <- yaml.load(".inf\n...\n")
+  expect_equal(Inf, result, expected.label = result)
+})
+
+test_that("-Inf is loaded properly", {
+  result <- yaml.load("-.inf\n...\n")
+  expect_equal(-Inf, result, expected.label = result)
+})
+
+test_that("NaN is loaded properly", {
+  result <- yaml.load(".nan\n...\n")
+  expect_equal(NaN, result, expected.label = result)
+})
+
+test_that("NA (logical) is loaded properly", {
+  result <- yaml.load(".na\n...\n")
+  expect_equal(NA, result, expected.label = result)
+})
+
+test_that("NA (numeric) is loaded properly", {
+  result <- yaml.load(".na.real\n...\n")
+  expect_equal(NA_real_, result, expected.label = result)
+})
+
+test_that("NA (integer) is loaded properly", {
+  result <- yaml.load(".na.integer\n...\n")
+  expect_equal(NA_integer_, result, expected.label = result)
+})
+
+test_that("NA (string) is loaded properly", {
+  result <- yaml.load(".na.character\n...\n")
+  expect_equal(NA_character_, result, expected.label = result)
+})
+
+test_that("TRUE is loaded properly", {
+  result <- yaml.load("y\n...\n")
+  expect_equal(TRUE, result, expected.label = result)
+})
+
+test_that("FALSE is loaded properly", {
+  result <- yaml.load("n\n...\n")
+  expect_equal(FALSE, result, expected.label = result)
+})
+
+test_that("numeric sequence with NAs loads properly", {
+  result <- yaml.load("[1.2, 3.4, .na.real]")
+  expect_equal(c(1.2, 3.4, NA), result, expected.label = result)
+})
+
+test_that("integer sequence with NAs loads properly", {
+  result <- yaml.load("[1, 2, .na.integer]")
+  expect_equal(c(1, 2, NA), result, expected.label = result)
+})
+
+test_that("string sequence with NAs loads properly", {
+  result <- yaml.load("[foo, bar, .na.character]")
+  expect_equal(c("foo", "bar", NA), result, expected.label = result)
+})
+
+test_that("logical sequence with NAs loads properly", {
+  result <- yaml.load("[y, n, .na]")
+  expect_equal(c(TRUE, FALSE, NA), result, expected.label = result)
+})
+
+test_that("numeric sequence with NaNs loads properly", {
+  result <- yaml.load("[1.2, 3.4, .nan]")
+  expect_equal(c(1.2, 3.4, NaN), result, expected.label = result)
+})

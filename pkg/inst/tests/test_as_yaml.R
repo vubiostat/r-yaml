@@ -186,10 +186,10 @@ test_that("NA (string) is emitted properly", {
 
 test_that("TRUE is emitted properly", {
   result <- as.yaml(TRUE)
-  expect_equal("y\n...\n", result, expected.label = result)
+  expect_equal("yes\n...\n", result, expected.label = result)
 })
 
 test_that("FALSE is emitted properly", {
   result <- as.yaml(FALSE)
-  expect_equal("n\n...\n", result, expected.label = result)
+  expect_equal("no\n...\n", result, expected.label = result)
 })

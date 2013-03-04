@@ -457,12 +457,12 @@ test_that("NA (string) is loaded properly", {
   expect_equal(NA_character_, result, expected.label = result)
 })
 
-test_that("TRUE is loaded properly", {
+test_that("TRUE is loaded properly from 'y'", {
   result <- yaml.load("y\n...\n")
   expect_equal(TRUE, result, expected.label = result)
 })
 
-test_that("FALSE is loaded properly", {
+test_that("FALSE is loaded properly from 'n'", {
   result <- yaml.load("n\n...\n")
   expect_equal(FALSE, result, expected.label = result)
 })

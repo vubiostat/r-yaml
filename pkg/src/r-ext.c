@@ -299,10 +299,10 @@ R_format_logical(obj)
       SET_STRING_ELT(retval, i, mkChar(".na"));
     }
     else if (val == 0) {
-      SET_STRING_ELT(retval, i, mkChar("n"));
+      SET_STRING_ELT(retval, i, mkChar("no"));
     }
     else {
-      SET_STRING_ELT(retval, i, mkChar("y"));
+      SET_STRING_ELT(retval, i, mkChar("yes"));
     }
   }
   UNPROTECT(1);
@@ -410,7 +410,7 @@ R_yoink(vec, index)
 
   type = TYPEOF(vec);
   factor = type == INTSXP && R_has_class(vec, "factor");
-  tmp = allocVector(factor ? STRSXP : type, 1);
+  PROTECT(tmp = allocVector(factor ? STRSXP : type, 1));
 
   switch(type) {
     case LGLSXP:
@@ -437,6 +437,7 @@ R_yoink(vec, index)
       RAW(tmp)[0] = RAW(vec)[index];
       break;
   }
+  UNPROTECT(1);
 
   return tmp;
 }
@@ -1701,9 +1702,9 @@ emit_object(emitter, event, obj, tag, omap, column_major)
   int omap;
   int column_major;
 {
-  SEXP chr, names, thing, type, class;
+  SEXP chr, names, thing, type, class, tmp;
   yaml_scalar_style_t scalar_style;
-  int implicit_tag, rows, cols, i, j;
+  int implicit_tag, rows, cols, i, j, result;
 
   /*Rprintf("=== Emitting ===\n");*/
   /*PrintValue(obj);*/
@@ -1749,12 +1750,21 @@ emit_object(emitter, event, obj, tag, omap, column_major)
         }
         else if (TYPEOF(obj) == STRSXP) {
           /* Might need to add quotes */
-          obj = R_format_string(obj);
+          PROTECT(obj = R_format_string(obj));
+
+          result = 0;
           for (i = 0; i < length(obj); i++) {
             chr = STRING_ELT(obj, i);
-            if (!emit_char(emitter, event, chr, tag, implicit_tag, R_string_style(chr)))
-              return 0;
+            result = emit_char(emitter, event, chr, tag, implicit_tag,
+                R_string_style(chr));
+
+            if (!result)
+              break;
           }
+          UNPROTECT(1);
+
+          if (!result)
+            return 0;
         }
         else {
           switch(TYPEOF(obj)) {
@@ -1769,13 +1779,26 @@ emit_object(emitter, event, obj, tag, omap, column_major)
             case LGLSXP:
               obj = R_format_logical(obj);
               break;
-          }
 
-          for (i = 0; i < length(obj); i++) {
-            chr = STRING_ELT(obj, i);
-            if (!emit_char(emitter, event, chr, tag, implicit_tag, YAML_ANY_SCALAR_STYLE))
+            default:
+              /* If you get here, you made a mistake. */
               return 0;
           }
+          PROTECT(obj);
+
+          result = 0;
+          for (i = 0; i < length(obj); i++) {
+            chr = STRING_ELT(obj, i);
+            result = emit_char(emitter, event, chr, tag, implicit_tag,
+                YAML_ANY_SCALAR_STYLE);
+
+            if (!result)
+              break;
+          }
+          UNPROTECT(1);
+
+          if (!result)
+            return 0;
         }
       }
 
@@ -1810,7 +1833,11 @@ emit_object(emitter, event, obj, tag, omap, column_major)
 
             /* Need to create a vector of size one, then emit it */
             thing = VECTOR_ELT(obj, j);
-            if (!emit_object(emitter, event, R_yoink(thing, i), NULL, omap, column_major))
+            PROTECT(tmp = R_yoink(thing, i));
+            result = emit_object(emitter, event, tmp, NULL, omap, column_major);
+            UNPROTECT(1);
+
+            if (!result)
               return 0;
           }
 
@@ -1889,7 +1916,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
       break;
 
     default:
-      type = type2str(TYPEOF(obj));
+      PROTECT(type = type2str(TYPEOF(obj)));
       class = GET_CLASS(obj);
       if (TYPEOF(class) != STRSXP || LENGTH(class) == 0) {
         warning("don't know how to emit object of type: '%s'\n", CHAR(type));
@@ -1897,6 +1924,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
       else {
         warning("don't know how to emit object of type: '%s', class: %s\n", CHAR(type), R_inspect(class));
       }
+      UNPROTECT(1);
       return 0;
   }
 

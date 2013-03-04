@@ -1,6 +1,10 @@
 v2.1.7
   - properly emit and consume special values: Inf, -Inf, NaN, NA, TRUE,
     and FALSE (bug submitted by Richard Cotton)
+    - Inf is emitted as '.inf'
+    - -Inf as '-.inf'
+    - NaN as '.nan'
+    - TRUE is now emitted as 'yes', and FALSE as 'no'
   - because the YAML specification does not specify how to handle NA values,
     the various NA types are emitted as follows:
     - NA: .na

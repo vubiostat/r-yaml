@@ -8,8 +8,12 @@
 #include "R_ext/Rdynload.h"
 #include "R_ext/Parse.h"
 #include "R_ext/Print.h"
+#include "R_ext/PrtUtil.h"
 #include "yaml.h"
 #include "yaml_private.h"
+
+#define REAL_BUF_SIZE 256
+#define FORMAT_BUF_SIZE 128
 
 static SEXP R_KeysSymbol = NULL;
 static SEXP R_IdenticalFunc = NULL;

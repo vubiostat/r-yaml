@@ -1,3 +1,9 @@
+v2.1.8
+  - properly emit and consume numeric values in scientific
+    notiation (bug submitted by Gergely Daróczi)
+  - add 'precision' argument to as.yaml to control how many digits
+    are printed when emitting
+
 v2.1.7
   - properly emit and consume special values: Inf, -Inf, NaN, NA, TRUE,
     and FALSE (bug submitted by Richard Cotton)

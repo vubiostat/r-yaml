@@ -183,85 +183,67 @@ R_inspect(obj)
   return CHAR(STRING_ELT(result, 0));
 }
 
-/* Format a vector of reals for emitting. Handle special numbers
- * seperately (NaN, Inf, -Inf, NA) */
+/* Format a vector of reals for emitting */
 static SEXP
-R_format_real(obj)
+R_format_real(obj, precision)
   SEXP obj;
+  int precision;
 {
-  SEXP call, pcall, retval, elt, f_elt;
-  int i, finite;
-  double d;
+  SEXP retval;
+  int i, j, k, n, suffix_len;
+  double x, e;
+  char str[REAL_BUF_SIZE], format[5] = "%.*f", *strp;
 
-  /* Do an initial check for special numbers. If there are none, just pass
-   * in the whole R vector to format instead of passing in each element
-   * individually. */
-  finite = 1;
+  PROTECT(retval = allocVector(STRSXP, length(obj)));
   for (i = 0; i < length(obj); i++) {
-    if (!R_FINITE(REAL(obj)[i])) {
-      finite = 0;
-      break;
+    x = REAL(obj)[i];
+    if (x == R_PosInf) {
+      SET_STRING_ELT(retval, i, mkChar(".inf"));
+    }
+    else if (x == R_NegInf) {
+      SET_STRING_ELT(retval, i, mkChar("-.inf"));
+    }
+    else if (R_IsNA(x)) {
+      SET_STRING_ELT(retval, i, mkChar(".na.real"));
+    }
+    else if (R_IsNaN(x)) {
+      SET_STRING_ELT(retval, i, mkChar(".nan"));
+    }
+    else {
+      e = log10(x);
+      if (e < -4 || e >= precision) {
+        format[3] = 'e';
+      }
+      n = snprintf(str, REAL_BUF_SIZE, format, precision, x);
+      if (n >= REAL_BUF_SIZE) {
+        warning("string representation of numeric was truncated because it was more than %d characters", REAL_BUF_SIZE);
+        n = REAL_BUF_SIZE;
+      }
+
+      /* remove trailing zeros */
+      strp = str + n; /* end of the string */
+      j = n - 1;
+      if (format[3] == 'e') {
+        /* find 'e' first */
+        strp = strrchr(str, 'e');
+        j = strp - str - 1;
+      }
+      suffix_len = n - j;
+
+      for (k = 0; j >= 0; j--, k++) {
+        if (str[j] != '0' || str[j-1] == '.') {
+          break;
+        }
+      }
+
+      if (k > 0) {
+        memcpy(str + j + 1, strp, suffix_len);
+      }
+
+      SET_STRING_ELT(retval, i, mkChar(str));
     }
   }
-
-  /* setup the R call */
-  PROTECT(call = pcall = allocList(4));
-  SET_TYPEOF(call, LANGSXP);
-  SETCAR(pcall, R_FormatFunc); pcall = CDR(pcall);
-
-  if (finite) {
-    SETCAR(pcall, obj);
-  }
-  else {
-    /* use null as a placeholder */
-    SETCAR(pcall, R_NilValue);
-  }
-  pcall = CDR(pcall);
-
-  /* set nsmall = 1 */
-  SETCAR(pcall, PROTECT(allocVector(INTSXP, 1)));
-  INTEGER(CAR(pcall))[0] = 1;
-  SET_TAG(pcall, R_NSmallSymbol);
-  pcall = CDR(pcall);
-
-  /* set trim = TRUE */
-  SETCAR(pcall, PROTECT(allocVector(LGLSXP, 1)));
-  LOGICAL(CAR(pcall))[0] = 1;
-  SET_TAG(pcall, R_TrimSymbol);
-
-  if (finite) {
-    retval = eval(call, R_GlobalEnv);
-  }
-  else {
-    /* iterate over vector, calling format() on each element
-     * unless it's a special value */
-    PROTECT(retval = allocVector(STRSXP, length(obj)));
-    for (i = 0; i < length(obj); i++) {
-      d = REAL(obj)[i];
-      if (d == R_PosInf) {
-        SET_STRING_ELT(retval, i, mkChar(".inf"));
-      }
-      else if (d == R_NegInf) {
-        SET_STRING_ELT(retval, i, mkChar("-.inf"));
-      }
-      else if (R_IsNA(d)) {
-        SET_STRING_ELT(retval, i, mkChar(".na.real"));
-      }
-      else if (R_IsNaN(d)) {
-        SET_STRING_ELT(retval, i, mkChar(".nan"));
-      }
-      else {
-        PROTECT(elt = R_yoink(obj, i));
-        SETCADR(call, elt);
-        f_elt = eval(call, R_GlobalEnv);
-        SET_STRING_ELT(retval, i, STRING_ELT(f_elt, 0));
-        UNPROTECT(1);
-      }
-    }
-    UNPROTECT(1);
-  }
-
-  UNPROTECT(3);
+  UNPROTECT(1);
   return retval;
 }
 
@@ -729,7 +711,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercionError = 1;
       }
     }
-    else if (strcmp((char *)tag, "float") == 0 || strcmp((char *)tag, "float#fix") == 0) {
+    else if (strcmp((char *)tag, "float") == 0 || strcmp((char *)tag, "float#fix") == 0 || strcmp((char *)tag, "float#exp") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         nptr = CHAR(STRING_ELT(obj, 0));
         f = strtod(nptr, &endptr);
@@ -1694,13 +1676,14 @@ emit_factor(emitter, event, obj)
 }
 
 static int
-emit_object(emitter, event, obj, tag, omap, column_major)
+emit_object(emitter, event, obj, tag, omap, column_major, precision)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP obj;
   yaml_char_t *tag;
   int omap;
   int column_major;
+  int precision;
 {
   SEXP chr, names, thing, type, class, tmp;
   yaml_scalar_style_t scalar_style;
@@ -1769,7 +1752,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
         else {
           switch(TYPEOF(obj)) {
             case REALSXP:
-              obj = R_format_real(obj);
+              obj = R_format_real(obj, precision);
               break;
 
             case INTSXP:
@@ -1834,7 +1817,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
             /* Need to create a vector of size one, then emit it */
             thing = VECTOR_ELT(obj, j);
             PROTECT(tmp = R_yoink(thing, i));
-            result = emit_object(emitter, event, tmp, NULL, omap, column_major);
+            result = emit_object(emitter, event, tmp, NULL, omap, column_major, precision);
             UNPROTECT(1);
 
             if (!result)
@@ -1879,7 +1862,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
           if (!emit_char(emitter, event, STRING_ELT(names, i), NULL, 1, YAML_ANY_SCALAR_STYLE))
             return 0;
 
-          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major))
+          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major, precision))
             return 0;
 
           if (omap) {
@@ -1906,7 +1889,7 @@ emit_object(emitter, event, obj, tag, omap, column_major)
           return 0;
 
         for (i = 0; i < length(obj); i++) {
-          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major))
+          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major, precision))
             return 0;
         }
         yaml_sequence_end_event_initialize(event);
@@ -1932,19 +1915,20 @@ emit_object(emitter, event, obj, tag, omap, column_major)
 }
 
 SEXP
-as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode)
+as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
   SEXP s_omap;
   SEXP s_column_major;
   SEXP s_unicode;
+  SEXP s_precision;
 {
   SEXP retval;
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
-  int status, line_sep, indent, omap, column_major, unicode;
+  int status, line_sep, indent, omap, column_major, unicode, precision;
   const char *c_line_sep;
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
@@ -1999,6 +1983,21 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode)
   }
   unicode = LOGICAL(s_unicode)[0];
 
+  if (isNumeric(s_precision) && length(s_precision) == 1) {
+    s_precision = coerceVector(s_precision, INTSXP);
+    precision = INTEGER(s_precision)[0];
+  }
+  else if (isInteger(s_precision) && length(s_precision) == 1) {
+    precision = INTEGER(s_precision)[0];
+  }
+  else {
+    error("argument `precision` must be a numeric or integer vector of length 1");
+    return R_NilValue;
+  }
+  if (precision < 1 || precision > 22) {
+    error("argument `precision` must be in the range 1..22");
+  }
+
   yaml_emitter_initialize(&emitter);
   yaml_emitter_set_unicode(&emitter, unicode);
   yaml_emitter_set_break(&emitter, line_sep);
@@ -2016,7 +2015,7 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode)
   if (!(status = yaml_emitter_emit(&emitter, &event)))
     goto done;
 
-  if (!(status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major)))
+  if (!(status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major, precision)))
     goto done;
 
   yaml_document_end_event_initialize(&event, 1);
@@ -2052,7 +2051,7 @@ done:
 
 R_CallMethodDef callMethods[] = {
   {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
-  {"as.yaml",   (DL_FUNC)&as_yaml,       6},
+  {"as.yaml",   (DL_FUNC)&as_yaml,       7},
   {NULL, NULL, 0}
 };
 

@@ -491,3 +491,7 @@ test_that("numeric sequence with NaNs loads properly", {
   result <- yaml.load("[1.2, 3.4, .nan]")
   expect_equal(c(1.2, 3.4, NaN), result, expected.label = result)
 })
+
+test_that("numeric represented in exponential form is loaded properly", {
+  expect_equal(1000000, yaml.load("1.0e+06"))
+});

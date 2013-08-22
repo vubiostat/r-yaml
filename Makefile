@@ -84,6 +84,9 @@ gct-check: $(BUILD_SRCS)
 test: compile check-changelog
 	cd build; echo "library(devtools); test('.')" | R --vanilla
 
+gdb-test: compile check-changelog
+	cd build; R -d gdb --vanilla -e "library(devtools); test('.')"
+
 valgrind-test: compile check-changelog
 	cd build/tests; cat *.R | R --vanilla -d "valgrind --leak-check=full"
 
@@ -116,4 +119,4 @@ build/%: pkg/%
 clean:
 	rm -fr yaml_*.tar.gz build
 
-.PHONY: all compile check gtc-check test clean valgrind-test check-changelog tarball
+.PHONY: all compile check gct-check test clean valgrind-test check-changelog tarball

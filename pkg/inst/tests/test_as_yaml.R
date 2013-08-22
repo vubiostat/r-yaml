@@ -69,7 +69,8 @@ test_that("omap is loaded", {
 })
 
 test_that("numeric is converted correctly", {
-  expect_equal(as.yaml(c(1, 5, 10, 15)), "- 1.0\n- 5.0\n- 10.0\n- 15.0\n")
+  result <- as.yaml(c(1, 5, 10, 15))
+  expect_equal(result, "- 1.0\n- 5.0\n- 10.0\n- 15.0\n", label = result)
 })
 
 test_that("multiline string is converted", {
@@ -192,4 +193,18 @@ test_that("TRUE is emitted properly", {
 test_that("FALSE is emitted properly", {
   result <- as.yaml(FALSE)
   expect_equal("no\n...\n", result, expected.label = result)
+})
+
+test_that("scientific notation is valid YAML", {
+  result <- as.yaml(10000000)
+  expect_equal("1.0e+07\n...\n", result, expected.label = result)
+})
+
+test_that("precision must be in the range 1..22", {
+  expect_that(as.yaml(12345, precision = -1),
+    throws_error())
+  expect_that(as.yaml(12345, precision = 0),
+    throws_error())
+  expect_that(as.yaml(12345, precision = 23),
+    throws_error())
 })

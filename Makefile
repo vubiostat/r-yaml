@@ -24,6 +24,7 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/inst/tests/files/test.yml \
 	pkg/DESCRIPTION.brew \
 	pkg/COPYING \
+	pkg/LICENSE \
 	pkg/R/yaml.load.R \
 	pkg/R/zzz.R \
 	pkg/R/yaml.load_file.R \
@@ -56,6 +57,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	     build/inst/tests/files/test.yml \
 	     build/DESCRIPTION \
 	     build/COPYING \
+	     build/LICENSE \
 	     build/R/yaml.load.R \
 	     build/R/zzz.R \
 	     build/R/yaml.load_file.R \
@@ -119,4 +121,4 @@ build/%: pkg/%
 clean:
 	rm -fr yaml_*.tar.gz build
 
-.PHONY: all compile check gct-check test clean valgrind-test check-changelog tarball
+.PHONY: all compile check gct-check test gdb-test clean valgrind-test check-changelog tarball

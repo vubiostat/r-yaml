@@ -88,12 +88,12 @@ test_that("function is converted", {
 })
 
 test_that("list with unnamed items is converted", {
-  x <- list(foo=list(list(x = 1L, y = 2L), list(x = 3L, y = 4L)))
+  x <- list(foo=list(list(a = 1L, b = 2L), list(a = 3L, b = 4L)))
   expected <- "foo:
-- x: 1
-  y: 2
-- x: 3
-  y: 4
+- a: 1
+  b: 2
+- a: 3
+  b: 4
 "
   result <- as.yaml(x)
   expect_equal(result, expected)
@@ -193,6 +193,16 @@ test_that("TRUE is emitted properly", {
 test_that("FALSE is emitted properly", {
   result <- as.yaml(FALSE)
   expect_equal("no\n...\n", result, expected.label = result)
+})
+
+test_that("named list keys are escaped properly", {
+  result <- as.yaml(list(n = 123))
+  expect_equal("'n': 123.0\n", result, expected.label = result)
+})
+
+test_that("data frame keys are escaped properly when row major", {
+  result <- as.yaml(data.frame(n=1:3), column.major = FALSE)
+  expect_equal("- 'n': 1\n- 'n': 2\n- 'n': 3\n", result, expected.label = result)
 })
 
 test_that("scientific notation is valid YAML", {

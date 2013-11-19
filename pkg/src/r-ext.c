@@ -1811,7 +1811,8 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
             return 0;
 
           for (j = 0; j < cols; j++) {
-            if (!emit_char(emitter, event, STRING_ELT(names, j), NULL, 1, YAML_ANY_SCALAR_STYLE))
+            chr = STRING_ELT(names, j);
+            if (!emit_char(emitter, event, chr, NULL, 1, R_string_style(chr)))
               return 0;
 
             /* Need to create a vector of size one, then emit it */
@@ -1859,7 +1860,8 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
               return 0;
           }
 
-          if (!emit_char(emitter, event, STRING_ELT(names, i), NULL, 1, YAML_ANY_SCALAR_STYLE))
+          chr = STRING_ELT(names, i);
+          if (!emit_char(emitter, event, chr, NULL, 1, R_string_style(chr)))
             return 0;
 
           if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major, precision))

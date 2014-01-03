@@ -237,7 +237,7 @@ R_format_real(obj, precision)
       }
 
       if (k > 0) {
-        memcpy(str + j + 1, strp, suffix_len);
+        memmove(str + j + 1, strp, suffix_len);
       }
 
       SET_STRING_ELT(retval, i, mkChar(str));
@@ -1617,7 +1617,7 @@ as_yaml_write_handler(data, buffer, size)
       return 0;
     }
   }
-  memcpy((void *)(output->buffer + output->size), (void *)buffer, size);
+  memmove((void *)(output->buffer + output->size), (void *)buffer, size);
   output->size += size;
 
   return 1;

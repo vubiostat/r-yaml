@@ -1,4 +1,6 @@
 v2.1.10
+  - properly escape names in data frames and lists (bug submitted
+    by Paul Hodor)
   - remove extra digit in Windows when formatting exponential numbers
 
 v2.1.9

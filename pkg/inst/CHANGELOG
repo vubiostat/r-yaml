@@ -1,3 +1,6 @@
+v2.1.10
+  - remove extra digit in Windows when formatting exponential numbers
+
 v2.1.9
   - CRAN maintainers changed memcpy to memmove
 

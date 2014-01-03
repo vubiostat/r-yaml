@@ -217,27 +217,43 @@ R_format_real(obj, precision)
       n = snprintf(str, REAL_BUF_SIZE, format, precision, x);
       if (n >= REAL_BUF_SIZE) {
         warning("string representation of numeric was truncated because it was more than %d characters", REAL_BUF_SIZE);
-        n = REAL_BUF_SIZE;
       }
-
-      /* remove trailing zeros */
-      strp = str + n; /* end of the string */
-      j = n - 1;
-      if (format[3] == 'e') {
-        /* find 'e' first */
-        strp = strrchr(str, 'e');
-        j = strp - str - 1;
+      else if (n < 0) {
+        error("couldn't format numeric value");
       }
-      suffix_len = n - j;
-
-      for (k = 0; j >= 0; j--, k++) {
-        if (str[j] != '0' || str[j-1] == '.') {
-          break;
+      else {
+        /* tweak the string a little */
+        strp = str + n; /* end of the string */
+        j = n - 1;
+        if (format[3] == 'e') {
+          /* find 'e' first */
+          for (k = 0; j >= 0; j--, k++) {
+            if (str[j] == 'e') {
+              break;
+            }
+          }
+          if (k == 4 && str[j+2] == '0') {
+            /* windows sprintf likes to add an extra 0 to the exp part */
+            /* ex: 1.000e+007 */
+            str[j+2] = str[j+3];
+            str[j+3] = str[j+4];
+            str[j+4] = str[j+5]; /* null */
+            n -= 1;
+          }
+          strp = str + j;
+          j -= 1;
         }
-      }
+        suffix_len = n - j;
 
-      if (k > 0) {
-        memmove(str + j + 1, strp, suffix_len);
+        /* remove trailing zeros */
+        for (k = 0; j >= 0; j--, k++) {
+          if (str[j] != '0' || str[j-1] == '.') {
+            break;
+          }
+        }
+        if (k > 0) {
+          memmove(str + j + 1, strp, suffix_len);
+        }
       }
 
       SET_STRING_ELT(retval, i, mkChar(str));

@@ -1,3 +1,6 @@
+v2.1.11
+  - update LibYAML to 0.1.5
+
 v2.1.10
   - properly escape names in data frames and lists (bug submitted
     by Paul Hodor)

@@ -2051,7 +2051,12 @@ done:
     UNPROTECT(1);
   }
   else {
-    sprintf(error_msg, "Emitter error: %s", emitter.problem);
+    if (emitter.problem != NULL) {
+      sprintf(error_msg, "Emitter error: %s", emitter.problem);
+    }
+    else {
+      sprintf(error_msg, "Unknown emitter error");
+    }
     retval = R_NilValue;
   }
 

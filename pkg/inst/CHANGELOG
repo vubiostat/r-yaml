@@ -1,3 +1,7 @@
+v2.1.12
+  - properly emit factors with NAs (bug submitted by Jenny Bryan)
+  - update LibYAML to 0.1.6
+
 v2.1.11
   - update LibYAML to 0.1.5
 

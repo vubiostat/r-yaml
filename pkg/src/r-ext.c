@@ -403,8 +403,8 @@ R_yoink(vec, index)
   SEXP vec;
   int index;
 {
-  SEXP tmp;
-  int type, factor;
+  SEXP tmp, levels;
+  int type, factor, level_idx;
 
   type = TYPEOF(vec);
   factor = type == INTSXP && R_has_class(vec, "factor");
@@ -416,7 +416,14 @@ R_yoink(vec, index)
       break;
     case INTSXP:
       if (factor) {
-        SET_STRING_ELT(tmp, 0, STRING_ELT(GET_LEVELS(vec), INTEGER(vec)[index] - 1));
+        levels = GET_LEVELS(vec);
+        level_idx = INTEGER(vec)[index] - 1;
+        if (level_idx < 0 || level_idx >= LENGTH(levels)) {
+          SET_STRING_ELT(tmp, 0, NA_STRING);
+        }
+        else {
+          SET_STRING_ELT(tmp, 0, STRING_ELT(levels, level_idx));
+        }
       }
       else {
         INTEGER(tmp)[0] = INTEGER(vec)[index];
@@ -1665,7 +1672,7 @@ emit_factor(emitter, event, obj)
   SEXP obj;
 {
   SEXP levels, level_chr;
-  yaml_scalar_style_t *scalar_styles;
+  yaml_scalar_style_t *scalar_styles, scalar_style;
   int i, len, level_idx, retval, *scalar_style_is_set;
 
   levels = GET_LEVELS(obj);
@@ -1676,12 +1683,19 @@ emit_factor(emitter, event, obj)
   retval = 1;
   for (i = 0; i < length(obj); i++) {
     level_idx = INTEGER(obj)[i] - 1;
-    level_chr = STRING_ELT(levels, level_idx);
-    if (!scalar_style_is_set[level_idx]) {
-      scalar_styles[level_idx] = R_string_style(level_chr);
+    if (level_idx < 0 || level_idx >= len) {
+      level_chr = mkChar(".na.character");
+      scalar_style = YAML_ANY_SCALAR_STYLE;
+    }
+    else {
+      level_chr = STRING_ELT(levels, level_idx);
+      if (!scalar_style_is_set[level_idx]) {
+        scalar_styles[level_idx] = R_string_style(level_chr);
+      }
+      scalar_style = scalar_styles[level_idx];
     }
 
-    if (!emit_char(emitter, event, level_chr, NULL, 1, scalar_styles[level_idx])) {
+    if (!emit_char(emitter, event, level_chr, NULL, 1, scalar_style)) {
       retval = 0;
       break;
     }

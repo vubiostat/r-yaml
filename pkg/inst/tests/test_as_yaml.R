@@ -218,3 +218,9 @@ test_that("precision must be in the range 1..22", {
   expect_that(as.yaml(12345, precision = 23),
     throws_error())
 })
+
+test_that("factor with NAs is emitted properly", {
+  x <- factor('foo', levels=c('bar', 'baz'))
+  result <- as.yaml(x)
+  expect_equal(".na.character\n...\n", result, expected.label = result)
+})

@@ -490,7 +490,7 @@ static void
 stack_push(stack, placeholder, tag, obj)
   s_stack_entry **stack;
   int placeholder;
-  const char *tag;
+  const yaml_char_t *tag;
   s_prot_object *obj;
 {
   s_stack_entry *result;
@@ -629,7 +629,7 @@ handle_alias(event, stack, aliases)
 
 static int
 handle_start_event(tag, stack)
-  const char *tag;
+  const yaml_char_t *tag;
   s_stack_entry **stack;
 {
   stack_push(stack, 1, tag, new_prot_object(NULL));
@@ -653,7 +653,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   ParseStatus parseStatus;
 
   /* Look for a custom R handler */
-  handler = find_handler(s_handlers, tag);
+  handler = find_handler(s_handlers, (const char *) tag);
   handled = 0;
   obj = s_obj->obj;
   new_obj = NULL;
@@ -1393,7 +1393,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   yaml_parser_t parser;
   yaml_event_t event;
   const char *str, *name;
-  char *tag;
+  yaml_char_t *tag;
   long len;
   int use_named, i, done = 0, errorOccurred;
   s_stack_entry *stack = NULL;

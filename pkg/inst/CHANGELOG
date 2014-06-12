@@ -1,3 +1,7 @@
+v2.1.13
+  - fix integer overflow issue
+  - explicitly cast pointers from char to yaml_char_t, and vice versa
+
 v2.1.12
   - properly emit factors with NAs (bug submitted by Jenny Bryan)
   - update LibYAML to 0.1.6

@@ -417,12 +417,12 @@ R_yoink(vec, index)
     case INTSXP:
       if (factor) {
         levels = GET_LEVELS(vec);
-        level_idx = INTEGER(vec)[index] - 1;
-        if (level_idx < 0 || level_idx >= LENGTH(levels)) {
+        level_idx = INTEGER(vec)[index];
+        if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > LENGTH(levels)) {
           SET_STRING_ELT(tmp, 0, NA_STRING);
         }
         else {
-          SET_STRING_ELT(tmp, 0, STRING_ELT(levels, level_idx));
+          SET_STRING_ELT(tmp, 0, STRING_ELT(levels, level_idx - 1));
         }
       }
       else {
@@ -1682,17 +1682,17 @@ emit_factor(emitter, event, obj)
 
   retval = 1;
   for (i = 0; i < length(obj); i++) {
-    level_idx = INTEGER(obj)[i] - 1;
-    if (level_idx < 0 || level_idx >= len) {
+    level_idx = INTEGER(obj)[i];
+    if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > len) {
       level_chr = mkChar(".na.character");
       scalar_style = YAML_ANY_SCALAR_STYLE;
     }
     else {
-      level_chr = STRING_ELT(levels, level_idx);
-      if (!scalar_style_is_set[level_idx]) {
-        scalar_styles[level_idx] = R_string_style(level_chr);
+      level_chr = STRING_ELT(levels, level_idx - 1);
+      if (!scalar_style_is_set[level_idx - 1]) {
+        scalar_styles[level_idx - 1] = R_string_style(level_chr);
       }
-      scalar_style = scalar_styles[level_idx];
+      scalar_style = scalar_styles[level_idx - 1];
     }
 
     if (!emit_char(emitter, event, level_chr, NULL, 1, scalar_style)) {

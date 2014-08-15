@@ -6,7 +6,8 @@
 }
 \usage{
   as.yaml(x, line.sep = c("\n", "\r\n", "\r"), indent = 2, omap = FALSE,
-          column.major = TRUE, unicode = TRUE, precision = getOption('digits'))
+          column.major = TRUE, unicode = TRUE, precision = getOption('digits'),
+          indent.mapping.sequence = FALSE)
 }
 \arguments{
   \item{x}{ the object to be converted }
@@ -16,6 +17,7 @@
   \item{column.major}{ determines how to convert a data.frame; see Details }
   \item{unicode}{ determines whether or not to allow unescaped unicode characters in output }
   \item{precision}{ number of significant digits to use when formatting numeric values }
+  \item{indent.mapping.sequence}{ determines whether or not to indent sequences in mapping context }
 }
 \details{
   If you set the \code{omap} option to TRUE, as.yaml will create ordered maps
@@ -42,6 +44,8 @@
 \examples{
   as.yaml(1:10)
   as.yaml(list(foo=1:10, bar=c("test1", "test2")))
+  as.yaml(list(foo=1:10, bar=c("test1", "test2")), indent=3)
+  as.yaml(list(foo=1:10, bar=c("test1", "test2")), indent.mapping.sequence=TRUE)
   as.yaml(data.frame(a=1:10, b=letters[1:10], c=11:20))
   as.yaml(list(a=1:2, b=3:4), omap=TRUE)
   as.yaml("multi\nline\nstring")

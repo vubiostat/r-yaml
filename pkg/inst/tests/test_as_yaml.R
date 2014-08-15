@@ -124,6 +124,11 @@ test_that("custom indent is used", {
   expect_equal("foo:\n   bar:\n   - foo\n   - bar\n", result)
 })
 
+test_that("block sequences in mapping context are indented when indent.mapping.sequence is TRUE", {
+  result <- as.yaml(list(foo=list(bar=list('foo', 'bar'))), indent.mapping.sequence = TRUE)
+  expect_equal("foo:\n  bar:\n    - foo\n    - bar\n", result)
+})
+
 test_that("indent value is validated", {
   expect_that(as.yaml(list(foo=list(bar=list('foo', 'bar'))), indent = 0),
     throws_error())

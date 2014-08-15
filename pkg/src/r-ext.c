@@ -1947,7 +1947,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
 }
 
 SEXP
-as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision)
+as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
@@ -1955,12 +1955,13 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precis
   SEXP s_column_major;
   SEXP s_unicode;
   SEXP s_precision;
+  SEXP s_indent_mapping_sequence;
 {
   SEXP retval;
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
-  int status, line_sep, indent, omap, column_major, unicode, precision;
+  int status, line_sep, indent, omap, column_major, unicode, precision, indent_mapping_sequence;
   const char *c_line_sep;
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
@@ -2030,10 +2031,17 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precis
     error("argument `precision` must be in the range 1..22");
   }
 
+  if (!isLogical(s_indent_mapping_sequence) || length(s_indent_mapping_sequence) != 1) {
+    error("argument `indent.mapping.sequence` must be either TRUE or FALSE");
+    return R_NilValue;
+  }
+  indent_mapping_sequence = LOGICAL(s_indent_mapping_sequence)[0];
+
   yaml_emitter_initialize(&emitter);
   yaml_emitter_set_unicode(&emitter, unicode);
   yaml_emitter_set_break(&emitter, line_sep);
   yaml_emitter_set_indent(&emitter, indent);
+  yaml_emitter_set_indent_mapping_sequence(&emitter, indent_mapping_sequence);
 
   output.buffer = NULL;
   output.size = output.capa = 0;
@@ -2088,7 +2096,7 @@ done:
 
 R_CallMethodDef callMethods[] = {
   {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
-  {"as.yaml",   (DL_FUNC)&as_yaml,       7},
+  {"as.yaml",   (DL_FUNC)&as_yaml,       8},
   {NULL, NULL, 0}
 };
 

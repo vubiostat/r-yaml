@@ -249,17 +249,19 @@ For example:
     cat(as.yaml(list(foo = 1:10), indent.mapping.sequence=TRUE))
 
 Outputs:
-    foo:
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-      - 8
-      - 9
-      - 10
+```
+foo:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+```
 
 ##### column.major
 

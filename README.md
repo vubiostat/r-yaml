@@ -222,7 +222,7 @@ Outputs:
 
 ##### indent.mapping.sequence
 
-By default, sequences that are within a mapping are not indented.
+By default, sequences that are within a mapping context are not indented.
 
 For example:
 

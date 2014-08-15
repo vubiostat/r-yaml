@@ -14,13 +14,13 @@ readable documents that can be consumed by a variety of programming languages.
 Hash of baseball teams per league:
 
     american:
-      - Boston Red Sox
-      - Detroit Tigers
-      - New York Yankees
+    - Boston Red Sox
+    - Detroit Tigers
+    - New York Yankees
     national:
-      - New York Mets
-      - Chicago Cubs
-      - Atlanta Braves
+    - New York Mets
+    - Chicago Cubs
+    - Atlanta Braves
 
 Data dictionary specification:
 
@@ -163,12 +163,12 @@ handler function is passed a named list, or a list with a `keys` attribute
 (depending on the value of `as.named.list`). Example:
 
     string <- "
-    a: 
-      - 1
-      - 2
-    b: 
-      - 3
-      - 4
+    a:
+    - 1
+    - 2
+    b:
+    - 3
+    - 4
     "
     yaml.load(string, handlers = list(map = function(x) { as.data.frame(x) }))
 
@@ -206,6 +206,61 @@ Output from above example:
 
 #### Notable arguments
 
+##### indent
+
+You can control the number of spaces used to indent by setting the `indent`
+option. By default, `indent` is 2.
+
+For example:
+
+    cat(as.yaml(list(foo = list(bar = 'baz')), indent = 3))
+
+Outputs:
+
+    foo:
+       bar: baz
+
+##### indent.mapping.sequence
+
+By default, sequences that are within a mapping are not indented.
+
+For example:
+
+    cat(as.yaml(list(foo = 1:10)))
+
+Outputs:
+
+    foo:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+
+If you want sequences to be indented in this context, set the `indent.mapping.sequence` option to `TRUE`.
+
+For example:
+
+    cat(as.yaml(list(foo = 1:10), indent.mapping.sequence=TRUE))
+
+Outputs:
+    foo:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+
 ##### column.major
 
 The `column.major` option determines how a data frame is converted into YAML.
@@ -220,17 +275,17 @@ Example of `as.yaml` when `column.major` is TRUE:
 Outputs:
 
     a:
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
     b:
-      - 6
-      - 7
-      - 8
-      - 9
-      - 10
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
 
 Whereas:
 

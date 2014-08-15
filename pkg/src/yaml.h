@@ -1595,6 +1595,8 @@ typedef struct yaml_emitter_s {
     int canonical;
     /** The number of indentation spaces. */
     int best_indent;
+    /** Whether or not to indent block sequences in mapping context. */
+    int indent_mapping_sequence;
     /** The preferred width of the output lines. */
     int best_width;
     /** Allow unescaped non-ASCII characters? */

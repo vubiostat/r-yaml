@@ -1,4 +1,4 @@
 library(testthat)
 library(yaml)
 
-test_package('yaml')
+test_check('yaml')

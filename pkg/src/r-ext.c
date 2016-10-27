@@ -95,7 +95,7 @@ R_collapse(obj, collapse)
   SETCAR(pcall, R_PasteFunc); pcall = CDR(pcall);
   SETCAR(pcall, obj);         pcall = CDR(pcall);
   SETCAR(pcall, PROTECT(allocVector(STRSXP, 1)));
-  SET_STRING_ELT(CAR(pcall), 0, mkChar(collapse));
+  SET_STRING_ELT(CAR(pcall), 0, mkCharCE(collapse, CE_UTF8));
   SET_TAG(pcall, R_CollapseSymbol);
   retval = eval(call, R_GlobalEnv);
   UNPROTECT(2);
@@ -154,7 +154,7 @@ R_deparse_function(f)
   *tail = 0;
 
   PROTECT(result = allocVector(STRSXP, 1));
-  SET_STRING_ELT(result, 0, mkChar(head));
+  SET_STRING_ELT(result, 0, mkCharCE(head, CE_UTF8));
   UNPROTECT(1);
   free(head);
 
@@ -256,7 +256,7 @@ R_format_real(obj, precision)
         }
       }
 
-      SET_STRING_ELT(retval, i, mkChar(str));
+      SET_STRING_ELT(retval, i, mkCharCE(str, CE_UTF8));
     }
   }
   UNPROTECT(1);
@@ -319,7 +319,7 @@ R_format_string(obj)
   PROTECT(retval = duplicate(obj));
   for (i = 0; i < length(obj); i++) {
     if (STRING_ELT(obj, i) == NA_STRING) {
-      SET_STRING_ELT(retval, i, mkChar(".na.character"));
+      SET_STRING_ELT(retval, i, mkCharCE(".na.character", CE_UTF8));
     }
   }
   UNPROTECT(1);
@@ -336,7 +336,7 @@ R_set_str_attrib( obj, sym, str )
 {
   SEXP val;
   PROTECT(val = NEW_STRING(1));
-  SET_STRING_ELT(val, 0, mkChar(str));
+  SET_STRING_ELT(val, 0, mkCharCE(str, CE_UTF8));
   setAttrib(obj, sym, val);
   UNPROTECT(1);
 }
@@ -988,7 +988,7 @@ handle_scalar(event, stack, return_tag)
 #endif
 
   PROTECT(obj = NEW_STRING(1));
-  SET_STRING_ELT(obj, 0, mkChar((char *)value));
+  SET_STRING_ELT(obj, 0, mkCharCE((char *)value, CE_UTF8));
 
   stack_push(stack, 0, NULL, new_prot_object(obj));
   return 0;

@@ -1,6 +1,6 @@
 Package: yaml
 Type: Package
-Title: Methods to convert R data to YAML and back
+Title: Methods to Convert R Data to YAML and Back
 Version: <%= VERSION %>
 Suggests: testthat
 Date: <%= format(Sys.Date()) %>

@@ -287,15 +287,15 @@ run_handler(handler, arg, result)
   SEXP *result;
 {
   SEXP cmd;
-  int errorOccurred;
+  int err;
 
   PROTECT(cmd = allocVector(LANGSXP, 2));
   SETCAR(cmd, handler);
   SETCADR(cmd, arg);
-  *result = R_tryEval(cmd, R_GlobalEnv, &errorOccurred);
+  *result = R_tryEval(cmd, R_GlobalEnv, &err);
   UNPROTECT(1);
 
-  return errorOccurred;
+  return err;
 }
 
 static int
@@ -349,11 +349,11 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   int coerce_keys;
 {
   SEXP handler, obj, new_obj, elt, keys, key, expr;
-  int handled, coercionError, base, i, len, total_len, idx, elt_len, j, dup_key;
+  int handled, coercion_err, base, i, len, total_len, idx, elt_len, j, dup_key;
   const char *nptr;
   char *endptr;
   double f;
-  ParseStatus parseStatus;
+  ParseStatus parse_status;
 
   /* Look for a custom R handler */
   handler = find_handler(s_handlers, (const char *) tag);
@@ -372,13 +372,13 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
     }
   }
 
-  coercionError = 0;
+  coercion_err = 0;
   if (!handled) {
     /* default handlers, ordered by most-used */
 
     if (strcmp((char *)tag, "str") == 0) {
       /* if this is a scalar, then it's already a string */
-      coercionError = event_type != YAML_SCALAR_EVENT;
+      coercion_err = event_type != YAML_SCALAR_EVENT;
     }
     else if (strcmp((char *)tag, "seq") == 0) {
       /* Let's try to coerce this list! */
@@ -397,7 +397,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         INTEGER(new_obj)[0] = NA_INTEGER;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "int") == 0 || strncmp((char *)tag, "int#", 4) == 0) {
@@ -434,7 +434,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         }
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "float") == 0 || strcmp((char *)tag, "float#fix") == 0 || strcmp((char *)tag, "float#exp") == 0) {
@@ -451,7 +451,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         REAL(new_obj)[0] = f;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "bool#yes") == 0) {
@@ -460,7 +460,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         LOGICAL(new_obj)[0] = 1;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "bool#no") == 0) {
@@ -469,7 +469,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         LOGICAL(new_obj)[0] = 0;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "bool#na") == 0) {
@@ -478,7 +478,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         LOGICAL(new_obj)[0] = NA_LOGICAL;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "omap") == 0) {
@@ -540,11 +540,11 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
         if (dup_key == 1) {
           UNPROTECT(1); // new_obj
-          coercionError = 1;
+          coercion_err = 1;
         }
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "merge") == 0) {
@@ -555,7 +555,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         R_set_class(new_obj, "_yaml.merge_");
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "float#na") == 0) {
@@ -564,7 +564,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         REAL(new_obj)[0] = NA_REAL;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "float#nan") == 0) {
@@ -573,7 +573,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         REAL(new_obj)[0] = R_NaN;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "float#inf") == 0) {
@@ -582,7 +582,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         REAL(new_obj)[0] = R_PosInf;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "float#neginf") == 0) {
@@ -591,7 +591,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         REAL(new_obj)[0] = R_NegInf;
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "str#na") == 0) {
@@ -600,7 +600,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         SET_STRING_ELT(new_obj, 0, NA_STRING);
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
     else if (strcmp((char *)tag, "null") == 0) {
@@ -608,23 +608,23 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
     }
     else if (strcmp((char *)tag, "expr") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
-        PROTECT(expr = R_ParseVector(obj, -1, &parseStatus, R_NilValue));
-        if (parseStatus != PARSE_OK) {
+        PROTECT(expr = R_ParseVector(obj, -1, &parse_status, R_NilValue));
+        if (parse_status != PARSE_OK) {
           UNPROTECT(1); // expr
           sprintf(error_msg, "Could not parse expression: %s", CHAR(STRING_ELT(obj, 0)));
-          coercionError = 1;
+          coercion_err = 1;
         }
         else {
           /* NOTE: R_tryEval will not return if R_Interactive is FALSE. */
           for (i = 0; i < length(expr); i++) {
-            new_obj = R_tryEval(VECTOR_ELT(expr, i), R_GlobalEnv, &coercionError);
-            if (coercionError) {
+            new_obj = R_tryEval(VECTOR_ELT(expr, i), R_GlobalEnv, &coercion_err);
+            if (coercion_err) {
               break;
             }
           }
           UNPROTECT(1); // expr
 
-          if (coercionError) {
+          if (coercion_err) {
             sprintf(error_msg, "Could not evaluate expression: %s", CHAR(STRING_ELT(obj, 0)));
           }
           else {
@@ -634,12 +634,12 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         }
       }
       else {
-        coercionError = 1;
+        coercion_err = 1;
       }
     }
   }
 
-  if (coercionError == 1) {
+  if (coercion_err == 1) {
     if (error_msg[0] == 0) {
       sprintf(error_msg, "Invalid tag: %s for %s", tag, (event_type == YAML_SCALAR_EVENT ? "scalar" : (event_type == YAML_SEQUENCE_END_EVENT ? "sequence" : "map")));
     }
@@ -1099,7 +1099,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   const char *str, *name;
   yaml_char_t *tag;
   long len;
-  int use_named, i, done = 0, errorOccurred;
+  int use_named, i, done = 0, err;
   s_stack_entry *stack = NULL;
   s_alias_entry *aliases = NULL, *alias;
 
@@ -1153,7 +1153,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   error_msg[0] = 0;
   while (!done) {
     if (yaml_parser_parse(&parser, &event)) {
-      errorOccurred = 0;
+      err = 0;
       tag = NULL;
 
       switch (event.type) {
@@ -1174,9 +1174,9 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           Rprintf("SCALAR: %s (%s)\n", event.data.scalar.value, event.data.scalar.tag);
 #endif
-          errorOccurred = handle_scalar(&event, &stack, &tag);
-          if (!errorOccurred) {
-            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
+          err = handle_scalar(&event, &stack, &tag);
+          if (!err) {
+            err = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
           }
           possibly_record_alias(event.data.scalar.anchor, &aliases, stack->obj);
           break;
@@ -1193,9 +1193,9 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           Rprintf("SEQUENCE END\n");
 #endif
-          errorOccurred = handle_sequence(&event, &stack, &tag);
-          if (!errorOccurred) {
-            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
+          err = handle_sequence(&event, &stack, &tag);
+          if (!err) {
+            err = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
           }
           break;
 
@@ -1211,9 +1211,9 @@ load_yaml_str(s_str, s_use_named, s_handlers)
 #if DEBUG
           Rprintf("MAPPING END\n");
 #endif
-          errorOccurred = handle_map(&event, &stack, &tag, use_named);
-          if (!errorOccurred) {
-            errorOccurred = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
+          err = handle_map(&event, &stack, &tag, use_named);
+          if (!err) {
+            err = convert_object(event.type, stack->obj, tag, s_handlers, use_named);
           }
 
           break;
@@ -1232,7 +1232,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
           break;
       }
 
-      if (errorOccurred) {
+      if (err) {
         retval = R_NilValue;
         done = 1;
       }

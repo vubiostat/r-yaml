@@ -1,6 +1,8 @@
 VERSION = $(shell cat VERSION)
 
-SRCS =  pkg/src/yaml_private.h \
+SRCS = pkg/src/yaml_private.h \
+	pkg/src/yaml.h \
+	pkg/src/r_ext.h \
 	pkg/src/writer.c \
 	pkg/src/scanner.c \
 	pkg/src/dumper.c \
@@ -9,19 +11,20 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/src/reader.c \
 	pkg/src/parser.c \
 	pkg/src/api.c \
-	pkg/src/r-ext.h \
-	pkg/src/yaml.h \
 	pkg/src/loader.c \
-	pkg/src/r-ext.c \
+	pkg/src/r_ext.c \
+	pkg/src/r_emit.c \
+	pkg/src/r_parse.c \
 	pkg/src/Makevars \
 	pkg/man/as.yaml.Rd \
 	pkg/man/yaml.load.Rd \
 	pkg/inst/THANKS \
 	pkg/inst/CHANGELOG \
-	pkg/inst/tests/test_yaml_load_file.R \
-	pkg/inst/tests/test_yaml_load.R \
-	pkg/inst/tests/test_as_yaml.R \
-	pkg/inst/tests/files/test.yml \
+	pkg/tests/testthat.R \
+	pkg/tests/testthat/test_yaml_load_file.R \
+	pkg/tests/testthat/test_yaml_load.R \
+	pkg/tests/testthat/test_as_yaml.R \
+	pkg/tests/testthat/files/test.yml \
 	pkg/DESCRIPTION.brew \
 	pkg/COPYING \
 	pkg/LICENSE \
@@ -29,41 +32,42 @@ SRCS =  pkg/src/yaml_private.h \
 	pkg/R/zzz.R \
 	pkg/R/yaml.load_file.R \
 	pkg/R/as.yaml.R \
-	pkg/NAMESPACE \
-	pkg/tests/run-all.R
+	pkg/NAMESPACE
 
 BUILD_SRCS = build/src/yaml_private.h \
-	     build/src/writer.c \
-	     build/src/scanner.c \
-	     build/src/dumper.c \
-	     build/src/emitter.c \
-	     build/src/implicit.c \
-	     build/src/reader.c \
-	     build/src/parser.c \
-	     build/src/api.c \
-	     build/src/r-ext.h \
-	     build/src/yaml.h \
-	     build/src/loader.c \
-	     build/src/r-ext.c \
-	     build/src/Makevars \
-	     build/man/as.yaml.Rd \
-	     build/man/yaml.load.Rd \
-	     build/inst/THANKS \
-	     build/inst/CHANGELOG \
-	     build/inst/implicit.re \
-	     build/inst/tests/test_yaml_load_file.R \
-	     build/inst/tests/test_yaml_load.R \
-	     build/inst/tests/test_as_yaml.R \
-	     build/inst/tests/files/test.yml \
-	     build/DESCRIPTION \
-	     build/COPYING \
-	     build/LICENSE \
-	     build/R/yaml.load.R \
-	     build/R/zzz.R \
-	     build/R/yaml.load_file.R \
-	     build/R/as.yaml.R \
-	     build/NAMESPACE \
-	     build/tests/run-all.R
+	build/src/yaml.h \
+	build/src/r_ext.h \
+	build/src/writer.c \
+	build/src/scanner.c \
+	build/src/dumper.c \
+	build/src/emitter.c \
+	build/src/implicit.c \
+	build/src/reader.c \
+	build/src/parser.c \
+	build/src/api.c \
+	build/src/loader.c \
+	build/src/r_ext.c \
+	build/src/r_emit.c \
+	build/src/r_parse.c \
+	build/src/Makevars \
+	build/man/as.yaml.Rd \
+	build/man/yaml.load.Rd \
+	build/inst/THANKS \
+	build/inst/CHANGELOG \
+	build/inst/implicit.re \
+	build/tests/testthat.R \
+	build/tests/testthat/test_yaml_load_file.R \
+	build/tests/testthat/test_yaml_load.R \
+	build/tests/testthat/test_as_yaml.R \
+	build/tests/testthat/files/test.yml \
+	build/DESCRIPTION \
+	build/COPYING \
+	build/LICENSE \
+	build/R/yaml.load.R \
+	build/R/zzz.R \
+	build/R/yaml.load_file.R \
+	build/R/as.yaml.R \
+	build/NAMESPACE
 
 ifdef DEBUG
   CFLAGS = -g3 -Wall -DDEBUG

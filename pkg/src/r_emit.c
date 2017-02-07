@@ -719,18 +719,22 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precis
   yaml_emitter_set_output(&emitter, as_yaml_write_handler, &output);
 
   yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
-  if (!(status = yaml_emitter_emit(&emitter, &event)))
+  status = yaml_emitter_emit(&emitter, &event);
+  if (!status)
     goto done;
 
   yaml_document_start_event_initialize(&event, NULL, NULL, NULL, 1);
-  if (!(status = yaml_emitter_emit(&emitter, &event)))
+  status = yaml_emitter_emit(&emitter, &event);
+  if (!status)
     goto done;
 
-  if (!(status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major, precision)))
+  status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major, precision);
+  if (!status)
     goto done;
 
   yaml_document_end_event_initialize(&event, 1);
-  if (!(status = yaml_emitter_emit(&emitter, &event)))
+  status = yaml_emitter_emit(&emitter, &event);
+  if (!status)
     goto done;
 
   yaml_stream_end_event_initialize(&event);

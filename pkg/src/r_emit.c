@@ -371,6 +371,18 @@ emit_factor(emitter, event, obj)
 }
 
 static int
+emit_nil(emitter, event, obj)
+  yaml_emitter_t *emitter;
+  yaml_event_t *event;
+  SEXP obj;
+{
+  yaml_scalar_event_initialize(event, NULL, NULL, (yaml_char_t *)"~", 1, 1, 1,
+      YAML_ANY_SCALAR_STYLE);
+
+  return yaml_emitter_emit(emitter, event);
+}
+
+static int
 emit_object(emitter, event, obj, tag, omap, column_major, precision)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
@@ -392,13 +404,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
   tag = NULL;
   switch (TYPEOF(obj)) {
     case NILSXP:
-      yaml_scalar_event_initialize(event, NULL, tag,
-          (yaml_char_t *)"~", 1,
-          implicit_tag, implicit_tag, scalar_style);
-
-      if (!yaml_emitter_emit(emitter, event))
-        return 0;
-      break;
+      return emit_nil(emitter, event, obj);
 
     case CLOSXP:
     case SPECIALSXP:

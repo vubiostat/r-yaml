@@ -10,7 +10,6 @@
 #include "R_ext/Print.h"
 #include "R_ext/PrtUtil.h"
 #include "yaml.h"
-#include "yaml_private.h"
 
 #define REAL_BUF_SIZE 256
 #define FORMAT_BUF_SIZE 128

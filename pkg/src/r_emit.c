@@ -3,7 +3,6 @@
 extern SEXP R_DeparseFunc;
 extern char error_msg[256];
 
-/* For emitting */
 typedef struct {
   char *buffer;
   size_t size;
@@ -11,61 +10,55 @@ typedef struct {
 } s_emitter_output;
 
 static SEXP
-R_deparse_function(f)
-  SEXP f;
+R_deparse_function(s_obj)
+  SEXP s_obj;
 {
-  SEXP call, result, chr;
-  int len, i, j;
-  char *head, *cur, *tail, c;
+  SEXP s_call, s_result, s_chr;
+  int i, j, res_len, chr_len, str_len, str_end, str_line_end;
+  char *str, c;
 
-  PROTECT(call = lang2(R_DeparseFunc, f));
-  result = eval(call, R_GlobalEnv);
+  /* first get R's deparsed character vector */
+  PROTECT(s_call = lang2(R_DeparseFunc, s_obj));
+  s_result = eval(s_call, R_GlobalEnv);
   UNPROTECT(1);
 
-  for (i = len = 0; i < length(result); i++) {
-    len += length(STRING_ELT(result, i));
+  str_len = 0;
+  res_len = length(s_result);
+  for (i = 0; i < res_len; i++) {
+    str_len += length(STRING_ELT(s_result, i));
   }
-  len += length(result);  // for newlines
+  str_len += length(s_result);  /* for newlines */
 
   /* The point of this is to collapse the deparsed function whilst
    * eliminating trailing spaces. LibYAML's emitter won't output
    * a string with trailing spaces as a multiline scalar. */
-  head = cur = tail = (char *)malloc(sizeof(char) * len);
-  for (i = 0; i < length(result); i++) {
-    chr = STRING_ELT(result, i);
-    len = length(chr);
-    for (j = 0; j < len; j++) {
-      c = CHAR(chr)[j];
-      switch (c) {
-        case ' ':
-          /* Ignore "space breaks" */
-          break;
+  str = (char *)malloc(sizeof(char) * (str_len + 1));
+  str_end = 0;
+  for (i = 0; i < res_len; i++) {
+    s_chr = STRING_ELT(s_result, i);
+    chr_len = length(s_chr);
+    memcpy((void *)(str + str_end), (void *)CHAR(s_chr), chr_len);
+    str_end += chr_len;
 
-        case '\n':
-          tail = ++cur;
-          break;
-
-        default:
-          cur = tail;
-          break;
+    /* find place to terminate line */
+    for (j = str_end - 1; j > 0; j--) {
+      if (str[j] != ' ') {
+        break;
       }
-
-      *tail = c;
-      tail++;
     }
-
-    tail = ++cur;
-    *tail = '\n';
-    tail++;
+    str[j + 1] = '\n';
+    str_end = j + 2;
   }
-  *tail = 0;
 
-  PROTECT(result = allocVector(STRSXP, 1));
-  SET_STRING_ELT(result, 0, mkCharCE(head, CE_UTF8));
+  /* null terminate string */
+  str[str_end] = 0;
+
+  PROTECT(s_result = allocVector(STRSXP, 1));
+  SET_STRING_ELT(s_result, 0, mkCharCE(str, CE_UTF8));
   UNPROTECT(1);
-  free(head);
+  free(str);
 
-  return result;
+  return s_result;
 }
 
 /* Format a vector of reals for emitting */

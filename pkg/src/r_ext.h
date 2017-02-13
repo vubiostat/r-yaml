@@ -15,7 +15,7 @@
 #define FORMAT_BUF_SIZE 128
 
 /* From implicit.c */
-yaml_char_t *find_implicit_tag(yaml_char_t *value, size_t size);
+char *find_implicit_tag(const char *value, size_t size);
 
 /* Common functions */
 int R_is_named_list(SEXP obj);

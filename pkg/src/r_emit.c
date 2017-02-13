@@ -14,8 +14,8 @@ R_deparse_function(s_obj)
   SEXP s_obj;
 {
   SEXP s_call, s_result, s_chr;
-  int i, j, res_len, chr_len, str_len, str_end, str_line_end;
-  char *str, c;
+  int i, j, res_len, chr_len, str_len, str_end;
+  char *str;
 
   /* first get R's deparsed character vector */
   PROTECT(s_call = lang2(R_DeparseFunc, s_obj));
@@ -210,11 +210,11 @@ static yaml_scalar_style_t
 R_string_style(obj)
   SEXP obj;
 {
-  yaml_char_t *tag;
+  char *tag;
   const char *chr = CHAR(obj);
   int len = length(obj), j;
 
-  tag = find_implicit_tag((yaml_char_t *) chr, len);
+  tag = find_implicit_tag(chr, len);
   if (strcmp((char *) tag, "str#na") == 0) {
     return YAML_ANY_SCALAR_STYLE;
   }
@@ -309,11 +309,11 @@ emit_char(emitter, event, obj, tag, implicit_tag, scalar_style)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP obj;
-  yaml_char_t *tag;
+  char *tag;
   int implicit_tag;
   yaml_scalar_style_t scalar_style;
 {
-  yaml_scalar_event_initialize(event, NULL, tag,
+  yaml_scalar_event_initialize(event, NULL, (yaml_char_t *)tag,
       (yaml_char_t *)CHAR(obj), LENGTH(obj),
       implicit_tag, implicit_tag, scalar_style);
 
@@ -380,7 +380,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP obj;
-  yaml_char_t *tag;
+  char *tag;
   int omap;
   int column_major;
   int precision;
@@ -403,7 +403,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
     case SPECIALSXP:
     case BUILTINSXP:
       /* Function! Deparse, then fall through */
-      tag = (yaml_char_t *)"!expr";
+      tag = "!expr";
       implicit_tag = 0;
       obj = R_deparse_function(obj);
       scalar_style = YAML_LITERAL_SCALAR_STYLE;
@@ -492,13 +492,13 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
         cols = length(obj);
         names = GET_NAMES(obj);
 
-        yaml_sequence_start_event_initialize(event, NULL, tag,
+        yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
             implicit_tag, YAML_ANY_SEQUENCE_STYLE);
         if (!yaml_emitter_emit(emitter, event))
           return 0;
 
         for (i = 0; i < rows; i++) {
-          yaml_mapping_start_event_initialize(event, NULL, tag,
+          yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
               implicit_tag, YAML_ANY_MAPPING_STYLE);
 
           if (!yaml_emitter_emit(emitter, event))
@@ -537,7 +537,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
             return 0;
         }
         else {
-          yaml_mapping_start_event_initialize(event, NULL, tag,
+          yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
               implicit_tag, YAML_ANY_MAPPING_STYLE);
 
           if (!yaml_emitter_emit(emitter, event))
@@ -547,7 +547,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
         names = GET_NAMES(obj);
         for (i = 0; i < length(obj); i++) {
           if (omap) {
-            yaml_mapping_start_event_initialize(event, NULL, tag,
+            yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
                 implicit_tag, YAML_ANY_MAPPING_STYLE);
 
             if (!yaml_emitter_emit(emitter, event))
@@ -580,7 +580,8 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
         }
       }
       else {
-        yaml_sequence_start_event_initialize(event, NULL, tag, 1, YAML_ANY_SEQUENCE_STYLE);
+        yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
+            1, YAML_ANY_SEQUENCE_STYLE);
         if (!yaml_emitter_emit(emitter, event))
           return 0;
 

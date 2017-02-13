@@ -28,7 +28,7 @@ typedef struct {
   int placeholder;
 
   /* The YAML tag for this node */
-  yaml_char_t *tag;
+  char *tag;
 
   void *prev;
 } s_stack_entry;
@@ -36,7 +36,7 @@ typedef struct {
 /* Alias entry */
 typedef struct {
   /* Anchor name */
-  yaml_char_t *name;
+  char *name;
 
   /* R object wrapper */
   s_prot_object *obj;
@@ -193,7 +193,7 @@ static void
 stack_push(stack, placeholder, tag, obj)
   s_stack_entry **stack;
   int placeholder;
-  const yaml_char_t *tag;
+  const char *tag;
   s_prot_object *obj;
 {
   s_stack_entry *result;
@@ -201,7 +201,7 @@ stack_push(stack, placeholder, tag, obj)
   result = (s_stack_entry *)malloc(sizeof(s_stack_entry));
   result->placeholder = placeholder;
   if (tag != NULL) {
-    result->tag = (yaml_char_t *)strdup((char *)tag);
+    result->tag = strdup(tag);
   }
   else {
     result->tag = NULL;
@@ -239,13 +239,13 @@ stack_pop(stack, obj)
 }
 
 /* Get the type part of the tag, throw away any !'s */
-static yaml_char_t *
+static char *
 process_tag(tag)
-  yaml_char_t *tag;
+  char *tag;
 {
-  yaml_char_t *retval = tag;
+  char *retval = tag;
 
-  if (strncmp((char *)retval, "tag:yaml.org,2002:", 18) == 0) {
+  if (strncmp(retval, "tag:yaml.org,2002:", 18) == 0) {
     retval = retval + 18;
   }
   else {
@@ -309,7 +309,7 @@ handle_alias(event, stack, aliases)
   SEXP new_obj;
 
   while (alias) {
-    if (strcmp((char *)alias->name, (char *)event->data.alias.anchor) == 0) {
+    if (strcmp(alias->name, (char *)event->data.alias.anchor) == 0) {
       if (alias->obj->obj != NULL) {
         stack_push(stack, 0, NULL, alias->obj);
         SET_NAMED(alias->obj->obj, 2);
@@ -332,7 +332,7 @@ handle_alias(event, stack, aliases)
 
 static int
 handle_start_event(tag, stack)
-  const yaml_char_t *tag;
+  const char *tag;
   s_stack_entry **stack;
 {
   stack_push(stack, 1, tag, new_prot_object(NULL));
@@ -344,7 +344,7 @@ static int
 convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   yaml_event_type_t event_type;
   s_prot_object *s_obj;
-  yaml_char_t *tag;
+  char *tag;
   SEXP s_handlers;
   int coerce_keys;
 {
@@ -376,11 +376,11 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
   if (!handled) {
     /* default handlers, ordered by most-used */
 
-    if (strcmp((char *)tag, "str") == 0) {
+    if (strcmp(tag, "str") == 0) {
       /* if this is a scalar, then it's already a string */
       coercion_err = event_type != YAML_SCALAR_EVENT;
     }
-    else if (strcmp((char *)tag, "seq") == 0) {
+    else if (strcmp(tag, "seq") == 0) {
       /* Let's try to coerce this list! */
       switch (s_obj->seq_type) {
         case LGLSXP:
@@ -391,7 +391,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           break;
       }
     }
-    else if (strcmp((char *)tag, "int#na") == 0) {
+    else if (strcmp(tag, "int#na") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_INTEGER(1));
         INTEGER(new_obj)[0] = NA_INTEGER;
@@ -400,16 +400,16 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "int") == 0 || strncmp((char *)tag, "int#", 4) == 0) {
+    else if (strcmp(tag, "int") == 0 || strncmp(tag, "int#", 4) == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         base = -1;
-        if (strcmp((char *)tag, "int") == 0) {
+        if (strcmp(tag, "int") == 0) {
           base = 10;
         }
-        else if (strcmp((char *)tag, "int#hex") == 0) {
+        else if (strcmp(tag, "int#hex") == 0) {
           base = 16;
         }
-        else if (strcmp((char *)tag, "int#oct") == 0) {
+        else if (strcmp(tag, "int#oct") == 0) {
           base = 8;
         }
 
@@ -437,7 +437,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "float") == 0 || strcmp((char *)tag, "float#fix") == 0 || strcmp((char *)tag, "float#exp") == 0) {
+    else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0 || strcmp(tag, "float#exp") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         nptr = CHAR(STRING_ELT(obj, 0));
         f = strtod(nptr, &endptr);
@@ -454,7 +454,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "bool#yes") == 0) {
+    else if (strcmp(tag, "bool#yes") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = 1;
@@ -463,7 +463,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "bool#no") == 0) {
+    else if (strcmp(tag, "bool#no") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = 0;
@@ -472,7 +472,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "bool#na") == 0) {
+    else if (strcmp(tag, "bool#na") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_LOGICAL(1));
         LOGICAL(new_obj)[0] = NA_LOGICAL;
@@ -481,7 +481,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "omap") == 0) {
+    else if (strcmp(tag, "omap") == 0) {
       /* NOTE: This is here mostly because of backwards compatibility
        * with R yaml 1.x package. All maps are ordered in 2.x, so there's
        * no real need to use omap */
@@ -547,7 +547,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "merge") == 0) {
+    else if (strcmp(tag, "merge") == 0) {
       /* see http://yaml.org/type/merge.html */
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_STRING(1));
@@ -558,7 +558,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "float#na") == 0) {
+    else if (strcmp(tag, "float#na") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = NA_REAL;
@@ -567,7 +567,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "float#nan") == 0) {
+    else if (strcmp(tag, "float#nan") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_NaN;
@@ -576,7 +576,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "float#inf") == 0) {
+    else if (strcmp(tag, "float#inf") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_PosInf;
@@ -585,7 +585,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "float#neginf") == 0) {
+    else if (strcmp(tag, "float#neginf") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_NUMERIC(1));
         REAL(new_obj)[0] = R_NegInf;
@@ -594,7 +594,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "str#na") == 0) {
+    else if (strcmp(tag, "str#na") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(new_obj = NEW_STRING(1));
         SET_STRING_ELT(new_obj, 0, NA_STRING);
@@ -603,10 +603,10 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         coercion_err = 1;
       }
     }
-    else if (strcmp((char *)tag, "null") == 0) {
+    else if (strcmp(tag, "null") == 0) {
       new_obj = R_NilValue;
     }
-    else if (strcmp((char *)tag, "expr") == 0) {
+    else if (strcmp(tag, "expr") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         PROTECT(expr = R_ParseVector(obj, -1, &parse_status, R_NilValue));
         if (parse_status != PARSE_OK) {
@@ -659,22 +659,22 @@ static int
 handle_scalar(event, stack, return_tag)
   yaml_event_t *event;
   s_stack_entry **stack;
-  yaml_char_t **return_tag;
+  char **return_tag;
 {
   SEXP obj;
-  yaml_char_t *value, *tag;
+  char *value, *tag;
   size_t len;
 
-  tag = event->data.scalar.tag;
-  value = event->data.scalar.value;
-  if (tag == NULL || strcmp((char *)tag, "!") == 0) {
+  tag = (char *)event->data.scalar.tag;
+  value = (char *)event->data.scalar.value;
+  if (tag == NULL || strcmp(tag, "!") == 0) {
     /* There's no tag! */
 
     /* If this is a quoted string, leave it as a string */
     switch (event->data.scalar.style) {
       case YAML_SINGLE_QUOTED_SCALAR_STYLE:
       case YAML_DOUBLE_QUOTED_SCALAR_STYLE:
-        tag = (yaml_char_t *) "str";
+        tag = "str";
         break;
       default:
         /* Try to tag it */
@@ -692,7 +692,7 @@ handle_scalar(event, stack, return_tag)
 #endif
 
   PROTECT(obj = NEW_STRING(1));
-  SET_STRING_ELT(obj, 0, mkCharCE((char *)value, CE_UTF8));
+  SET_STRING_ELT(obj, 0, mkCharCE(value, CE_UTF8));
 
   stack_push(stack, 0, NULL, new_prot_object(obj));
   return 0;
@@ -702,12 +702,12 @@ static int
 handle_sequence(event, stack, return_tag)
   yaml_event_t *event;
   s_stack_entry **stack;
-  yaml_char_t **return_tag;
+  char **return_tag;
 {
   s_stack_entry *stack_ptr;
   s_prot_object *obj;
   int count, i, type;
-  yaml_char_t *tag;
+  char *tag;
   SEXP list;
 
   /* Find out how many elements there are */
@@ -738,7 +738,7 @@ handle_sequence(event, stack, return_tag)
   /* Tags! */
   tag = (*stack)->tag;
   if (tag == NULL) {
-    tag = (yaml_char_t *)"seq";
+    tag = "seq";
   }
   else {
     tag = process_tag(tag);
@@ -886,14 +886,14 @@ static int
 handle_map(event, stack, return_tag, coerce_keys)
   yaml_event_t *event;
   s_stack_entry **stack;
-  yaml_char_t **return_tag;
+  char **return_tag;
   int coerce_keys;
 {
   s_prot_object *value_obj, *key_obj;
   s_map_entry *map_head, *map_tmp;
   int count, i, orphan_key, dup_key, bad_merge;
   SEXP list, keys, key, coerced_key, value, merge_list;
-  yaml_char_t *tag;
+  char *tag;
 
   /* Find out how many pairs there are, and handle merges */
   count = 0;
@@ -1045,7 +1045,7 @@ handle_map(event, stack, return_tag, coerce_keys)
     /* Tags! */
     tag = (*stack)->tag;
     if (tag == NULL) {
-      tag = (yaml_char_t *)"map";
+      tag = "map";
     }
     else {
       tag = process_tag(tag);
@@ -1070,7 +1070,7 @@ handle_map(event, stack, return_tag, coerce_keys)
 
 static void
 possibly_record_alias(anchor, aliases, obj)
-  yaml_char_t *anchor;
+  char *anchor;
   s_alias_entry **aliases;
   s_prot_object *obj;
 {
@@ -1078,7 +1078,7 @@ possibly_record_alias(anchor, aliases, obj)
 
   if (anchor != NULL) {
     alias = (s_alias_entry *)malloc(sizeof(s_alias_entry));
-    alias->name = yaml_strdup(anchor);
+    alias->name = strdup(anchor);
     alias->obj = obj;
     obj->refcount++;
     alias->prev = *aliases;
@@ -1097,7 +1097,7 @@ load_yaml_str(s_str, s_use_named, s_handlers)
   yaml_parser_t parser;
   yaml_event_t event;
   const char *str, *name;
-  yaml_char_t *tag;
+  char *tag;
   long len;
   int use_named, i, done = 0, err;
   s_stack_entry *stack = NULL;

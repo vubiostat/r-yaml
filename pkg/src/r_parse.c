@@ -1087,7 +1087,7 @@ possibly_record_alias(anchor, aliases, obj)
 }
 
 SEXP
-load_yaml_str(s_str, s_use_named, s_handlers)
+R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
   SEXP s_str;
   SEXP s_use_named;
   SEXP s_handlers;

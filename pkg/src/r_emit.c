@@ -284,7 +284,7 @@ R_yoink(vec, index)
 }
 
 static int
-as_yaml_write_handler(data, buffer, size)
+R_serialize_to_yaml_write_handler(data, buffer, size)
   void *data;
   unsigned char *buffer;
   size_t size;
@@ -612,7 +612,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
 }
 
 SEXP
-as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
+R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
@@ -710,7 +710,7 @@ as_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precis
 
   output.buffer = NULL;
   output.size = output.capa = 0;
-  yaml_emitter_set_output(&emitter, as_yaml_write_handler, &output);
+  yaml_emitter_set_output(&emitter, R_serialize_to_yaml_write_handler, &output);
 
   yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
   status = yaml_emitter_emit(&emitter, &event);

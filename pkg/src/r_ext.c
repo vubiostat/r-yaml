@@ -85,7 +85,7 @@ R_has_class(obj, name)
 
 R_CallMethodDef callMethods[] = {
   {"yaml.load", (DL_FUNC)&load_yaml_str, 3},
-  {"as.yaml",   (DL_FUNC)&as_yaml,       8},
+  {"as.yaml",   (DL_FUNC)&R_serialize_to_yaml, 8},
   {NULL, NULL, 0}
 };
 

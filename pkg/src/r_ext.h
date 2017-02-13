@@ -24,7 +24,7 @@ const char *R_inspect(SEXP obj);
 int R_has_class(SEXP obj, char *name);
 
 /* Exported functions */
-SEXP as_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap,
+SEXP R_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap,
     SEXP s_column_major, SEXP s_unicode, SEXP s_precision,
     SEXP s_indent_mapping_sequence);
 

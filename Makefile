@@ -32,6 +32,7 @@ SRCS = pkg/src/yaml_private.h \
 	pkg/R/zzz.R \
 	pkg/R/yaml.load_file.R \
 	pkg/R/as.yaml.R \
+	pkg/R/read_yaml.R \
 	pkg/NAMESPACE
 
 BUILD_SRCS = build/src/yaml_private.h \
@@ -67,6 +68,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	build/R/zzz.R \
 	build/R/yaml.load_file.R \
 	build/R/as.yaml.R \
+	build/R/read_yaml.R \
 	build/NAMESPACE
 
 ifdef DEBUG

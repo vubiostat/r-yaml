@@ -25,6 +25,7 @@ SRCS = pkg/src/yaml_private.h \
 	pkg/tests/testthat/test_yaml_load.R \
 	pkg/tests/testthat/test_as_yaml.R \
 	pkg/tests/testthat/test_read_yaml.R \
+	pkg/tests/testthat/test_write_yaml.R \
 	pkg/tests/testthat/files/test.yml \
 	pkg/DESCRIPTION.brew \
 	pkg/COPYING \
@@ -63,6 +64,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	build/tests/testthat/test_yaml_load.R \
 	build/tests/testthat/test_as_yaml.R \
 	build/tests/testthat/test_read_yaml.R \
+	build/tests/testthat/test_write_yaml.R \
 	build/tests/testthat/files/test.yml \
 	build/DESCRIPTION \
 	build/COPYING \

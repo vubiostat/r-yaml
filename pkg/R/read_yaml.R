@@ -1,5 +1,5 @@
 `read_yaml` <-
-function(file, as.named.list = TRUE, handlers = NULL, fileEncoding = "", text) {
+function(file, fileEncoding = "", text, ...) {
   if (missing(file) && !missing(text)) {
     file <- textConnection(text, encoding = "UTF-8")
     on.exit(close(file))
@@ -17,5 +17,5 @@ function(file, as.named.list = TRUE, handlers = NULL, fileEncoding = "", text) {
     on.exit(close(file))
   }
   string <- enc2utf8(paste(readLines(file), collapse="\n"))
-  .Call("yaml.load", string, as.named.list, handlers, PACKAGE="yaml")
+  yaml.load(string, ...)
 }

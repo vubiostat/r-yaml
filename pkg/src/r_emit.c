@@ -283,11 +283,11 @@ R_serialize_to_yaml_write_handler(data, buffer, size)
   unsigned char *buffer;
   size_t size;
 {
-  Rconnection *conn;
+  Rconnection conn;
   size_t result;
 
-  conn = (Rconnection *)data;
-  result = R_WriteConnection(*conn, (void *)buffer, size);
+  conn = (Rconnection)data;
+  result = R_WriteConnection(conn, (void *)buffer, size);
   if (result == size) {
     return 1;
   }
@@ -702,7 +702,7 @@ R_serialize_to_yaml(s_obj, s_conn, s_line_sep, s_indent, s_omap, s_column_major,
   yaml_emitter_set_indent(&emitter, indent);
   yaml_emitter_set_indent_mapping_sequence(&emitter, indent_mapping_sequence);
 
-  yaml_emitter_set_output(&emitter, R_serialize_to_yaml_write_handler, (void *)&conn);
+  yaml_emitter_set_output(&emitter, R_serialize_to_yaml_write_handler, (void *)conn);
 
   yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
   status = yaml_emitter_emit(&emitter, &event);

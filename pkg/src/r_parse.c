@@ -1086,27 +1086,37 @@ possibly_record_alias(anchor, aliases, obj)
   }
 }
 
+int
+R_unserialize_from_yaml_read_handler(data, buffer, size, size_read)
+  void *data;
+  unsigned char *buffer;
+  size_t size;
+  size_t *size_read;
+{
+  Rconnection conn;
+  conn = (Rconnection)data;
+  *size_read = R_ReadConnection(conn, (void *)buffer, size);
+  return 1;
+}
+
 SEXP
-R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
-  SEXP s_str;
+R_unserialize_from_yaml(s_conn, s_use_named, s_handlers)
+  SEXP s_conn;
   SEXP s_use_named;
   SEXP s_handlers;
 {
   s_prot_object *obj;
   SEXP retval, R_hndlr, names, handlers_copy;
+  Rconnection conn;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *str, *name;
+  const char *name;
   char *tag;
-  long len;
   int use_named, i, done = 0, err;
   s_stack_entry *stack = NULL;
   s_alias_entry *aliases = NULL, *alias;
 
-  if (!isString(s_str) || length(s_str) != 1) {
-    error("first argument must be a character vector of length 1");
-    return R_NilValue;
-  }
+  conn = R_GetConnection(s_conn);
 
   if (!isLogical(s_use_named) || length(s_use_named) != 1) {
     error("second argument must be a logical vector of length 1");
@@ -1143,12 +1153,10 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
     s_handlers = handlers_copy;
   }
 
-  str = CHAR(STRING_ELT(s_str, 0));
-  len = LENGTH(STRING_ELT(s_str, 0));
   use_named = LOGICAL(s_use_named)[0];
 
   yaml_parser_initialize(&parser);
-  yaml_parser_set_input_string(&parser, (const unsigned char *)str, len);
+  yaml_parser_set_input(&parser, R_unserialize_from_yaml_read_handler, (void *)conn);
 
   error_msg[0] = 0;
   while (!done) {

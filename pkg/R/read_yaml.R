@@ -1,7 +1,7 @@
 `read_yaml` <-
-function(file, fileEncoding = "UTF-8", text, ...) {
+function(file, as.named.list = TRUE, handlers = NULL, fileEncoding = "UTF-8", text) {
   if (missing(file) && !missing(text)) {
-    file <- textConnection(text, encoding = "UTF-8")
+    file <- rawConnection(charToRaw(enc2utf8(text)))
     on.exit(close(file))
   }
   if (is.character(file)) {
@@ -16,6 +16,5 @@ function(file, fileEncoding = "UTF-8", text, ...) {
     open(file, "rt")
     on.exit(close(file))
   }
-  string <- enc2utf8(paste(readLines(file), collapse="\n"))
-  yaml.load(string, ...)
+  .Call("yaml.load", file, as.named.list, handlers, PACKAGE="yaml")
 }

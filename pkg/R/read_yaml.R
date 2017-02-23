@@ -1,5 +1,5 @@
 `read_yaml` <-
-function(file, fileEncoding = "", text, ...) {
+function(file, fileEncoding = "UTF-8", text, ...) {
   if (missing(file) && !missing(text)) {
     file <- textConnection(text, encoding = "UTF-8")
     on.exit(close(file))

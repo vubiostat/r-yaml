@@ -3,12 +3,6 @@
 extern SEXP R_DeparseFunc;
 extern char error_msg[256];
 
-typedef struct {
-  char *buffer;
-  size_t size;
-  size_t capa;
-} s_emitter_output;
-
 static SEXP
 R_deparse_function(s_obj)
   SEXP s_obj;
@@ -289,19 +283,15 @@ R_serialize_to_yaml_write_handler(data, buffer, size)
   unsigned char *buffer;
   size_t size;
 {
-  s_emitter_output *output = (s_emitter_output *)data;
-  if (output->size + size > output->capa) {
-    output->capa = (output->capa + size) * 2;
-    output->buffer = (char *)realloc(output->buffer, output->capa * sizeof(char));
+  Rconnection *conn;
+  size_t result;
 
-    if (output->buffer == NULL) {
-      return 0;
-    }
+  conn = (Rconnection *)data;
+  result = R_WriteConnection(*conn, (void *)buffer, size);
+  if (result == size) {
+    return 1;
   }
-  memmove((void *)(output->buffer + output->size), (void *)buffer, size);
-  output->size += size;
-
-  return 1;
+  return 0;
 }
 
 static int
@@ -612,8 +602,9 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
 }
 
 SEXP
-R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
+R_serialize_to_yaml(s_obj, s_conn, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
   SEXP s_obj;
+  SEXP s_conn;
   SEXP s_line_sep;
   SEXP s_indent;
   SEXP s_omap;
@@ -625,9 +616,12 @@ R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unico
   SEXP retval;
   yaml_emitter_t emitter;
   yaml_event_t event;
-  s_emitter_output output;
-  int status, line_sep, indent, omap, column_major, unicode, precision, indent_mapping_sequence;
+  Rconnection conn;
+  int status, line_sep, indent, omap, column_major, unicode, precision,
+      indent_mapping_sequence;
   const char *c_line_sep;
+
+  conn = R_GetConnection(s_conn);
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
   if (c_line_sep[0] == '\n') {
@@ -708,9 +702,7 @@ R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unico
   yaml_emitter_set_indent(&emitter, indent);
   yaml_emitter_set_indent_mapping_sequence(&emitter, indent_mapping_sequence);
 
-  output.buffer = NULL;
-  output.size = output.capa = 0;
-  yaml_emitter_set_output(&emitter, R_serialize_to_yaml_write_handler, &output);
+  yaml_emitter_set_output(&emitter, R_serialize_to_yaml_write_handler, (void *)&conn);
 
   yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
   status = yaml_emitter_emit(&emitter, &event);
@@ -737,8 +729,8 @@ R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unico
 done:
 
   if (status) {
-    PROTECT(retval = allocVector(STRSXP, 1));
-    SET_STRING_ELT(retval, 0, mkCharLen(output.buffer, output.size));
+    PROTECT(retval = allocVector(LGLSXP, 1));
+    LOGICAL(retval)[0] = 1;
     UNPROTECT(1);
   }
   else {
@@ -753,10 +745,7 @@ done:
 
   yaml_emitter_delete(&emitter);
 
-  if (status) {
-    free(output.buffer);
-  }
-  else {
+  if (!status) {
     error(error_msg);
   }
 

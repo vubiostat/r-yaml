@@ -2,10 +2,7 @@
 function(x, file, fileEncoding = "UTF-8", ...) {
   result <- as.yaml(x, ...)
 
-  if (file == "") {
-    file <- stdout()
-  }
-  else if (is.character(file)) {
+  if (is.character(file)) {
     file <-
       if (nzchar(fileEncoding)) {
         file(file, "w", encoding = fileEncoding)

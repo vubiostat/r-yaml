@@ -16,6 +16,6 @@ function(file, fileEncoding = "UTF-8", text, ...) {
     open(file, "rt")
     on.exit(close(file))
   }
-  string <- enc2utf8(paste(readLines(file), collapse="\n"))
+  string <- paste(readLines(file), collapse="\n")
   yaml.load(string, ...)
 }

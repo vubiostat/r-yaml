@@ -7,7 +7,7 @@
   Parse a YAML string and return R objects.
 }
 \usage{
-  yaml.load(string, as.named.list = TRUE, handlers = NULL)
+  yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL)
   yaml.load_file(input, ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -16,6 +16,7 @@
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
   \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
   \item{input}{ a filename or connection }
+  \item{error.label}{ a label to prepend to error messages }
   \item{...}{ arguments to pass to yaml.load }
 }
 \details{
@@ -83,8 +84,14 @@
   yaml.load("!bar\none: 1\ntwo: 2", handlers=list(foo=function(x) { x$one <- "one"; x }))
 
   # loading R expressions
+  # NOTE: this will not be done by default in the near future
   doc <- yaml.load("inc: !expr function(x) x + 1")
   doc$inc(1)
+
+\dontrun{
+  # adding a label to error messages
+  tryCatch(yaml.load("*", error.label = "foo"))
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

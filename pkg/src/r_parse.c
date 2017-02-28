@@ -1087,17 +1087,18 @@ possibly_record_alias(anchor, aliases, obj)
 }
 
 SEXP
-R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
+R_unserialize_from_yaml(s_str, s_use_named, s_handlers, s_error_label)
   SEXP s_str;
   SEXP s_use_named;
   SEXP s_handlers;
+  SEXP s_error_label;
 {
   s_prot_object *obj;
   SEXP retval, R_hndlr, names, handlers_copy;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *str, *name;
-  char *tag;
+  const char *str, *name, *error_label;
+  char *tag, *error_msg_copy;
   long len;
   int use_named, i, done = 0, err;
   s_stack_entry *stack = NULL;
@@ -1141,6 +1142,16 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
       SET_VECTOR_ELT(handlers_copy, i, R_hndlr);
     }
     s_handlers = handlers_copy;
+  }
+
+  if (s_error_label == R_NilValue) {
+    error_label = NULL;
+  }
+  else if (!isString(s_error_label) || length(s_error_label) != 1) {
+    error("error_label must be either NULL or a character vector of length 1");
+    return R_NilValue;
+  } else {
+    error_label = CHAR(STRING_ELT(s_error_label, 0));
   }
 
   str = CHAR(STRING_ELT(s_str, 0));
@@ -1320,6 +1331,17 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
   yaml_parser_delete(&parser);
 
   if (error_msg[0] != 0) {
+    /* Prepend label to error message if specified */
+    if (error_label != NULL) {
+      error_msg_copy = (char *)malloc(sizeof(char) * ERROR_MSG_SIZE);
+      if (error_msg_copy == NULL) {
+        set_error_msg("Ran out of memory!");
+      } else {
+        memcpy(error_msg_copy, error_msg, ERROR_MSG_SIZE);
+        set_error_msg("(%s) %s", error_label, error_msg_copy);
+        free(error_msg_copy);
+      }
+    }
     error(error_msg);
   }
 

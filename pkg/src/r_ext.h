@@ -30,6 +30,7 @@ SEXP R_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap
     SEXP s_column_major, SEXP s_unicode, SEXP s_precision,
     SEXP s_indent_mapping_sequence);
 
-SEXP R_unserialize_from_yaml(SEXP s_str, SEXP s_use_named, SEXP s_handlers);
+SEXP R_unserialize_from_yaml(SEXP s_str, SEXP s_use_named, SEXP s_handlers,
+    SEXP s_label);
 
 #endif

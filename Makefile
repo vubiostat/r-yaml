@@ -19,6 +19,7 @@ SRCS = pkg/src/yaml_private.h \
 	pkg/man/as.yaml.Rd \
 	pkg/man/yaml.load.Rd \
 	pkg/man/write_yaml.Rd \
+	pkg/man/read_yaml.Rd \
 	pkg/inst/THANKS \
 	pkg/inst/CHANGELOG \
 	pkg/tests/testthat.R \
@@ -58,6 +59,7 @@ BUILD_SRCS = build/src/yaml_private.h \
 	build/man/as.yaml.Rd \
 	build/man/yaml.load.Rd \
 	build/man/write_yaml.Rd \
+	build/man/read_yaml.Rd \
 	build/inst/THANKS \
 	build/inst/CHANGELOG \
 	build/inst/implicit.re \

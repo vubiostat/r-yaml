@@ -1,21 +1,38 @@
 `read_yaml` <-
-function(file, fileEncoding = "UTF-8", text, ...) {
+function(file, fileEncoding = "UTF-8", text, error.label, ...) {
   if (missing(file) && !missing(text)) {
+    if (missing(error.label)) {
+      error.label <- NULL
+    }
     file <- textConnection(text, encoding = "UTF-8")
     on.exit(close(file))
   }
-  if (is.character(file)) {
+  else if (is.character(file)) {
+    if (missing(error.label)) {
+      error.label <- file
+    }
     file <- if (nzchar(fileEncoding))
       file(file, "rt", encoding = fileEncoding)
     else file(file, "rt")
     on.exit(close(file))
   }
-  if (!inherits(file, "connection"))
+  else if (inherits(file, "connection")) {
+    if (missing(error.label)) {
+      # try to guess filename
+      s <- try(summary(file), silent = TRUE)
+      if (!inherits(s, "try-error") && is.list(s) && "description" %in% names(s)) {
+        error.label <- s$description
+      }
+    }
+
+    if (!isOpen(file, "rt")) {
+      open(file, "rt")
+      on.exit(close(file))
+    }
+  } else {
     stop("'file' must be a character string or connection")
-  if (!isOpen(file, "rt")) {
-    open(file, "rt")
-    on.exit(close(file))
   }
+
   string <- paste(readLines(file), collapse="\n")
-  yaml.load(string, ...)
+  yaml.load(string, error.label = error.label, ...)
 }

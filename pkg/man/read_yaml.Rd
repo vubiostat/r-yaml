@@ -5,7 +5,7 @@
   Read a YAML document from a file and create an R object from it
 }
 \usage{
-  read_yaml(file, fileEncoding = "UTF-8", text, \dots)
+  read_yaml(file, fileEncoding = "UTF-8", text, error.label, \dots)
 }
 \arguments{
   \item{file}{either a character string naming a file or a \link{connection}
@@ -17,11 +17,20 @@
     then data are read from the value of \code{text} via a text connection.
     Notice that a literal string can be used to include (small) data sets
     within R code.}
+  \item{error.label}{a label to prepend to error messages (see Details).}
   \item{...}{arguments to pass to \code{\link{yaml.load}}}
 }
 \details{
   This function is a convenient wrapper for \code{\link{yaml.load}} and is a
   nicer alternative to \code{\link{yaml.load_file}}.
+
+  You can specify a label to be prepended to error messages via the
+  \code{error.label} argument.  If \code{error.label} is missing,
+  \code{read_yaml} will make an educated guess for the value of
+  \code{error.label} by either using the specified filename (when \code{file}
+  is a character vector) or using the description of the supplied connection
+  object (via the \code{summary} function).  If \code{text} is used, the
+  default value of \code{error.label} will be \code{NULL}.
 }
 \value{
   If the root YAML object is a map, a named list or list with an attribute of 'keys' is

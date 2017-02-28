@@ -6,7 +6,23 @@ SEXP R_FormatFunc = NULL;
 SEXP R_PasteFunc = NULL;
 SEXP R_CollapseSymbol = NULL;
 SEXP R_DeparseFunc = NULL;
-char error_msg[255];
+char error_msg[ERROR_MSG_SIZE];
+
+void
+set_error_msg(const char *format, ...)
+{
+  va_list args;
+  int result;
+
+  va_start(args, format);
+  result = vsnprintf(error_msg, ERROR_MSG_SIZE, format, args);
+  if (result >= ERROR_MSG_SIZE) {
+    warning("an error occurred, but the message was too long to format properly");
+
+    /* ensure the string is null terminated */
+    error_msg[ERROR_MSG_SIZE-1] = 0;
+  }
+}
 
 /* Returns true if obj is a named list */
 int

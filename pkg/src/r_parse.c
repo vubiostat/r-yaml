@@ -2,7 +2,7 @@
 
 extern SEXP R_KeysSymbol;
 extern SEXP R_IdenticalFunc;
-extern char error_msg[256];
+extern char error_msg[ERROR_MSG_SIZE];
 
 /* For keeping track of R objects in the stack */
 typedef struct {
@@ -492,7 +492,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         for (i = 0; i < len; i++) {
           elt = VECTOR_ELT(obj, i);
           if ((coerce_keys && !R_is_named_list(elt)) || (!coerce_keys && !R_is_pseudo_hash(elt))) {
-            sprintf(error_msg, "omap must be a sequence of maps");
+            set_error_msg("omap must be a sequence of maps");
             return 1;
           }
           total_len += length(elt);
@@ -522,7 +522,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
               if (R_index(keys, key, 1, idx) >= 0) {
                 dup_key = 1;
-                sprintf(error_msg, "Duplicate omap key: '%s'", CHAR(key));
+                set_error_msg("Duplicate omap key: '%s'", CHAR(key));
               }
             }
             else {
@@ -531,7 +531,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
               if (R_index(keys, key, 0, idx) >= 0) {
                 dup_key = 1;
-                sprintf(error_msg, "Duplicate omap key: %s", R_inspect(key));
+                set_error_msg("Duplicate omap key: %s", R_inspect(key));
               }
             }
             idx++;
@@ -611,7 +611,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         PROTECT(expr = R_ParseVector(obj, -1, &parse_status, R_NilValue));
         if (parse_status != PARSE_OK) {
           UNPROTECT(1); // expr
-          sprintf(error_msg, "Could not parse expression: %s", CHAR(STRING_ELT(obj, 0)));
+          set_error_msg("Could not parse expression: %s", CHAR(STRING_ELT(obj, 0)));
           coercion_err = 1;
         }
         else {
@@ -625,7 +625,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           UNPROTECT(1); // expr
 
           if (coercion_err) {
-            sprintf(error_msg, "Could not evaluate expression: %s", CHAR(STRING_ELT(obj, 0)));
+            set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(obj, 0)));
           }
           else {
             warning("R expressions in yaml.load will not be auto-evaluated by default in the near future");
@@ -641,7 +641,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
   if (coercion_err == 1) {
     if (error_msg[0] == 0) {
-      sprintf(error_msg, "Invalid tag: %s for %s", tag, (event_type == YAML_SCALAR_EVENT ? "scalar" : (event_type == YAML_SEQUENCE_END_EVENT ? "sequence" : "map")));
+      set_error_msg("Invalid tag: %s for %s", tag, (event_type == YAML_SCALAR_EVENT ? "scalar" : (event_type == YAML_SEQUENCE_END_EVENT ? "sequence" : "map")));
     }
     return 1;
   }
@@ -935,7 +935,7 @@ handle_map(event, stack, return_tag, coerce_keys)
           }
           else {
             /* Illegal merge */
-            sprintf(error_msg, "Illegal merge: %s", R_inspect(value));
+            set_error_msg("Illegal merge: %s", R_inspect(value));
             bad_merge = 1;
             break;
           }
@@ -944,7 +944,7 @@ handle_map(event, stack, return_tag, coerce_keys)
       else {
         /* Illegal merge */
         bad_merge = 1;
-        sprintf(error_msg, "Illegal merge: %s", R_inspect(merge_list));
+        set_error_msg("Illegal merge: %s", R_inspect(merge_list));
       }
       prune_prot_object(value_obj);
     }
@@ -990,7 +990,7 @@ handle_map(event, stack, return_tag, coerce_keys)
       if (map_tmp != NULL) {
         if (map_tmp->merged == 0) {
           dup_key = 1;
-          sprintf(error_msg, "Duplicate map key: '%s'", coerce_keys ? CHAR(key) : R_inspect(key));
+          set_error_msg("Duplicate map key: '%s'", coerce_keys ? CHAR(key) : R_inspect(key));
         }
         else {
           /* Overwrite the found key by unlinking it. */
@@ -1243,23 +1243,23 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
       /* Parser error */
       switch (parser.error) {
         case YAML_MEMORY_ERROR:
-          sprintf(error_msg, "Memory error: Not enough memory for parsing");
+          set_error_msg("Memory error: Not enough memory for parsing");
           break;
 
         case YAML_READER_ERROR:
           if (parser.problem_value != -1) {
-            sprintf(error_msg, "Reader error: %s: #%X at %d", parser.problem,
+            set_error_msg("Reader error: %s: #%X at %d", parser.problem,
               parser.problem_value, (int)parser.problem_offset);
           }
           else {
-            sprintf(error_msg, "Reader error: %s at %d", parser.problem,
+            set_error_msg("Reader error: %s at %d", parser.problem,
               (int)parser.problem_offset);
           }
           break;
 
         case YAML_SCANNER_ERROR:
           if (parser.context) {
-            sprintf(error_msg, "Scanner error: %s at line %d, column %d"
+            set_error_msg("Scanner error: %s at line %d, column %d "
               "%s at line %d, column %d\n", parser.context,
               (int)parser.context_mark.line+1,
               (int)parser.context_mark.column+1,
@@ -1267,7 +1267,7 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
               (int)parser.problem_mark.column+1);
           }
           else {
-            sprintf(error_msg, "Scanner error: %s at line %d, column %d",
+            set_error_msg("Scanner error: %s at line %d, column %d",
               parser.problem, (int)parser.problem_mark.line+1,
               (int)parser.problem_mark.column+1);
           }
@@ -1275,7 +1275,7 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
 
         case YAML_PARSER_ERROR:
           if (parser.context) {
-            sprintf(error_msg, "Parser error: %s at line %d, column %d"
+            set_error_msg("Parser error: %s at line %d, column %d "
               "%s at line %d, column %d", parser.context,
               (int)parser.context_mark.line+1,
               (int)parser.context_mark.column+1,
@@ -1283,15 +1283,16 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers)
               (int)parser.problem_mark.column+1);
           }
           else {
-            sprintf(error_msg, "Parser error: %s at line %d, column %d",
+            set_error_msg("Parser error: %s at line %d, column %d",
               parser.problem, (int)parser.problem_mark.line+1,
               (int)parser.problem_mark.column+1);
           }
           break;
 
         default:
-          /* Couldn't happen. */
-          sprintf(error_msg, "Internal error");
+          /* Couldn't happen unless there is an undocumented/unhandled error
+           * from LibYAML. */
+          set_error_msg("Internal error");
           break;
       }
       done = 1;

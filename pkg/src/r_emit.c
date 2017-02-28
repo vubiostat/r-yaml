@@ -1,7 +1,7 @@
 #include "r_ext.h"
 
 extern SEXP R_DeparseFunc;
-extern char error_msg[256];
+extern char error_msg[ERROR_MSG_SIZE];
 
 typedef struct {
   char *buffer;
@@ -743,10 +743,10 @@ done:
   }
   else {
     if (emitter.problem != NULL) {
-      sprintf(error_msg, "Emitter error: %s", emitter.problem);
+      set_error_msg("Emitter error: %s", emitter.problem);
     }
     else {
-      sprintf(error_msg, "Unknown emitter error");
+      set_error_msg("Unknown emitter error");
     }
     retval = R_NilValue;
   }

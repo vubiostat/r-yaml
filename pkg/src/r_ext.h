@@ -1,6 +1,7 @@
 #ifndef _R_EXT_H
 #define _R_EXT_H
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "R.h"
@@ -12,7 +13,7 @@
 #include "yaml.h"
 
 #define REAL_BUF_SIZE 256
-#define FORMAT_BUF_SIZE 128
+#define ERROR_MSG_SIZE 512
 
 /* From implicit.c */
 char *find_implicit_tag(const char *value, size_t size);
@@ -22,6 +23,7 @@ int R_is_named_list(SEXP obj);
 SEXP R_collapse(SEXP obj, char *collapse);
 const char *R_inspect(SEXP obj);
 int R_has_class(SEXP obj, char *name);
+void set_error_msg(const char *format, ...);
 
 /* Exported functions */
 SEXP R_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap,

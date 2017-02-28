@@ -1,6 +1,6 @@
 \name{write_yaml}
 \alias{write_yaml}
-\title{ Write the YAML representation of an R object to a file }
+\title{Write a YAML file}
 \description{
   Write the YAML representation of an R object to a file
 }
@@ -14,14 +14,16 @@
   \item{fileEncoding}{character string: if non-empty declares the
     encoding to be used on a file (not a connection) so the character data can
     be re-encoded as they are written.  See \code{\link{file}}.}
-  \item{\dots}{arguments to \code{as.yaml}}
+  \item{\dots}{arguments to \code{\link{as.yaml}}}
 }
 \details{
   If \code{file} is a non-open connection, an attempt is made to open it
   and then close it after use.
+
+  This function is a convenient wrapper around \code{\link{as.yaml}}.
 }
-\author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu> }
-\seealso{ \code{\link{as.yaml}}, \code{\link{read_yaml}}, \code{\link{yaml.load_file}} }
+\author{Jeremy Stephens <jeremy.stephens@vanderbilt.edu>}
+\seealso{\code{\link{as.yaml}}, \code{\link{read_yaml}}, \code{\link{yaml.load_file}}}
 \examples{
 \dontrun{
   # writing to a file connection
@@ -30,6 +32,7 @@
 
   # using a filename to specify output file
   write_yaml(data.frame(a=1:10, b=letters[1:10], c=11:20), "data.yml")
-}}
-\keyword{ data }
-\keyword{ manip }
+}
+}
+\keyword{data}
+\keyword{manip}

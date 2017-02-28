@@ -8,7 +8,7 @@
 }
 \usage{
   yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL)
-  yaml.load_file(input, ...)
+  yaml.load_file(input, error.label, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -16,7 +16,7 @@
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
   \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
   \item{input}{ a filename or connection }
-  \item{error.label}{ a label to prepend to error messages }
+  \item{error.label}{ a label to prepend to error messages (see Details). }
   \item{...}{ arguments to pass to yaml.load }
 }
 \details{
@@ -39,6 +39,15 @@
   Custom map functions will be passed the object that the internal map handler creates, which
   is either a named list or a list with a 'keys' attribute (depending on \code{as.named.list}).
   ALL functions you provide must return an object.  See the examples for custom handler use.
+
+  You can specify a label to be prepended to error messages via the
+  \code{error.label} argument.  When using \code{yaml.load_file}, you can
+  either set the \code{error.label} argument explicitly or leave it missing.
+  If missing, \code{yaml.load_file} will make an educated guess for the value
+  of \code{error.label} by either using the specified filename (when
+  \code{input} is a character vector) or using the description of the supplied
+  connection object (via the \code{summary} function).  You can explicity set
+  \code{error.label} to \code{NULL} if you don't want to use this functionality.
 
   This function uses the YAML parser provided by libyaml, which conforms to the YAML 1.1
   specification.

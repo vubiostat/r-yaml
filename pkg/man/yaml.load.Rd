@@ -97,10 +97,8 @@
   doc <- yaml.load("inc: !expr function(x) x + 1")
   doc$inc(1)
 
-\dontrun{
   # adding a label to error messages
-  tryCatch(yaml.load("*", error.label = "foo"))
-}
+  try(yaml.load("*", error.label = "foo"))
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

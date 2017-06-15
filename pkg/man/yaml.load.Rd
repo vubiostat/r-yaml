@@ -24,7 +24,7 @@
   \code{yaml.load_file}, which calls \code{yaml.load} with the contents of the specified
   file or connection.
 
-  Sequences of uniform data (i.e. a sequence of integers) are converted into vectors.  If
+  Sequences of uniform data (e.g. a sequence of integers) are converted into vectors.  If
   the sequence is not uniform, it's returned as a list. Maps are converted into named lists
   by default, and all the keys in the map are converted to strings.  If you don't want the
   keys to be coerced into strings, set \code{as.named.list} to FALSE.  When it's FALSE, a

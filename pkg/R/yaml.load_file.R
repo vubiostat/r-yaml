@@ -12,6 +12,9 @@ function(input, error.label, ...) {
       error.label <- input[1]
     }
   }
-  yaml.load(paste(readLines(file(input, encoding = 'UTF-8')), collapse="\n"),
+  
+  con <- file(input, encoding = 'UTF-8');
+  on.exit(close(con));
+  yaml.load(paste(readLines(con), collapse="\n"),
             error.label = error.label, ...)
 }

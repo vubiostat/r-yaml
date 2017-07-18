@@ -14,8 +14,8 @@ function(input, error.label, ...) {
   }
   
   if(is.character(input)) {
-    con <- file(input, encoding = 'UTF-8');
-    on.exit(close(con));
+    con <- file(input, encoding = 'UTF-8')
+    on.exit(close(con))
   } else {
     con <- input
   }

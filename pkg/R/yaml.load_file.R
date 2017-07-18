@@ -13,8 +13,12 @@ function(input, error.label, ...) {
     }
   }
   
-  con <- file(input, encoding = 'UTF-8');
-  on.exit(close(con));
+  if(is.character(input)) {
+    con <- file(input, encoding = 'UTF-8');
+    on.exit(close(con));
+  } else {
+    con <- input
+  }
   yaml.load(paste(readLines(con), collapse="\n"),
             error.label = error.label, ...)
 }

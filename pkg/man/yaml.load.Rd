@@ -15,7 +15,7 @@
   \item{string}{ the YAML string to be parsed }
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
   \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
-  \item{input}{ a filename or connection }
+  \item{input}{ a filename or connection. If \code{input} is a filename, that file must be encoded in UTF-8. }
   \item{error.label}{ a label to prepend to error messages (see Details). }
   \item{...}{ arguments to pass to yaml.load }
 }

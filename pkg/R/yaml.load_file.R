@@ -19,6 +19,6 @@ function(input, error.label, ...) {
   } else {
     con <- input
   }
-  yaml.load(paste(readLines(con), collapse="\n"),
+  yaml.load(readLines(con),
             error.label = error.label, ...)
 }

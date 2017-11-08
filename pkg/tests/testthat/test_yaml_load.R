@@ -496,6 +496,10 @@ test_that("numeric represented in exponential form is loaded properly", {
   expect_equal(1000000, yaml.load("1.0e+06"))
 });
 
+test_that("numeric without leading digits is loaded properly", {
+  expect_equal(0.9, yaml.load(".9"))
+});
+
 test_that("integer overflow creates a warning", {
   expect_warning(result <- yaml.load("2147483648"))
   expect_equal(NA_integer_, result)

@@ -151,6 +151,18 @@ test_that("unicode strings are escaped", {
   expect_equal("\"\\xE9\"\n", result, expected.label = result)
 })
 
+test_that("unicode strings are not escaped by default", {
+  x <- list('é')
+  result <- as.yaml(x)
+  expect_equal("- é\n", result, expected.label = result)
+})
+
+test_that("named list with unicode character is correct converted", {
+  x <- list(special.char = "é")
+  result <- as.yaml(x)
+  expect_equal("special.char: é\n", result, expected.label = result)
+})
+
 test_that("unknown objects cause error", {
   expect_that(as.yaml(expression(foo <- bar)), throws_error())
 })

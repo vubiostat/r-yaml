@@ -428,7 +428,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
           } else if (errno == ERANGE) {
             warning("NAs introduced by coercion: %s is out of integer range", nptr);
             i = NA_INTEGER;
-          } else if (li <= INT_MIN || li > INT_MAX) {
+          } else if (li < INT_MIN || li > INT_MAX || (int)li == NA_INTEGER) {
             warning("NAs introduced by coercion: %s is out of integer range", nptr);
             i = NA_INTEGER;
           } else {
@@ -453,6 +453,9 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         if (*endptr != 0) {
           /* No valid floats found (see note above about integers) */
           warning("NAs introduced by coercion: %s is not a real", nptr);
+          f = NA_REAL;
+        } else if (errno == ERANGE || f == NA_REAL) {
+          warning("NAs introduced by coercion: %s is out of real range", nptr);
           f = NA_REAL;
         }
 

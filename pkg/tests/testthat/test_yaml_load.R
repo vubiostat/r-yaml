@@ -502,3 +502,8 @@ test_that("integer overflow creates a warning", {
   expect_warning(result <- yaml.load("2147483649"))
   expect_equal(NA_integer_, result)
 })
+
+test_that("numeric overflow creates a warning", {
+  expect_warning(result <- yaml.load("1.797693e+309"))
+  expect_equal(NA_real_, result)
+})

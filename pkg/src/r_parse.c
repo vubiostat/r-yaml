@@ -350,6 +350,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 {
   SEXP handler, obj, new_obj, elt, keys, key, expr;
   int handled, coercion_err, base, i, len, total_len, idx, elt_len, j, dup_key;
+  long int li;
   const char *nptr;
   char *endptr;
   double f;
@@ -415,7 +416,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
         if (base >= 0) {
           nptr = CHAR(STRING_ELT(obj, 0));
-          i = (int)strtol(nptr, &endptr, base);
+          li = strtol(nptr, &endptr, base);
           if (*endptr != 0) {
             /* strtol is perfectly happy converting partial strings to
              * integers, but R isn't. If you call as.integer() on a
@@ -424,6 +425,14 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
             warning("NAs introduced by coercion: %s is not an integer", nptr);
             i = NA_INTEGER;
+          } else if (errno == ERANGE) {
+            warning("NAs introduced by coercion: %s is out of integer range", nptr);
+            i = NA_INTEGER;
+          } else if (li <= INT_MIN || li > INT_MAX) {
+            warning("NAs introduced by coercion: %s is out of integer range", nptr);
+            i = NA_INTEGER;
+          } else {
+            i = (int)li;
           }
 
           PROTECT(new_obj = NEW_INTEGER(1));

@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 #include "R.h"
 #include "Rdefines.h"
 #include "R_ext/Rdynload.h"

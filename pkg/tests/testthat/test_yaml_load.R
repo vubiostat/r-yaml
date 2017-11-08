@@ -511,3 +511,8 @@ test_that("numeric overflow creates a warning", {
   expect_warning(result <- yaml.load("1.797693e+309"))
   expect_equal(NA_real_, result)
 })
+
+test_that("list of one list is loaded properly", {
+  result <- yaml.load('a:\n -\n  - b\n  - c\n')
+  expect_equal(list(a = list(c("b", "c"))), result)
+})

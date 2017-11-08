@@ -718,7 +718,7 @@ handle_sequence(event, stack, return_tag)
 {
   s_stack_entry *stack_ptr;
   s_prot_object *obj;
-  int count, i, type;
+  int count, i, type, child_type;
   char *tag;
   SEXP list;
 
@@ -738,10 +738,25 @@ handle_sequence(event, stack, return_tag)
   for (i = count - 1; i >= 0; i--) {
     stack_pop(stack, &obj);
     SET_VECTOR_ELT(list, i, obj->obj);
-    if (type == -2) {
-      type = TYPEOF(obj->obj);
+
+    /* Treat primitive vectors with more than one element as a list for
+     * coercion purposes. */
+    child_type = TYPEOF(obj->obj);
+    switch (child_type) {
+      case LGLSXP:
+      case INTSXP:
+      case REALSXP:
+      case STRSXP:
+        if (LENGTH(obj->obj) != 1) {
+          child_type = VECSXP;
+        }
+        break;
     }
-    else if (type != -1 && (TYPEOF(obj->obj) != type || LENGTH(obj->obj) != 1)) {
+
+    if (type == -2) {
+      type = child_type;
+    }
+    else if (type != -1 && child_type != type) {
       type = -1;
     }
     prune_prot_object(obj);

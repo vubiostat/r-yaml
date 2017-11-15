@@ -113,4 +113,6 @@ void R_init_yaml(DllInfo *dll) {
   R_PasteFunc = findFun(install("paste"), R_GlobalEnv);
   R_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
   R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
+  R_useDynamicSymbols(dll, FALSE);
+  R_forceSymbols(dll, TRUE);
 }

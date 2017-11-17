@@ -140,27 +140,36 @@ test_that("strings are escaped properly", {
 })
 
 test_that("unicode strings are not escaped", {
-  x <- list('име' = 'Александар', 'презиме' = 'Благотић')
+  # list('име' = 'Александар', 'презиме' = 'Благотић')
+  a <- "\u0438\u043C\u0435" # name 1
+  b <- "\u0410\u043B\u0435\u043A\u0441\u0430\u043D\u0434\u0430\u0440" # value 1
+  c <- "\u043F\u0440\u0435\u0437\u0438\u043C\u0435" # name 2
+  d <- "\u0411\u043B\u0430\u0433\u043E\u0442\u0438\u045B" # value 2
+  x <- list(b, d)
+  names(x) <- c(a, c)
+  expected <- paste(a, ": ", b, "\n", c, ": ", d, "\n", sep="")
   result <- as.yaml(x, unicode = TRUE)
-  expect_equal("име: Александар\nпрезиме: Благотић\n", result, label = result)
+  expect_equal(expected, result, label = result)
 })
 
 test_that("unicode strings are escaped", {
-  x <- 'é'
+  # 'é'
+  x <- "\u00e9"
   result <- as.yaml(x, unicode = FALSE)
   expect_equal("\"\\xE9\"\n", result, expected.label = result)
 })
 
 test_that("unicode strings are not escaped by default", {
-  x <- list('é')
+  # list('é')
+  x <- list("\u00e9")
   result <- as.yaml(x)
-  expect_equal("- é\n", result, expected.label = result)
+  expect_equal("- \u00e9\n", result, expected.label = result)
 })
 
 test_that("named list with unicode character is correct converted", {
-  x <- list(special.char = "é")
+  x <- list(special.char = "\u00e9")
   result <- as.yaml(x)
-  expect_equal("special.char: é\n", result, expected.label = result)
+  expect_equal("special.char: \u00e9\n", result, expected.label = result)
 })
 
 test_that("unknown objects cause error", {

@@ -620,7 +620,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
     }
     else if (strcmp(tag, "expr") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
-        PROTECT(expr = R_ParseVector(obj, -1, &parse_status, R_NilValue));
+        PROTECT(expr = R_ParseVector(obj, 1, &parse_status, R_NilValue));
         if (parse_status != PARSE_OK) {
           UNPROTECT(1); // expr
           set_error_msg("Could not parse expression: %s", CHAR(STRING_ELT(obj, 0)));
@@ -628,20 +628,13 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
         }
         else {
           /* NOTE: R_tryEval will not return if R_Interactive is FALSE. */
-          for (i = 0; i < length(expr); i++) {
-            new_obj = R_tryEval(VECTOR_ELT(expr, i), R_GlobalEnv, &coercion_err);
-            if (coercion_err) {
-              break;
-            }
-          }
+          new_obj = R_tryEval(VECTOR_ELT(expr, 0), R_GlobalEnv, &coercion_err);
           UNPROTECT(1); // expr
-
           if (coercion_err) {
             set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(obj, 0)));
-          }
-          else {
-            warning("R expressions in yaml.load will not be auto-evaluated by default in the near future");
+          } else {
             PROTECT(new_obj);
+            warning("R expressions in yaml.load will not be auto-evaluated by default in the near future");
           }
         }
       }

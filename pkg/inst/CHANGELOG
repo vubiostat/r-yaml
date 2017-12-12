@@ -1,3 +1,6 @@
+v2.1.16
+  - fix error checking bug regarding number conversions
+
 v2.1.15
   - improve handling of UTF-8 encoded files
   - add Github URL to description file

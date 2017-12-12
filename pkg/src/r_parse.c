@@ -416,6 +416,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
 
         if (base >= 0) {
           nptr = CHAR(STRING_ELT(obj, 0));
+          errno = 0;
           li = strtol(nptr, &endptr, base);
           if (*endptr != 0) {
             /* strtol is perfectly happy converting partial strings to
@@ -449,6 +450,7 @@ convert_object(event_type, s_obj, tag, s_handlers, coerce_keys)
     else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0 || strcmp(tag, "float#exp") == 0) {
       if (event_type == YAML_SCALAR_EVENT) {
         nptr = CHAR(STRING_ELT(obj, 0));
+        errno = 0;
         f = strtod(nptr, &endptr);
         if (*endptr != 0) {
           /* No valid floats found (see note above about integers) */

@@ -16,7 +16,7 @@ test_that("named list is not returned", {
   expect_equal(2L, length(x[[1]]))
 })
 
-test_that("conflicts are handled", {
+test_that("key conflicts throw errors", {
   expect_that(yaml.load("hey: buddy\nhey: guy"), throws_error());
 })
 
@@ -58,19 +58,22 @@ test_that("named maps are merged", {
   expect_equal("bar", x$foo)
   expect_equal("boo", x$baz)
 
-  x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {foo: junk}, {baz: blah}, {baz: boo}]", TRUE)
+  warnings <- capture_warnings({
+    x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {foo: junk}, {baz: blah}, {baz: boo}]", TRUE)
+  })
   expect_equal(3L, length(x))
   expect_equal("blah", x$baz)
   expect_equal("bar", x$foo)
   expect_equal("quux", x$quux)
+  expect_equal(c("Duplicate map key ignored during merge: 'baz'",
+                 "Duplicate map key ignored during merge: 'foo'"), warnings)
 
-  x <- yaml.load("foo: bar\n<<: {foo: baz}\n<<: {foo: quux}")
+  warnings <- capture_warnings({
+    x <- yaml.load("foo: bar\n<<: {foo: baz}\n<<: {foo: quux}")
+  })
   expect_equal(1L, length(x))
   expect_equal("bar", x$foo)
-
-  x <- yaml.load("<<: {foo: baz}\n<<: {foo: quux}\nfoo: bar")
-  expect_equal(1L, length(x))
-  expect_equal("baz", x$foo)
+  expect_equal("Duplicate map key ignored during merge: 'foo'", warnings)
 })
 
 test_that("unnamed maps are merged", {
@@ -88,9 +91,12 @@ test_that("unnamed maps are merged", {
   expect_equal("boo", x[[3]])
 })
 
-test_that("merging duplicate keys throws an error", {
-  expect_that(yaml.load("foo: bar\nfoo: baz\n<<: {foo: quux}", TRUE),
-    throws_error())
+test_that("duplicate keys throws an error", {
+  expect_that(yaml.load("foo: bar\nfoo: baz\n", TRUE), throws_error())
+})
+
+test_that("duplicate keys with merge first throws an error", {
+  expect_that(yaml.load("<<: {foo: bar}\nfoo: baz\n", TRUE), throws_error())
 })
 
 test_that("invalid merges throw errors", {
@@ -210,10 +216,13 @@ test_that("str type is converted", {
 })
 
 test_that("bad anchors are handled", {
-  x <- yaml.load("*blargh")
+  warnings <- capture_warnings({
+    x <- yaml.load("*blargh")
+  })
   expected <- "_yaml.bad-anchor_"
   class(expected) <- "_yaml.bad-anchor_"
   expect_equal(expected, x)
+  expect_equal("Unknown anchor: blargh", warnings)
 })
 
 test_that("custom null handler is applied", {
@@ -297,8 +306,11 @@ test_that("custom timestamp ymd handler is applied", {
 })
 
 test_that("custom merge handler is NOT applied", {
-  x <- yaml.load("foo: &foo\n  bar: 123\n  baz: 456\n\njunk:\n  <<: *foo\n  bah: 789", handlers=list("merge"=function(x) { "argh!" }))
+  warnings <- capture_warnings({
+    x <- yaml.load("foo: &foo\n  bar: 123\n  baz: 456\n\njunk:\n  <<: *foo\n  bah: 789", handlers=list("merge"=function(x) { "argh!" }))
+  })
   expect_equal(list(foo=list(bar=123, baz=456), junk=list(bar=123, baz=456, bah=789)), x)
+  expect_equal("Custom handling for type 'merge' is not allowed; handler ignored", warnings)
 })
 
 test_that("custom str handler is applied", {
@@ -379,9 +391,12 @@ test_that("invalid omap causes error", {
 })
 
 test_that("expressions are converted", {
-  x <- yaml.load("!expr |\n  function() \n  {\n    'hey!'\n  }")
+  warnings <- capture_warnings({
+    x <- yaml.load("!expr |\n  function() \n  {\n    'hey!'\n  }")
+  })
   expect_equal("function", class(x))
   expect_equal("hey!", x())
+  expect_equal("R expressions in yaml.load will not be auto-evaluated by default in the near future", warnings)
 })
 
 test_that("invalid expressions cause error", {
@@ -401,10 +416,13 @@ test_that("maps are in ordered", {
 })
 
 test_that("illegal recursive anchor is handled", {
-  x <- yaml.load('&foo {foo: *foo}')
+  warnings <- capture_warnings({
+    x <- yaml.load('&foo {foo: *foo}')
+  })
   expected <- "_yaml.bad-anchor_"
   class(expected) <- "_yaml.bad-anchor_"
   expect_equal(expected, x$foo)
+  expect_equal("Unknown anchor: foo", warnings)
 })
 
 test_that("dereferenced aliases have unshared names", {
@@ -414,7 +432,14 @@ test_that("dereferenced aliases have unshared names", {
 })
 
 test_that("multiple anchors are handled", {
-  x <- yaml.load('{foo: &foo {one: 1}, bar: &bar {one: 1}, baz: *foo, quux: *bar}')
+  x <- yaml.load('{foo: &foo {one: 1}, bar: &bar {two: 2}, baz: *foo, quux: *bar}')
+  expected <- list(
+    foo = list(one = 1),
+    bar = list(two = 2),
+    baz = list(one = 1),
+    quux = list(two = 2)
+  )
+  expect_equal(expected, x)
 })
 
 test_that("quoted strings are preserved", {

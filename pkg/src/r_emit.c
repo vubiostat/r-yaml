@@ -13,9 +13,9 @@ static SEXP
 R_deparse_function(s_obj)
   SEXP s_obj;
 {
-  SEXP s_call, s_result, s_chr;
-  int i, j, res_len, chr_len, str_len, str_end;
-  char *str;
+  SEXP s_call = NULL, s_result = NULL, s_chr = NULL;
+  int i = 0, j = 0, res_len = 0, chr_len = 0, str_len = 0, str_end = 0;
+  char *str = NULL;
 
   /* first get R's deparsed character vector */
   PROTECT(s_call = lang2(R_DeparseFunc, s_obj));
@@ -63,29 +63,29 @@ R_deparse_function(s_obj)
 
 /* Format a vector of reals for emitting */
 static SEXP
-R_format_real(obj, precision)
-  SEXP obj;
+R_format_real(s_obj, precision)
+  SEXP s_obj;
   int precision;
 {
-  SEXP retval;
-  int i, j, k, n, suffix_len;
-  double x, e;
-  char str[REAL_BUF_SIZE], format[5] = "%.*f", *strp;
+  SEXP s_retval = NULL;
+  int i = 0, j = 0, k = 0, n = 0, suffix_len = 0;
+  double x = 0, e = 0;
+  char str[REAL_BUF_SIZE], format[5] = "%.*f", *strp = NULL;
 
-  PROTECT(retval = allocVector(STRSXP, length(obj)));
-  for (i = 0; i < length(obj); i++) {
-    x = REAL(obj)[i];
+  PROTECT(s_retval = allocVector(STRSXP, length(s_obj)));
+  for (i = 0; i < length(s_obj); i++) {
+    x = REAL(s_obj)[i];
     if (x == R_PosInf) {
-      SET_STRING_ELT(retval, i, mkChar(".inf"));
+      SET_STRING_ELT(s_retval, i, mkChar(".inf"));
     }
     else if (x == R_NegInf) {
-      SET_STRING_ELT(retval, i, mkChar("-.inf"));
+      SET_STRING_ELT(s_retval, i, mkChar("-.inf"));
     }
     else if (R_IsNA(x)) {
-      SET_STRING_ELT(retval, i, mkChar(".na.real"));
+      SET_STRING_ELT(s_retval, i, mkChar(".na.real"));
     }
     else if (R_IsNaN(x)) {
-      SET_STRING_ELT(retval, i, mkChar(".nan"));
+      SET_STRING_ELT(s_retval, i, mkChar(".nan"));
     }
     else {
       e = log10(x);
@@ -134,85 +134,85 @@ R_format_real(obj, precision)
         }
       }
 
-      SET_STRING_ELT(retval, i, mkCharCE(str, CE_UTF8));
+      SET_STRING_ELT(s_retval, i, mkCharCE(str, CE_UTF8));
     }
   }
   UNPROTECT(1);
-  return retval;
+  return s_retval;
 }
 
 /* Format a vector of ints for emitting. Handle NAs. */
 static SEXP
-R_format_int(obj)
-  SEXP obj;
+R_format_int(s_obj)
+  SEXP s_obj;
 {
-  SEXP retval;
-  int i;
+  SEXP s_retval = NULL;
+  int i = 0;
 
-  PROTECT(retval = coerceVector(obj, STRSXP));
-  for (i = 0; i < length(obj); i++) {
-    if (INTEGER(obj)[i] == NA_INTEGER) {
-      SET_STRING_ELT(retval, i, mkChar(".na.integer"));
+  PROTECT(s_retval = coerceVector(s_obj, STRSXP));
+  for (i = 0; i < length(s_obj); i++) {
+    if (INTEGER(s_obj)[i] == NA_INTEGER) {
+      SET_STRING_ELT(s_retval, i, mkChar(".na.integer"));
     }
   }
   UNPROTECT(1);
 
-  return retval;
+  return s_retval;
 }
 
 /* Format a vector of logicals for emitting. Handle NAs. */
 static SEXP
-R_format_logical(obj)
-  SEXP obj;
+R_format_logical(s_obj)
+  SEXP s_obj;
 {
-  SEXP retval;
-  int i, val;
+  SEXP s_retval = NULL;
+  int i = 0, val = 0;
 
-  PROTECT(retval = allocVector(STRSXP, length(obj)));
-  for (i = 0; i < length(obj); i++) {
-    val = LOGICAL(obj)[i];
+  PROTECT(s_retval = allocVector(STRSXP, length(s_obj)));
+  for (i = 0; i < length(s_obj); i++) {
+    val = LOGICAL(s_obj)[i];
     if (val == NA_LOGICAL) {
-      SET_STRING_ELT(retval, i, mkChar(".na"));
+      SET_STRING_ELT(s_retval, i, mkChar(".na"));
     }
     else if (val == 0) {
-      SET_STRING_ELT(retval, i, mkChar("no"));
+      SET_STRING_ELT(s_retval, i, mkChar("no"));
     }
     else {
-      SET_STRING_ELT(retval, i, mkChar("yes"));
+      SET_STRING_ELT(s_retval, i, mkChar("yes"));
     }
   }
   UNPROTECT(1);
 
-  return retval;
+  return s_retval;
 }
 
 /* Format a vector of strings for emitting. Handle NAs. */
 static SEXP
-R_format_string(obj)
-  SEXP obj;
+R_format_string(s_obj)
+  SEXP s_obj;
 {
-  SEXP retval;
-  int i;
+  SEXP s_retval = NULL;
+  int i = 0;
 
-  PROTECT(retval = duplicate(obj));
-  for (i = 0; i < length(obj); i++) {
-    if (STRING_ELT(obj, i) == NA_STRING) {
-      SET_STRING_ELT(retval, i, mkCharCE(".na.character", CE_UTF8));
+  PROTECT(s_retval = duplicate(s_obj));
+  for (i = 0; i < length(s_obj); i++) {
+    if (STRING_ELT(s_obj, i) == NA_STRING) {
+      SET_STRING_ELT(s_retval, i, mkCharCE(".na.character", CE_UTF8));
     }
   }
   UNPROTECT(1);
 
-  return retval;
+  return s_retval;
 }
 
 /* Take a CHARSXP, return a scalar style (for emitting) */
 static yaml_scalar_style_t
-R_string_style(obj)
-  SEXP obj;
+R_string_style(s_obj)
+  SEXP s_obj;
 {
-  char *tag;
-  const char *chr = CHAR(obj);
-  int len = length(obj), j;
+  char *tag = NULL;
+  const char *chr = CHAR(s_obj);
+  int len = length(s_obj), j = 0;
 
   tag = find_implicit_tag(chr, len);
   if (strcmp((char *) tag, "str#na") == 0) {
@@ -235,52 +235,52 @@ R_string_style(obj)
 
 /* Take a vector and an index and return another vector of size 1 */
 static SEXP
-R_yoink(vec, index)
-  SEXP vec;
+R_yoink(s_vec, index)
+  SEXP s_vec;
   int index;
 {
-  SEXP tmp, levels;
-  int type, factor, level_idx;
+  SEXP s_tmp = NULL, s_levels = NULL;
+  int type = 0, factor = 0, level_idx = 0;
 
-  type = TYPEOF(vec);
-  factor = type == INTSXP && R_has_class(vec, "factor");
-  PROTECT(tmp = allocVector(factor ? STRSXP : type, 1));
+  type = TYPEOF(s_vec);
+  factor = type == INTSXP && R_has_class(s_vec, "factor");
+  PROTECT(s_tmp = allocVector(factor ? STRSXP : type, 1));
 
   switch(type) {
     case LGLSXP:
-      LOGICAL(tmp)[0] = LOGICAL(vec)[index];
+      LOGICAL(s_tmp)[0] = LOGICAL(s_vec)[index];
       break;
     case INTSXP:
       if (factor) {
-        levels = GET_LEVELS(vec);
-        level_idx = INTEGER(vec)[index];
-        if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > LENGTH(levels)) {
-          SET_STRING_ELT(tmp, 0, NA_STRING);
+        s_levels = GET_LEVELS(s_vec);
+        level_idx = INTEGER(s_vec)[index];
+        if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > LENGTH(s_levels)) {
+          SET_STRING_ELT(s_tmp, 0, NA_STRING);
         }
         else {
-          SET_STRING_ELT(tmp, 0, STRING_ELT(levels, level_idx - 1));
+          SET_STRING_ELT(s_tmp, 0, STRING_ELT(s_levels, level_idx - 1));
         }
       }
       else {
-        INTEGER(tmp)[0] = INTEGER(vec)[index];
+        INTEGER(s_tmp)[0] = INTEGER(s_vec)[index];
       }
       break;
     case REALSXP:
-      REAL(tmp)[0] = REAL(vec)[index];
+      REAL(s_tmp)[0] = REAL(s_vec)[index];
       break;
     case CPLXSXP:
-      COMPLEX(tmp)[0] = COMPLEX(vec)[index];
+      COMPLEX(s_tmp)[0] = COMPLEX(s_vec)[index];
       break;
     case STRSXP:
-      SET_STRING_ELT(tmp, 0, STRING_ELT(vec, index));
+      SET_STRING_ELT(s_tmp, 0, STRING_ELT(s_vec, index));
       break;
     case RAWSXP:
-      RAW(tmp)[0] = RAW(vec)[index];
+      RAW(s_tmp)[0] = RAW(s_vec)[index];
       break;
   }
   UNPROTECT(1);
 
-  return tmp;
+  return s_tmp;
 }
 
 static int
@@ -305,16 +305,16 @@ R_serialize_to_yaml_write_handler(data, buffer, size)
 }
 
 static int
-emit_char(emitter, event, obj, tag, implicit_tag, scalar_style)
+emit_char(emitter, event, s_obj, tag, implicit_tag, scalar_style)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
-  SEXP obj;
+  SEXP s_obj;
   char *tag;
   int implicit_tag;
   yaml_scalar_style_t scalar_style;
 {
   yaml_scalar_event_initialize(event, NULL, (yaml_char_t *)tag,
-      (yaml_char_t *)CHAR(obj), LENGTH(obj),
+      (yaml_char_t *)CHAR(s_obj), LENGTH(s_obj),
       implicit_tag, implicit_tag, scalar_style);
 
   if (!yaml_emitter_emit(emitter, event))
@@ -324,36 +324,36 @@ emit_char(emitter, event, obj, tag, implicit_tag, scalar_style)
 }
 
 static int
-emit_factor(emitter, event, obj)
+emit_factor(emitter, event, s_obj)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
-  SEXP obj;
+  SEXP s_obj;
 {
-  SEXP levels, level_chr;
-  yaml_scalar_style_t *scalar_styles, scalar_style;
-  int i, len, level_idx, retval, *scalar_style_is_set;
+  SEXP s_levels = NULL, s_level_chr = NULL;
+  yaml_scalar_style_t *scalar_styles = NULL, scalar_style;
+  int i = 0, len = 0, level_idx = 0, retval = 0, *scalar_style_is_set = NULL;
 
-  levels = GET_LEVELS(obj);
-  len = length(levels);
+  s_levels = GET_LEVELS(s_obj);
+  len = length(s_levels);
   scalar_styles = (yaml_scalar_style_t *)malloc(sizeof(yaml_scalar_style_t) * len);
   scalar_style_is_set = (int *)calloc(len, sizeof(int));
 
   retval = 1;
-  for (i = 0; i < length(obj); i++) {
-    level_idx = INTEGER(obj)[i];
+  for (i = 0; i < length(s_obj); i++) {
+    level_idx = INTEGER(s_obj)[i];
     if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > len) {
-      level_chr = mkChar(".na.character");
+      s_level_chr = mkChar(".na.character");
       scalar_style = YAML_ANY_SCALAR_STYLE;
     }
     else {
-      level_chr = STRING_ELT(levels, level_idx - 1);
+      s_level_chr = STRING_ELT(s_levels, level_idx - 1);
       if (!scalar_style_is_set[level_idx - 1]) {
-        scalar_styles[level_idx - 1] = R_string_style(level_chr);
+        scalar_styles[level_idx - 1] = R_string_style(s_level_chr);
       }
       scalar_style = scalar_styles[level_idx - 1];
     }
 
-    if (!emit_char(emitter, event, level_chr, NULL, 1, scalar_style)) {
+    if (!emit_char(emitter, event, s_level_chr, NULL, 1, scalar_style)) {
       retval = 0;
       break;
     }
@@ -364,10 +364,10 @@ emit_factor(emitter, event, obj)
 }
 
 static int
-emit_nil(emitter, event, obj)
+emit_nil(emitter, event, s_obj)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
-  SEXP obj;
+  SEXP s_obj;
 {
   yaml_scalar_event_initialize(event, NULL, NULL, (yaml_char_t *)"~", 1, 1, 1,
       YAML_ANY_SCALAR_STYLE);
@@ -376,28 +376,27 @@ emit_nil(emitter, event, obj)
 }
 
 static int
-emit_object(emitter, event, obj, tag, omap, column_major, precision)
+emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
-  SEXP obj;
+  SEXP s_obj;
   char *tag;
   int omap;
   int column_major;
   int precision;
 {
-  SEXP chr, names, thing, type, class, tmp;
-  yaml_scalar_style_t scalar_style;
-  int implicit_tag, rows, cols, i, j, result;
+  SEXP s_chr = NULL, s_names = NULL, s_thing = NULL, s_type = NULL,
+       s_class = NULL, s_tmp = NULL;
+  int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0;
 
   /*Rprintf("=== Emitting ===\n");*/
-  /*PrintValue(obj);*/
+  /*PrintValue(s_obj);*/
 
-  scalar_style = YAML_ANY_SCALAR_STYLE;
   implicit_tag = 1;
   tag = NULL;
-  switch (TYPEOF(obj)) {
+  switch (TYPEOF(s_obj)) {
     case NILSXP:
-      return emit_nil(emitter, event, obj);
+      return emit_nil(emitter, event, s_obj);
 
     case CLOSXP:
     case SPECIALSXP:
@@ -405,8 +404,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
       /* Function! Deparse, then fall through */
       tag = "!expr";
       implicit_tag = 0;
-      obj = R_deparse_function(obj);
-      scalar_style = YAML_LITERAL_SCALAR_STYLE;
+      s_obj = R_deparse_function(s_obj);
 
     /* atomic vector types */
     case LGLSXP:
@@ -414,26 +412,32 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
     case INTSXP:
     case STRSXP:
       /* FIXME: add complex and raw */
-      if (length(obj) != 1) {
+      if (length(s_obj) != 1) {
         yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
-        if (!yaml_emitter_emit(emitter, event))
+        PROTECT(s_obj);
+        result = yaml_emitter_emit(emitter, event);
+        UNPROTECT(1);
+        if (!result)
           return 0;
       }
 
-      if (length(obj) >= 1) {
-        if (R_has_class(obj, "factor")) {
-          if (!emit_factor(emitter, event, obj))
+      if (length(s_obj) >= 1) {
+        if (R_has_class(s_obj, "factor")) {
+          PROTECT(s_obj);
+          result = emit_factor(emitter, event, s_obj);
+          UNPROTECT(1);
+          if (!result)
             return 0;
         }
-        else if (TYPEOF(obj) == STRSXP) {
+        else if (TYPEOF(s_obj) == STRSXP) {
           /* Might need to add quotes */
-          PROTECT(obj = R_format_string(obj));
+          PROTECT(s_obj = R_format_string(s_obj));
 
           result = 0;
-          for (i = 0; i < length(obj); i++) {
-            chr = STRING_ELT(obj, i);
-            result = emit_char(emitter, event, chr, tag, implicit_tag,
-                R_string_style(chr));
+          for (i = 0; i < length(s_obj); i++) {
+            s_chr = STRING_ELT(s_obj, i);
+            result = emit_char(emitter, event, s_chr, tag, implicit_tag,
+                R_string_style(s_chr));
 
             if (!result)
               break;
@@ -444,29 +448,29 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
             return 0;
         }
         else {
-          switch(TYPEOF(obj)) {
+          switch(TYPEOF(s_obj)) {
             case REALSXP:
-              obj = R_format_real(obj, precision);
+              s_obj = R_format_real(s_obj, precision);
               break;
 
             case INTSXP:
-              obj = R_format_int(obj);
+              s_obj = R_format_int(s_obj);
               break;
 
             case LGLSXP:
-              obj = R_format_logical(obj);
+              s_obj = R_format_logical(s_obj);
               break;
 
             default:
               /* If you get here, you made a mistake. */
               return 0;
           }
-          PROTECT(obj);
+          PROTECT(s_obj);
 
           result = 0;
-          for (i = 0; i < length(obj); i++) {
-            chr = STRING_ELT(obj, i);
-            result = emit_char(emitter, event, chr, tag, implicit_tag,
+          for (i = 0; i < length(s_obj); i++) {
+            s_chr = STRING_ELT(s_obj, i);
+            result = emit_char(emitter, event, s_chr, tag, implicit_tag,
                 YAML_ANY_SCALAR_STYLE);
 
             if (!result)
@@ -479,7 +483,7 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
         }
       }
 
-      if (length(obj) != 1) {
+      if (length(s_obj) != 1) {
         yaml_sequence_end_event_initialize(event);
         if (!yaml_emitter_emit(emitter, event))
           return 0;
@@ -487,48 +491,70 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
       break;
 
     case VECSXP:
-      if (R_has_class(obj, "data.frame") && length(obj) > 0 && !column_major) {
-        rows = length(VECTOR_ELT(obj, 0));
-        cols = length(obj);
-        names = GET_NAMES(obj);
+      if (R_has_class(s_obj, "data.frame") && length(s_obj) > 0 && !column_major) {
+        rows = length(VECTOR_ELT(s_obj, 0));
+        cols = length(s_obj);
+        PROTECT(s_names = GET_NAMES(s_obj));
 
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
             implicit_tag, YAML_ANY_SEQUENCE_STYLE);
-        if (!yaml_emitter_emit(emitter, event))
+        if (!yaml_emitter_emit(emitter, event)) {
+          UNPROTECT(1); /* s_names */
           return 0;
+        }
 
         for (i = 0; i < rows; i++) {
           yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
               implicit_tag, YAML_ANY_MAPPING_STYLE);
 
-          if (!yaml_emitter_emit(emitter, event))
-            return 0;
-
-          for (j = 0; j < cols; j++) {
-            chr = STRING_ELT(names, j);
-            if (!emit_char(emitter, event, chr, NULL, 1, R_string_style(chr)))
-              return 0;
-
-            /* Need to create a vector of size one, then emit it */
-            thing = VECTOR_ELT(obj, j);
-            PROTECT(tmp = R_yoink(thing, i));
-            result = emit_object(emitter, event, tmp, NULL, omap, column_major, precision);
-            UNPROTECT(1);
-
-            if (!result)
-              return 0;
+          if (!yaml_emitter_emit(emitter, event)) {
+            err = 1;
+            break;
           }
 
-          yaml_mapping_end_event_initialize(event);
-          if (!yaml_emitter_emit(emitter, event))
-            return 0;
+          for (j = 0; j < cols; j++) {
+            s_chr = STRING_ELT(s_names, j);
+            if (!emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr))) {
+              err = 1;
+              break;
+            }
+
+            /* Need to create a vector of size one, then emit it */
+            s_thing = VECTOR_ELT(s_obj, j);
+            PROTECT(s_tmp = R_yoink(s_thing, i));
+            result = emit_object(emitter, event, s_tmp, NULL, omap, column_major, precision);
+            UNPROTECT(1);
+
+            if (!result) {
+              err = 1;
+              break;
+            }
+          }
+
+          if (err) {
+            break;
+          } else {
+            yaml_mapping_end_event_initialize(event);
+            if (!yaml_emitter_emit(emitter, event)) {
+              err = 1;
+              break;
+            }
+          }
         }
 
-        yaml_sequence_end_event_initialize(event);
-        if (!yaml_emitter_emit(emitter, event))
+        if (!err) {
+          yaml_sequence_end_event_initialize(event);
+          if (!yaml_emitter_emit(emitter, event)) {
+            err = 1;
+          }
+        }
+
+        UNPROTECT(1); /* s_names */
+        if (err) {
           return 0;
+        }
       }
-      else if (R_is_named_list(obj)) {
+      else if (R_is_named_list(s_obj)) {
         if (omap) {
           yaml_sequence_start_event_initialize(event, NULL,
               (yaml_char_t *)"!omap", 0, YAML_ANY_SEQUENCE_STYLE);
@@ -544,40 +570,53 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
             return 0;
         }
 
-        names = GET_NAMES(obj);
-        for (i = 0; i < length(obj); i++) {
+        PROTECT(s_names = GET_NAMES(s_obj));
+        for (i = 0; i < length(s_obj); i++) {
           if (omap) {
             yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
                 implicit_tag, YAML_ANY_MAPPING_STYLE);
 
-            if (!yaml_emitter_emit(emitter, event))
-              return 0;
+            if (!yaml_emitter_emit(emitter, event)) {
+              err = 1;
+              break;
+            }
           }
 
-          chr = STRING_ELT(names, i);
-          if (!emit_char(emitter, event, chr, NULL, 1, R_string_style(chr)))
-            return 0;
+          s_chr = STRING_ELT(s_names, i);
+          if (!emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr))) {
+            err = 1;
+            break;
+          }
 
-          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major, precision))
-            return 0;
+          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision)) {
+            err = 1;
+            break;
+          }
 
           if (omap) {
             yaml_mapping_end_event_initialize(event);
-            if (!yaml_emitter_emit(emitter, event))
-              return 0;
+            if (!yaml_emitter_emit(emitter, event)) {
+              err = 1;
+              break;
+            }
           }
         }
 
-        if (omap) {
-          yaml_sequence_end_event_initialize(event);
-          if (!yaml_emitter_emit(emitter, event))
-            return 0;
+        if (!err) {
+          if (omap) {
+            yaml_sequence_end_event_initialize(event);
+          }
+          else {
+            yaml_mapping_end_event_initialize(event);
+          }
+          if (!yaml_emitter_emit(emitter, event)) {
+            err = 1;
+          }
         }
-        else {
-          yaml_mapping_end_event_initialize(event);
-          if (!yaml_emitter_emit(emitter, event))
-            return 0;
-        }
+
+        UNPROTECT(1); /* s_names */
+        if (err)
+          return 0;
       }
       else {
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
@@ -585,8 +624,8 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
         if (!yaml_emitter_emit(emitter, event))
           return 0;
 
-        for (i = 0; i < length(obj); i++) {
-          if (!emit_object(emitter, event, VECTOR_ELT(obj, i), NULL, omap, column_major, precision))
+        for (i = 0; i < length(s_obj); i++) {
+          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision))
             return 0;
         }
         yaml_sequence_end_event_initialize(event);
@@ -596,13 +635,13 @@ emit_object(emitter, event, obj, tag, omap, column_major, precision)
       break;
 
     default:
-      PROTECT(type = type2str(TYPEOF(obj)));
-      class = GET_CLASS(obj);
-      if (TYPEOF(class) != STRSXP || LENGTH(class) == 0) {
-        warning("don't know how to emit object of type: '%s'\n", CHAR(type));
+      PROTECT(s_type = type2str(TYPEOF(s_obj)));
+      s_class = GET_CLASS(s_obj);
+      if (TYPEOF(s_class) != STRSXP || LENGTH(s_class) == 0) {
+        set_error_msg("don't know how to emit object of s_type: '%s'\n", CHAR(s_type));
       }
       else {
-        warning("don't know how to emit object of type: '%s', class: %s\n", CHAR(type), R_inspect(class));
+        set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), R_inspect(s_class));
       }
       UNPROTECT(1);
       return 0;
@@ -622,12 +661,13 @@ R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unico
   SEXP s_precision;
   SEXP s_indent_mapping_sequence;
 {
-  SEXP retval;
+  SEXP s_retval = NULL;
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
-  int status, line_sep, indent, omap, column_major, unicode, precision, indent_mapping_sequence;
-  const char *c_line_sep;
+  int status = 0, line_sep = 0, indent = 0, omap = 0, column_major = 0,
+      unicode = 0, precision = 0, indent_mapping_sequence = 0;
+  const char *c_line_sep = NULL;
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
   if (c_line_sep[0] == '\n') {
@@ -737,8 +777,8 @@ R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unico
 done:
 
   if (status) {
-    PROTECT(retval = allocVector(STRSXP, 1));
-    SET_STRING_ELT(retval, 0, mkCharLen(output.buffer, output.size));
+    PROTECT(s_retval = allocVector(STRSXP, 1));
+    SET_STRING_ELT(s_retval, 0, mkCharLen(output.buffer, output.size));
     UNPROTECT(1);
   }
   else {
@@ -748,7 +788,7 @@ done:
     else {
       set_error_msg("Unknown emitter error");
     }
-    retval = R_NilValue;
+    s_retval = R_NilValue;
   }
 
   yaml_emitter_delete(&emitter);
@@ -760,5 +800,5 @@ done:
     error(error_msg);
   }
 
-  return retval;
+  return s_retval;
 }

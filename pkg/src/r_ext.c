@@ -6,6 +6,10 @@ SEXP R_FormatFunc = NULL;
 SEXP R_PasteFunc = NULL;
 SEXP R_CollapseSymbol = NULL;
 SEXP R_DeparseFunc = NULL;
+SEXP R_Sentinel = NULL;
+SEXP R_SequenceStart = NULL;
+SEXP R_MappingStart = NULL;
+SEXP R_MappingEnd = NULL;
 char error_msg[ERROR_MSG_SIZE];
 
 void
@@ -112,6 +116,10 @@ void R_init_yaml(DllInfo *dll) {
   R_FormatFunc = findFun(install("format"), R_GlobalEnv);
   R_PasteFunc = findFun(install("paste"), R_GlobalEnv);
   R_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
+  R_Sentinel = install("sentinel");
+  R_SequenceStart = install("sequence.start");
+  R_MappingStart = install("mapping.start");
+  R_MappingEnd = install("mapping.end");
   R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);

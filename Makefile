@@ -82,9 +82,9 @@ BUILD_SRCS = build/src/yaml_private.h \
 	build/NAMESPACE
 
 ifdef DEBUG
-  CFLAGS = -g3 -Wall -DDEBUG
+  CFLAGS = -g3 -Wall -Wextra -Wpedantic -DDEBUG
 else
-  CFLAGS = -g3 -Wall
+  CFLAGS = -g3 -Wall -Wextra -Wpedantic
 endif
 
 all: compile test

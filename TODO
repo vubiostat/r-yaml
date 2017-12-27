@@ -1,3 +1,0 @@
-- fix 'Yes' and 'No' not being quoted in as.yaml
-- use named vectors instead of lists where appropriate
-- add support for R native tags (matrix, data.frame, etc)

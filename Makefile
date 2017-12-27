@@ -106,7 +106,7 @@ gdb-test: compile check-changelog
 	cd build; R -d gdb --vanilla -e "library(devtools); test('.')"
 
 valgrind-test: compile check-changelog
-	cd build/tests; cat *.R | R --vanilla -d "valgrind --leak-check=full"
+	cd build; R -d "valgrind --leak-check=full" -e "library(devtools); test('.')"
 
 check-changelog: VERSION pkg/inst/CHANGELOG
 	if [ VERSION -nt pkg/inst/CHANGELOG ]; then echo "\033[31mWARNING: Changelog has not been updated\033[0m"; fi

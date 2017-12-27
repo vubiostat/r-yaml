@@ -171,7 +171,7 @@ handle_alias(event, s_stack, s_aliases)
     name = CHAR(TAG(s_curr));
     if (strcmp(name, (char *)event->data.alias.anchor) == 0) {
       *s_stack = CONS(s_obj, *s_stack);
-      SET_NAMED(s_obj, 2);
+      MARK_NOT_MUTABLE(s_obj);
       handled = 1;
       break;
     }

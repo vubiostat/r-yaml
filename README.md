@@ -45,15 +45,18 @@ You can install this package directly from CRAN by running (from within R):
 
 ### Zip/Tarball
 
-1. Download the appropriate zip file or tar.gz file from Github
-2. Unzip the file and change directories into the yaml directory
-2. Run `R CMD INSTALL pkg`
+1. Download the appropriate zip file or tar.gz file from the
+[Github releases](https://github.com/viking/r-yaml/releases) page.
+2. Run `R CMD INSTALL <filename>`
 
-### Git
+### Git (via devtools)
 
-1. Download the source via git: `git clone https://github.com/viking/r-yaml.git yaml`
-2. (optional) Run `R CMD check yaml/pkg` to make sure everything is OK.
-3. Run `R CMD INSTALL yaml/pkg` (as root if necessary).
+1. Install the `devtools` package from CRAN.
+2. In R, run the following:
+    ```R
+    library(devtools)
+    install_github('viking/r-yaml')
+    ```
 
 ## Usage
 
@@ -312,3 +315,37 @@ Outputs:
 
 For more information, run `help(package='yaml')` or `example('yaml-package')`
 for some examples.
+
+## Development
+
+There is a `Makefile` for use with
+[GNU Make](https://www.gnu.org/software/make/) to help with development. There
+are several `make` targets for building, debugging, and testing. You can run
+these by executing `make <target-name>` if you have the `make` program
+installed.
+
+| Target name     | Description                                 |
+| --------------- | ------------------------------------------- |
+| `compile`       | Compile the source files                    |
+| `check`         | Run CRAN checks                             |
+| `gct-check`     | Run CRAN checks with gctorture              |
+| `test`          | Run _testthat_ tests                        |
+| `gdb-test`      | Run _testthat_ tests with gdb               |
+| `valgrind-test` | Run _testthat_ tests with valgrind          |
+| `tarball`       | Create tarball suitable for CRAN submission |
+
+### Implicit tag discovery
+
+The algorithm used whenever there is no YAML tag explicitly provided is located
+in the [implicit.re](src/implicit.re) file. This file is used to create the
+[implicit.c](src/implicit.c) file via the [re2c](http://re2c.org/) program. If
+you want to change this algorith, make your changes in `implicit.re`, not
+`implicit.c`. The `make` targets will automatically update the C file as needed,
+but you'll need to have the `re2c` program installed for it to work.
+
+### VERSION file
+
+The `VERSION` file is used to track the current version of the package.
+Warnings are displayed if the `DESCRIPTION` and `CHANGELOG` files are not
+properly updated when creating a tarball. This is to help prevent problems
+during the CRAN submission process.

@@ -1,44 +1,44 @@
 VERSION = $(shell cat VERSION)
 
-SRCS = pkg/src/yaml_private.h \
-	pkg/src/yaml.h \
-	pkg/src/r_ext.h \
-	pkg/src/writer.c \
-	pkg/src/scanner.c \
-	pkg/src/dumper.c \
-	pkg/src/emitter.c \
-	pkg/src/implicit.re \
-	pkg/src/reader.c \
-	pkg/src/parser.c \
-	pkg/src/api.c \
-	pkg/src/loader.c \
-	pkg/src/r_ext.c \
-	pkg/src/r_emit.c \
-	pkg/src/r_parse.c \
-	pkg/src/Makevars \
-	pkg/man/as.yaml.Rd \
-	pkg/man/yaml.load.Rd \
-	pkg/man/write_yaml.Rd \
-	pkg/man/read_yaml.Rd \
-	pkg/inst/THANKS \
-	pkg/inst/CHANGELOG \
-	pkg/tests/testthat.R \
-	pkg/tests/testthat/test_yaml_load_file.R \
-	pkg/tests/testthat/test_yaml_load.R \
-	pkg/tests/testthat/test_as_yaml.R \
-	pkg/tests/testthat/test_read_yaml.R \
-	pkg/tests/testthat/test_write_yaml.R \
-	pkg/tests/testthat/files/test.yml \
-	pkg/DESCRIPTION.brew \
-	pkg/COPYING \
-	pkg/LICENSE \
-	pkg/R/yaml.load.R \
-	pkg/R/zzz.R \
-	pkg/R/yaml.load_file.R \
-	pkg/R/as.yaml.R \
-	pkg/R/read_yaml.R \
-	pkg/R/write_yaml.R \
-	pkg/NAMESPACE
+SRCS = src/yaml_private.h \
+	src/yaml.h \
+	src/r_ext.h \
+	src/writer.c \
+	src/scanner.c \
+	src/dumper.c \
+	src/emitter.c \
+	src/implicit.re \
+	src/reader.c \
+	src/parser.c \
+	src/api.c \
+	src/loader.c \
+	src/r_ext.c \
+	src/r_emit.c \
+	src/r_parse.c \
+	src/Makevars \
+	man/as.yaml.Rd \
+	man/yaml.load.Rd \
+	man/write_yaml.Rd \
+	man/read_yaml.Rd \
+	inst/THANKS \
+	inst/CHANGELOG \
+	tests/testthat.R \
+	tests/testthat/test_yaml_load_file.R \
+	tests/testthat/test_yaml_load.R \
+	tests/testthat/test_as_yaml.R \
+	tests/testthat/test_read_yaml.R \
+	tests/testthat/test_write_yaml.R \
+	tests/testthat/files/test.yml \
+	DESCRIPTION \
+	COPYING \
+	LICENSE \
+	R/yaml.load.R \
+	R/zzz.R \
+	R/yaml.load_file.R \
+	R/as.yaml.R \
+	R/read_yaml.R \
+	R/write_yaml.R \
+	NAMESPACE
 
 BUILD_SRCS = build/src/yaml_private.h \
 	build/src/yaml.h \
@@ -99,42 +99,39 @@ check: compile $(BUILD_SRCS)
 gct-check: $(BUILD_SRCS)
 	R CMD check --use-gct -o `mktemp -d` build
 
-test: compile check-changelog
+test: compile
 	cd build; echo "library(devtools); test('.')" | R --vanilla
 
-gdb-test: compile check-changelog
+gdb-test: compile
 	cd build; R -d gdb --vanilla -e "library(devtools); test('.')"
 
-valgrind-test: compile check-changelog
+valgrind-test: compile
 	cd build; R -d "valgrind --leak-check=full" -e "library(devtools); test('.')"
 
-check-changelog: VERSION pkg/inst/CHANGELOG
-	if [ VERSION -nt pkg/inst/CHANGELOG ]; then echo "\033[31mWARNING: Changelog has not been updated\033[0m"; fi
+check-changelog: VERSION inst/CHANGELOG
+	@if [ VERSION -nt inst/CHANGELOG ]; then echo -e "\033[31mWARNING: CHANGELOG has not been updated\033[0m"; fi
 
-tarball: yaml_$(VERSION).tar.gz
+check-description: VERSION DESCRIPTION
+	@if [ VERSION -nt DESCRIPTION ]; then echo -e "\033[31mWARNING: DESCRIPTION has not been updated\033[0m"; fi
+
+tarball: yaml_$(VERSION).tar.gz check-changelog check-description
 
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
 	check_dir=`mktemp -d`; echo Check directory: $$check_dir; R CMD check --as-cran -o "$$check_dir" $@
 
-build/DESCRIPTION: pkg/DESCRIPTION.brew VERSION
-	mkdir -p $(dir $@)
-	R --vanilla -e "VERSION <- '$(VERSION)'; library(brew); brew('$<', '$@');"
-
-build/src/implicit.c: pkg/src/implicit.re
-	mkdir -p $(dir $@)
+src/implicit.c: src/implicit.re
 	cd $(dir $<); re2c -o $(notdir $@) --no-generation-date $(notdir $<)
-	mv $(dir $<)implicit.c $@
 
-build/inst/implicit.re: pkg/src/implicit.re
+build/inst/implicit.re: src/implicit.re
 	mkdir -p $(dir $@)
 	cp $< $@
 
-build/%: pkg/%
+build/%: %
 	mkdir -p $(dir $@)
 	cp $< $@
 
 clean:
 	rm -fr yaml_*.tar.gz build
 
-.PHONY: all compile check gct-check test gdb-test clean valgrind-test check-changelog tarball
+.PHONY: all compile check gct-check test gdb-test clean valgrind-test check-changelog check-description tarball

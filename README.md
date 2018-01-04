@@ -333,6 +333,7 @@ installed.
 | `gdb-test`      | Run _testthat_ tests with gdb               |
 | `valgrind-test` | Run _testthat_ tests with valgrind          |
 | `tarball`       | Create tarball suitable for CRAN submission |
+| `all`           | Default target, runs `compile` and `check`  |
 
 ### Implicit tag discovery
 

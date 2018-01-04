@@ -1,4 +1,4 @@
-VERSION = $(shell cat VERSION)
+VERSION = $(file < VERSION)
 
 SRCS = src/yaml_private.h \
 	src/yaml.h \
@@ -109,16 +109,16 @@ valgrind-test: compile
 	cd build; R -d "valgrind --leak-check=full" -e "library(devtools); test('.')"
 
 check-changelog: VERSION inst/CHANGELOG
-	@if [ VERSION -nt inst/CHANGELOG ]; then echo -e "\033[31mWARNING: CHANGELOG has not been updated\033[0m"; fi
+	@if ! grep -q "$(VERSION)" inst/CHANGELOG; then echo -e "\033[31mWARNING: CHANGELOG has not been updated\033[0m"; fi
 
 check-description: VERSION DESCRIPTION
-	@if [ VERSION -nt DESCRIPTION ]; then echo -e "\033[31mWARNING: DESCRIPTION has not been updated\033[0m"; fi
+	@if ! grep -q "$(VERSION)" DESCRIPTION; then echo -e "\033[31mWARNING: DESCRIPTION has not been updated\033[0m"; fi
 
 tarball: yaml_$(VERSION).tar.gz check-changelog check-description
+	check_dir=`mktemp -d`; echo Check directory: $$check_dir; R CMD check --as-cran -o "$$check_dir" yaml_$(VERSION).tar.gz
 
 yaml_$(VERSION).tar.gz: $(BUILD_SRCS)
 	R CMD build build
-	check_dir=`mktemp -d`; echo Check directory: $$check_dir; R CMD check --as-cran -o "$$check_dir" $@
 
 src/implicit.c: src/implicit.re
 	cd $(dir $<); re2c -o $(notdir $@) --no-generation-date $(notdir $<)

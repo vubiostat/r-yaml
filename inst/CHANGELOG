@@ -1,3 +1,9 @@
+v2.1.17
+  - rewrite parsing functionality using pairlists instead of a self-managed
+    protection stack in order to appease rchk
+  - use MARK_NOT_MUTABLE instead of SET_NAMED, which is deprecated
+  - show warning when duplicate map key is ignored during a merge
+
 v2.1.16
   - fix error checking bug regarding number conversions
 

@@ -215,7 +215,11 @@ R_string_style(s_obj)
 {
   char *tag = NULL;
   const char *chr = CHAR(s_obj);
-  int len = length(s_obj), j = 0;
+  int len = 0, j = 0;
+
+  PROTECT(s_obj);
+  len = length(s_obj);
+  UNPROTECT(1);
 
   tag = find_implicit_tag(chr, len);
   if (strcmp((char *) tag, "str#na") == 0) {

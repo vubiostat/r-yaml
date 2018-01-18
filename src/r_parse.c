@@ -561,13 +561,14 @@ handle_sequence(event, s_stack, s_handlers, coerce_keys)
             SET_VECTOR_ELT(s_new_obj, idx, VECTOR_ELT(s_obj, j));
 
             if (coerce_keys) {
-              s_key = STRING_ELT(GET_NAMES(s_obj), j);
+              PROTECT(s_key = STRING_ELT(GET_NAMES(s_obj), j));
               SET_STRING_ELT(s_keys, idx, s_key);
 
               if (R_index(s_keys, s_key, 1, idx) >= 0) {
                 dup_key = 1;
                 set_error_msg("Duplicate omap key: '%s'", CHAR(s_key));
               }
+              UNPROTECT(1); /* s_key */
             }
             else {
               s_key = VECTOR_ELT(getAttrib(s_obj, R_KeysSymbol), j);

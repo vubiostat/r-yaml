@@ -21,6 +21,7 @@ R_deparse_function(s_obj)
   PROTECT(s_call = lang2(R_DeparseFunc, s_obj));
   s_result = eval(s_call, R_GlobalEnv);
   UNPROTECT(1);
+  PROTECT(s_result);
 
   str_len = 0;
   res_len = length(s_result);
@@ -35,10 +36,11 @@ R_deparse_function(s_obj)
   str = (char *)malloc(sizeof(char) * (str_len + 1));
   str_end = 0;
   for (i = 0; i < res_len; i++) {
-    s_chr = STRING_ELT(s_result, i);
+    PROTECT(s_chr = STRING_ELT(s_result, i));
     chr_len = length(s_chr);
     memcpy((void *)(str + str_end), (void *)CHAR(s_chr), chr_len);
     str_end += chr_len;
+    UNPROTECT(1);
 
     /* find place to terminate line */
     for (j = str_end - 1; j > 0; j--) {
@@ -53,6 +55,7 @@ R_deparse_function(s_obj)
   /* null terminate string */
   str[str_end] = 0;
 
+  UNPROTECT(1); /* s_result */
   PROTECT(s_result = allocVector(STRSXP, 1));
   SET_STRING_ELT(s_result, 0, mkCharCE(str, CE_UTF8));
   UNPROTECT(1);

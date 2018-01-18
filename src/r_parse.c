@@ -680,6 +680,7 @@ expand_merge(s_merge_list, s_map, coerce_keys)
       s_key = VECTOR_ELT(s_merge_keys, i);
     }
 
+    PROTECT(s_key);
     s_result = find_map_entry(*s_map, s_key, coerce_keys);
     if (s_result != NULL) {
       s_entry = CAR(s_result);
@@ -689,6 +690,7 @@ expand_merge(s_merge_list, s_map, coerce_keys)
        * merge, it's okay to override it. If not, it's a duplicate key error. */
       if (LOGICAL(CADR(TAG(s_entry)))[0] == FALSE) {
         set_error_msg("Duplicate map key: '%s'", coerce_keys ? CHAR(s_key) : R_inspect(s_key));
+        UNPROTECT(1); /* s_key */
         return -1;
       } else {
         warning("Duplicate map key ignored during merge: '%s'",
@@ -707,6 +709,7 @@ expand_merge(s_merge_list, s_map, coerce_keys)
     *s_map = CONS(s_value, *s_map);
     SET_TAG(*s_map, list2(s_key, ScalarLogical(TRUE)));
     count++;
+    UNPROTECT(1); /* s_key */
   }
 
   return count;

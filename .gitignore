@@ -3,3 +3,5 @@ build
 Session.vim
 yaml_*.tar.gz
 .Renv-version
+*.o
+*.so

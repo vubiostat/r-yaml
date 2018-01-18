@@ -394,7 +394,8 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 {
   SEXP s_chr = NULL, s_names = NULL, s_thing = NULL, s_type = NULL,
        s_class = NULL, s_tmp = NULL;
-  int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0;
+  int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0,
+      len = 0;
 
   /*Rprintf("=== Emitting ===\n");*/
   /*PrintValue(s_obj);*/
@@ -419,7 +420,11 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
     case INTSXP:
     case STRSXP:
       /* FIXME: add complex and raw */
-      if (length(s_obj) != 1) {
+      PROTECT(s_obj);
+      len = length(s_obj);
+      UNPROTECT(1);
+
+      if (len != 1) {
         yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
         PROTECT(s_obj);
         result = yaml_emitter_emit(emitter, event);
@@ -428,7 +433,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
           return 0;
       }
 
-      if (length(s_obj) >= 1) {
+      if (len >= 1) {
         if (R_has_class(s_obj, "factor")) {
           PROTECT(s_obj);
           result = emit_factor(emitter, event, s_obj);
@@ -442,9 +447,10 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 
           result = 0;
           for (i = 0; i < length(s_obj); i++) {
-            s_chr = STRING_ELT(s_obj, i);
+            PROTECT(s_chr = STRING_ELT(s_obj, i));
             result = emit_char(emitter, event, s_chr, tag, implicit_tag,
                 R_string_style(s_chr));
+            UNPROTECT(1);
 
             if (!result)
               break;
@@ -520,8 +526,10 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
           }
 
           for (j = 0; j < cols; j++) {
-            s_chr = STRING_ELT(s_names, j);
-            if (!emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr))) {
+            PROTECT(s_chr = STRING_ELT(s_names, j));
+            result = emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr));
+            UNPROTECT(1);
+            if (!result) {
               err = 1;
               break;
             }
@@ -589,8 +597,10 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
             }
           }
 
-          s_chr = STRING_ELT(s_names, i);
-          if (!emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr))) {
+          PROTECT(s_chr = STRING_ELT(s_names, i));
+          result = emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr));
+          UNPROTECT(1);
+          if (!result) {
             err = 1;
             break;
           }

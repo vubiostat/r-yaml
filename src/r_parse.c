@@ -163,13 +163,18 @@ handle_alias(event, s_stack, s_aliases)
   SEXP *s_stack;
   SEXP s_aliases;
 {
+  SEXP s_curr = NULL, s_obj = NULL;
   int handled = 0;
-  SEXP s_curr = s_aliases, s_obj = CAR(s_curr);
-  const char *name = NULL;
+  const char *name = NULL, *anchor = NULL;
 
+  /* Try to find object with the supplied anchor */
+  s_curr = s_aliases;
+  s_obj = CAR(s_curr);
+  anchor = (const char *)event->data.alias.anchor;
   while (s_obj != R_Sentinel) {
     name = CHAR(TAG(s_curr));
-    if (strcmp(name, (char *)event->data.alias.anchor) == 0) {
+    if (strcmp(name, anchor) == 0) {
+      /* Found object, push onto stack */
       *s_stack = CONS(s_obj, *s_stack);
       MARK_NOT_MUTABLE(s_obj);
       handled = 1;
@@ -202,7 +207,7 @@ handle_scalar(event, s_stack, s_handlers)
   size_t len = 0;
   int handled = 0, coercion_err = 0, base = 0, n = 0;
   long int long_n = 0;
-  double f;
+  double f = 0.0f;
   ParseStatus parse_status;
 
   tag = (const char *)event->data.scalar.tag;
@@ -245,7 +250,7 @@ handle_scalar(event, s_stack, s_handlers)
   }
 
   if (!handled) {
-    /* default handlers, ordered by most-used */
+    /* Default handlers */
 
     if (strcmp(tag, "str") == 0) {
       /* already a string */
@@ -407,9 +412,20 @@ handle_structure_start(event, s_stack, is_map)
   *s_stack = CONS(s_sym, *s_stack);
 
   /* Create pairlist tag */
-  PROTECT(s_tag_obj = tag == NULL ? R_NilValue : mkChar((const char *) tag));
-  s_anchor_obj = anchor == NULL ? R_NilValue : mkChar((const char *) anchor);
-  UNPROTECT(1);
+  if (tag == NULL) {
+    s_tag_obj = R_NilValue;
+  }
+  else {
+    s_tag_obj = mkChar((const char *) tag);
+  }
+  if (anchor == NULL) {
+    s_anchor_obj = R_NilValue;
+  }
+  else {
+    PROTECT(s_tag_obj);
+    s_anchor_obj = mkChar((const char *) anchor);
+    UNPROTECT(1);
+  }
   s_tag = list2(s_tag_obj, s_anchor_obj);
   SET_TAG(*s_stack, s_tag);
 }

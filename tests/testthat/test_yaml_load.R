@@ -65,15 +65,17 @@ test_that("named maps are merged", {
   expect_equal("blah", x$baz)
   expect_equal("bar", x$foo)
   expect_equal("quux", x$quux)
-  expect_equal(c("Duplicate map key ignored during merge: 'baz'",
-                 "Duplicate map key ignored during merge: 'foo'"), warnings)
+  expect_equal(c("Duplicate map key ignored during merge: 'foo'",
+                 "Duplicate map key ignored during merge: 'foo'",
+                 "Duplicate map key ignored during merge: 'baz'"), warnings)
 
   warnings <- capture_warnings({
     x <- yaml.load("foo: bar\n<<: {foo: baz}\n<<: {foo: quux}")
   })
   expect_equal(1L, length(x))
   expect_equal("bar", x$foo)
-  expect_equal("Duplicate map key ignored during merge: 'foo'", warnings)
+  expect_equal(c("Duplicate map key ignored during merge: 'foo'",
+                 "Duplicate map key ignored during merge: 'foo'"), warnings)
 })
 
 test_that("unnamed maps are merged", {
@@ -83,20 +85,24 @@ test_that("unnamed maps are merged", {
   expect_equal("bar", x[[1]])
   expect_equal("boo", x[[2]])
 
-  x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {baz: boo}]", FALSE)
+  warnings <- capture_warnings({
+    x <- yaml.load("foo: bar\n<<: [{quux: quux}, {foo: doo}, {baz: boo}]", FALSE)
+  })
   expect_equal(3L, length(x))
   expect_equal(list("foo", "quux", "baz"), attr(x, 'keys'))
   expect_equal("bar", x[[1]])
   expect_equal("quux", x[[2]])
   expect_equal("boo", x[[3]])
+  expect_equal("Duplicate map key ignored during merge: 'foo'", warnings)
 })
 
 test_that("duplicate keys throws an error", {
   expect_that(yaml.load("foo: bar\nfoo: baz\n", TRUE), throws_error())
 })
 
-test_that("duplicate keys with merge first throws an error", {
-  expect_that(yaml.load("<<: {foo: bar}\nfoo: baz\n", TRUE), throws_error())
+test_that("duplicate keys with merge first does NOT throw an error", {
+  result <- try(yaml.load("<<: {foo: bar}\nfoo: baz\n", TRUE))
+  expect_false(inherits(result, "try-error"))
 })
 
 test_that("invalid merges throw errors", {

@@ -1,3 +1,6 @@
+v2.1.18
+  - fix protection stack bugs (bug reported by Rich FitzJohn)
+
 v2.1.17
   - rewrite parsing functionality using pairlists instead of a self-managed
     protection stack in order to appease rchk

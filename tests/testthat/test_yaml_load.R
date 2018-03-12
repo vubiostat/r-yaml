@@ -261,6 +261,11 @@ test_that("custom int oct handler is applied", {
   expect_equal("argh!", x)
 })
 
+test_that("int base60 is not coerced by default", {
+  x <- yaml.load("1:20")
+  expect_equal("1:20", x)
+})
+
 test_that("custom int base60 handler is applied", {
   x <- yaml.load("1:20", handlers=list("int#base60"=function(x) { "argh!" }))
   expect_equal("argh!", x)

@@ -301,8 +301,7 @@ handle_scalar(event, s_stack_tail, s_handlers)
         s_new_obj = ScalarInteger(n);
       }
       else {
-        /* unknown integer base */
-        coercion_err = 1;
+        /* unknown integer base; no-op */
       }
     }
     else if (strcmp(tag, "float") == 0 || strcmp(tag, "float#fix") == 0 || strcmp(tag, "float#exp") == 0) {

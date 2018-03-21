@@ -52,9 +52,9 @@
   \code{error.label} to \code{NULL} if you don't want to use this functionality.
 
   There is a built-in handler that will evaluate expressions that are tagged
-  with the \sQuote{!expr} tag.  Currently the default behavior is to enable
-  this handler, but the behavior is being disabled by default in an upcoming
-  version for safety and security reasons.  If you do not explicity set the
+  with the \sQuote{!expr} tag.  Currently this handler is enabled by default,
+  but the handler is being disabled by default in an upcoming version for
+  safety and security reasons.  If you do not explicity set the
   \code{eval.expr} argument to \code{TRUE}, you will get a warning if an
   expression is evaluated.  Alternately, you can set the option named
   \sQuote{yaml.eval.expr} via the \code{options} function to turn off the

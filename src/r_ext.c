@@ -109,7 +109,7 @@ R_has_class(s_obj, name)
 }
 
 R_CallMethodDef callMethods[] = {
-  {"unserialize_from_yaml", (DL_FUNC)&R_unserialize_from_yaml, 4},
+  {"unserialize_from_yaml", (DL_FUNC)&R_unserialize_from_yaml, 6},
   {"serialize_to_yaml",     (DL_FUNC)&R_serialize_to_yaml,     8},
   {NULL, NULL, 0}
 };

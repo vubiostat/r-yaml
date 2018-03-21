@@ -199,10 +199,12 @@ handle_alias(event, s_stack_tail, s_aliases_head)
 }
 
 static int
-handle_scalar(event, s_stack_tail, s_handlers)
+handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
   yaml_event_t *event;
   SEXP *s_stack_tail;
   SEXP s_handlers;
+  int eval_expr;
+  int eval_warning;
 {
   SEXP s_obj = NULL, s_handler = NULL, s_new_obj = NULL, s_expr = NULL;
   const char *value = NULL, *tag = NULL, *nptr = NULL;
@@ -356,25 +358,27 @@ handle_scalar(event, s_stack_tail, s_handlers)
       s_new_obj = R_NilValue;
     }
     else if (strcmp(tag, "expr") == 0) {
-      PROTECT(s_obj);
-      s_expr = R_ParseVector(s_obj, 1, &parse_status, R_NilValue);
-      UNPROTECT(1);
+      if (eval_expr) {
+        PROTECT(s_obj);
+        s_expr = R_ParseVector(s_obj, 1, &parse_status, R_NilValue);
+        UNPROTECT(1);
 
-      if (parse_status != PARSE_OK) {
-        coercion_err = 1;
-        set_error_msg("Could not parse expression: %s", CHAR(STRING_ELT(s_obj, 0)));
-      }
-      else {
-        /* NOTE: R_tryEval will not return if R_Interactive is FALSE. */
-        PROTECT(s_expr);
-        PROTECT(s_new_obj = R_tryEval(VECTOR_ELT(s_expr, 0), R_GlobalEnv, &coercion_err));
-
-        if (coercion_err) {
-          set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(s_obj, 0)));
-        } else {
-          warning("R expressions in yaml.load will not be auto-evaluated by default in the near future");
+        if (parse_status != PARSE_OK) {
+          coercion_err = 1;
+          set_error_msg("Could not parse expression: %s", CHAR(STRING_ELT(s_obj, 0)));
         }
-        UNPROTECT(2); /* s_expr, s_new_obj */
+        else {
+          /* NOTE: R_tryEval will not return if R_Interactive is FALSE. */
+          PROTECT(s_expr);
+          PROTECT(s_new_obj = R_tryEval(VECTOR_ELT(s_expr, 0), R_GlobalEnv, &coercion_err));
+
+          if (coercion_err) {
+            set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(s_obj, 0)));
+          } else if (eval_warning) {
+            warning("R expressions in yaml.load will not be auto-evaluated by default in the near future");
+          }
+          UNPROTECT(2); /* s_expr, s_new_obj */
+        }
       }
     }
   }
@@ -1015,29 +1019,32 @@ possibly_record_alias(s_anchor, s_aliases_tail, s_obj)
 }
 
 SEXP
-R_unserialize_from_yaml(s_str, s_use_named, s_handlers, s_error_label)
-  SEXP s_str;
-  SEXP s_use_named;
+R_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
+    s_eval_expr, s_eval_warning)
+  SEXP s_string;
+  SEXP s_as_named_list;
   SEXP s_handlers;
   SEXP s_error_label;
+  SEXP s_eval_expr;
+  SEXP s_eval_warning;
 {
   SEXP s_retval = NULL, s_handler = NULL, s_names = NULL, s_handlers_2 = NULL,
        s_stack_head = NULL, s_stack_tail = NULL, s_aliases_head = NULL,
        s_aliases_tail = NULL, s_anchor = NULL;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *str = NULL, *name = NULL, *error_label = NULL;
+  const char *string = NULL, *name = NULL, *error_label = NULL;
   char *error_msg_copy = NULL;
   long len = 0;
-  int use_named = 0, i = 0, done = 0, err = 0;
+  int as_named_list = 0, i = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0;
 
-  if (!isString(s_str) || length(s_str) != 1) {
-    error("first argument must be a character vector of length 1");
+  if (!isString(s_string) || length(s_string) != 1) {
+    error("string argument must be a character vector of length 1");
     return R_NilValue;
   }
 
-  if (!isLogical(s_use_named) || length(s_use_named) != 1) {
-    error("second argument must be a logical vector of length 1");
+  if (!isLogical(s_as_named_list) || length(s_as_named_list) != 1) {
+    error("as.named.list argument must be a logical vector of length 1");
     return R_NilValue;
   }
 
@@ -1076,18 +1083,30 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers, s_error_label)
     error_label = NULL;
   }
   else if (!isString(s_error_label) || length(s_error_label) != 1) {
-    error("error_label must be either NULL or a character vector of length 1");
+    error("error.label argument must be either NULL or a character vector of length 1");
     return R_NilValue;
   } else {
     error_label = CHAR(STRING_ELT(s_error_label, 0));
   }
 
-  str = CHAR(STRING_ELT(s_str, 0));
-  len = length(STRING_ELT(s_str, 0));
-  use_named = LOGICAL(s_use_named)[0];
+  if (!isLogical(s_eval_expr) || length(s_eval_expr) != 1) {
+    error("eval.expr argument must be a logical vector of length 1");
+    return R_NilValue;
+  }
+
+  if (!isLogical(s_eval_warning) || length(s_eval_warning) != 1) {
+    error("eval.warning argument must be a logical vector of length 1");
+    return R_NilValue;
+  }
+
+  string = CHAR(STRING_ELT(s_string, 0));
+  len = length(STRING_ELT(s_string, 0));
+  as_named_list = LOGICAL(s_as_named_list)[0];
+  eval_expr = LOGICAL(s_eval_expr)[0];
+  eval_warning = LOGICAL(s_eval_warning)[0];
 
   yaml_parser_initialize(&parser);
-  yaml_parser_set_input_string(&parser, (const unsigned char *)str, len);
+  yaml_parser_set_input_string(&parser, (const unsigned char *)string, len);
 
   PROTECT(s_stack_head = s_stack_tail = list1(R_Sentinel));
   PROTECT(s_aliases_head = s_aliases_tail = list1(R_Sentinel));
@@ -1115,7 +1134,7 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers, s_error_label)
 #if DEBUG
           Rprintf("SCALAR: %s (%s) [%s]\n", event.data.scalar.value, event.data.scalar.tag, event.data.scalar.anchor);
 #endif
-          err = handle_scalar(&event, &s_stack_tail, s_handlers);
+          err = handle_scalar(&event, &s_stack_tail, s_handlers, eval_expr, eval_warning);
           if (!err) {
             s_anchor = NULL;
             if (event.data.scalar.anchor != NULL) {
@@ -1136,7 +1155,7 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers, s_error_label)
 #if DEBUG
           Rprintf("SEQUENCE END\n");
 #endif
-          err = handle_sequence(&event, s_stack_head, &s_stack_tail, s_handlers, use_named);
+          err = handle_sequence(&event, s_stack_head, &s_stack_tail, s_handlers, as_named_list);
           if (!err) {
             s_anchor = CADR(TAG(s_stack_tail));
             possibly_record_alias(s_anchor, &s_aliases_tail, CAR(s_stack_tail));
@@ -1155,7 +1174,7 @@ R_unserialize_from_yaml(s_str, s_use_named, s_handlers, s_error_label)
 #if DEBUG
           Rprintf("MAPPING END\n");
 #endif
-          err = handle_map(&event, s_stack_head, &s_stack_tail, s_handlers, use_named);
+          err = handle_map(&event, s_stack_head, &s_stack_tail, s_handlers, as_named_list);
           if (!err) {
             s_anchor = CADR(TAG(s_stack_tail));
             possibly_record_alias(s_anchor, &s_aliases_tail, CAR(s_stack_tail));

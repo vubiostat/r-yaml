@@ -7,16 +7,18 @@
   Parse a YAML string and return R objects.
 }
 \usage{
-  yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL)
+  yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL,
+            eval.expr = getOption("yaml.eval.expr", TRUE))
   yaml.load_file(input, error.label, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{string}{ the YAML string to be parsed }
   \item{as.named.list}{ whether or not to return a named list for maps (TRUE by default) }
-  \item{handlers}{ named list of custom handler functions for YAML types (see Details). }
-  \item{input}{ a filename or connection. If \code{input} is a filename, that file must be encoded in UTF-8. }
-  \item{error.label}{ a label to prepend to error messages (see Details). }
+  \item{handlers}{ named list of custom handler functions for YAML types (see Details) }
+  \item{input}{ a filename or connection; if \code{input} is a filename, that file must be encoded in UTF-8 }
+  \item{error.label}{ a label to prepend to error messages (see Details) }
+  \item{eval.expr}{ whether or not to evaluate expressions found in the YAML document (see Details) }
   \item{...}{ arguments to pass to yaml.load }
 }
 \details{
@@ -48,6 +50,15 @@
   \code{input} is a character vector) or using the description of the supplied
   connection object (via the \code{summary} function).  You can explicity set
   \code{error.label} to \code{NULL} if you don't want to use this functionality.
+
+  There is a built-in handler that will evaluate expressions that are tagged
+  with the \sQuote{!expr} tag.  Currently the default behavior is to enable
+  this handler, but the behavior is being disabled by default in an upcoming
+  version for safety and security reasons.  If you do not explicity set the
+  \code{eval.expr} argument to \code{TRUE}, you will get a warning if an
+  expression is evaluated.  Alternately, you can set the option named
+  \sQuote{yaml.eval.expr} via the \code{options} function to turn off the
+  warning.
 
   This function uses the YAML parser provided by libyaml, which conforms to the YAML 1.1
   specification.

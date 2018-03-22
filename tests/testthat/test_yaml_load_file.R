@@ -30,3 +30,40 @@ test_that("reading a complicated document works", {
   )
   expect_equal(expected, x)
 })
+
+test_that("expressions are implicitly converted with warning", {
+  warnings <- capture_warnings({
+    cat("!expr 123 + 456", file="files/foo.yml", sep="\n")
+    foo <- file('files/foo.yml', 'r')
+    x <- yaml.load_file(foo)
+    close(foo)
+    unlink("files/foo.yml")
+  })
+  expect_equal("numeric", class(x))
+  expect_equal(579, x)
+  expect_equal("R expressions in yaml.load will not be auto-evaluated by default in the near future", warnings)
+})
+
+test_that("expressions are explicitly converted without warning", {
+  warnings <- capture_warnings({
+    cat("!expr 123 + 456", file="files/foo.yml", sep="\n")
+    foo <- file('files/foo.yml', 'r')
+    x <- yaml.load_file(foo, eval.expr = TRUE)
+    close(foo)
+    unlink("files/foo.yml")
+  })
+  expect_equal("numeric", class(x))
+  expect_equal(579, x)
+  expect_equal(0, length(warnings))
+})
+
+test_that("expressions are unconverted", {
+  cat("!expr 123 + 456", file="files/foo.yml", sep="\n")
+  foo <- file('files/foo.yml', 'r')
+  x <- yaml.load_file(foo, eval.expr = FALSE)
+  close(foo)
+  unlink("files/foo.yml")
+
+  expect_equal("character", class(x))
+  expect_equal("123 + 456", x)
+})

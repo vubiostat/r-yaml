@@ -2,10 +2,14 @@ Package: yaml
 Type: Package
 Title: Methods to Convert R Data to YAML and Back
 Version: 2.1.19
+Date: 2018-03-29
 Suggests: testthat
-Author: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
-Maintainer: Jeremy Stephens <jeremy.stephens@vanderbilt.edu>
+Author: Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
+  Zhuoer Dong [ctb], Hadley Wickham [ctb], Jeffrey Horner [ctb], reikoch [ctb],
+  Will Beasley [ctb], Brendan O'Connor [ctb]
+Maintainer: Jeremy Stephens <jeremy.f.stephens@vumc.org>
 License: BSD_3_clause + file LICENSE
-Description: Implements the 'libyaml' 'YAML' 1.1 parser and emitter (<http://pyyaml.org/wiki/LibYAML>) for R.
+Description: Implements the 'libyaml' 'YAML' 1.1 parser and emitter
+  (<http://pyyaml.org/wiki/LibYAML>) for R.
 URL: https://github.com/viking/r-yaml/
 BugReports: https://github.com/viking/r-yaml/issues

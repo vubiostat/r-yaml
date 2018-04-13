@@ -709,7 +709,7 @@ expand_merge(s_merge_list, s_map_head, s_map_tail, coerce_keys)
   SEXP s_merge_keys = NULL, s_value = NULL, s_key = NULL, s_result = NULL,
        s_inspect = NULL;
   int i = 0, count = 0;
-  char *inspect = NULL;
+  const char *inspect = NULL;
 
   s_merge_keys = coerce_keys ? GET_NAMES(s_merge_list) : getAttrib(s_merge_list, R_KeysSymbol);
   for (i = 0; i < length(s_merge_list); i++) {

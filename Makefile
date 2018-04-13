@@ -82,9 +82,7 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/NAMESPACE
 
 ifdef DEBUG
-  CFLAGS = -g3 -Wall -Wextra -Wpedantic -DDEBUG
-else
-  CFLAGS = -g3 -Wall -Wextra -Wpedantic
+  CFLAGS += -DDEBUG
 endif
 
 test_code = "library(testthat); library('yaml', lib.loc = 'build/lib'); test_dir('build/yaml/tests/testthat')"

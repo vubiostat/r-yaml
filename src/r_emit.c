@@ -394,7 +394,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 {
   SEXP s_chr = NULL, s_names = NULL, s_thing = NULL, s_type = NULL,
        s_class = NULL, s_tmp = NULL, s_inspect = NULL;
-  char *inspect = NULL;
+  const char *inspect = NULL;
   int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0,
       len = 0;
 

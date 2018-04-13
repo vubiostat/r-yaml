@@ -448,11 +448,11 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
 {
   SEXP s_curr = NULL, s_obj = NULL, s_sequence_start = NULL, s_list = NULL,
        s_handler = NULL, s_new_obj = NULL, s_keys = NULL, s_key = NULL,
-       s_tag = NULL;
+       s_tag = NULL, s_inspect = NULL;
   int count = 0, i = 0, j = 0, type = 0, child_type = 0, handled = 0,
       coercion_err = 0, len = 0, total_len = 0, dup_key = 0, idx = 0,
       obj_len = 0;
-  const char *tag = NULL;
+  const char *tag = NULL, *inspect = NULL;
 
   /* Find start of sequence and count elements */
   s_curr = CDR(s_stack_head);
@@ -612,7 +612,11 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
 
               if (R_index(s_keys, s_key, 0, idx) >= 0) {
                 dup_key = 1;
-                set_error_msg("Duplicate omap key: %s", R_inspect(s_key));
+
+                PROTECT(s_inspect = R_inspect(s_key));
+                inspect = CHAR(STRING_ELT(s_inspect, 0));
+                set_error_msg("Duplicate omap key: %s", inspect);
+                UNPROTECT(1);
               }
             }
             idx++;
@@ -702,8 +706,10 @@ expand_merge(s_merge_list, s_map_head, s_map_tail, coerce_keys)
   SEXP *s_map_tail;
   int coerce_keys;
 {
-  SEXP s_merge_keys = NULL, s_value = NULL, s_key = NULL, s_result = NULL;
+  SEXP s_merge_keys = NULL, s_value = NULL, s_key = NULL, s_result = NULL,
+       s_inspect = NULL;
   int i = 0, count = 0;
+  char *inspect = NULL;
 
   s_merge_keys = coerce_keys ? GET_NAMES(s_merge_list) : getAttrib(s_merge_list, R_KeysSymbol);
   for (i = 0; i < length(s_merge_list); i++) {
@@ -719,8 +725,18 @@ expand_merge(s_merge_list, s_map_head, s_map_tail, coerce_keys)
     s_result = find_map_entry(s_map_head, s_key, coerce_keys);
     if (s_result != NULL) {
       /* A matching key is already in the map, so ignore this one. */
-      warning("Duplicate map key ignored during merge: '%s'",
-          coerce_keys ? CHAR(s_key) : R_inspect(s_key));
+      if (coerce_keys) {
+        inspect = CHAR(s_key);
+      }
+      else {
+        PROTECT(s_inspect = R_inspect(s_key));
+        inspect = CHAR(STRING_ELT(s_inspect, 0));
+      }
+      warning("Duplicate map key ignored during merge: '%s'", inspect);
+
+      if (!coerce_keys) {
+        UNPROTECT(1); /* s_inspect */
+      }
     }
     else {
       SETCDR(*s_map_tail, list1(s_value));
@@ -755,9 +771,10 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   SEXP s_list = NULL, s_keys = NULL, s_key = NULL, s_value = NULL,
        s_obj = NULL, s_curr = NULL, s_mapping_start = NULL,
        s_interim_map_head = NULL, s_interim_map_tail = NULL,
-       s_new_obj = NULL, s_handler = NULL, s_tag = NULL, s_result = NULL;
+       s_new_obj = NULL, s_handler = NULL, s_tag = NULL, s_result = NULL,
+       s_inspect = NULL;
   int count = 0, i = 0, map_err = 0, handled = 0, coercion_err = 0, len = 0;
-  const char *tag = NULL;
+  const char *tag = NULL, *inspect = NULL;
 
   /* Find beginning of map */
   s_curr = CDR(s_stack_head);
@@ -817,7 +834,11 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
           }
           else {
             /* Illegal merge */
-            set_error_msg("Illegal merge: %s", R_inspect(s_value));
+            PROTECT(s_inspect = R_inspect(s_value));
+            inspect = CHAR(STRING_ELT(s_inspect, 0));
+            set_error_msg("Illegal merge: %s", inspect);
+            UNPROTECT(1);
+
             map_err = 1;
             break;
           }
@@ -825,7 +846,11 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
       }
       else {
         /* Illegal merge */
-        set_error_msg("Illegal merge: %s", R_inspect(s_value));
+        PROTECT(s_inspect = R_inspect(s_value));
+        inspect = CHAR(STRING_ELT(s_inspect, 0));
+        set_error_msg("Illegal merge: %s", inspect);
+        UNPROTECT(1);
+
         map_err = 1;
       }
     }
@@ -857,7 +882,19 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
          * merge, it's okay to ignore it. If not, it's a duplicate key error. */
         s_tag = TAG(s_result);
         if (LOGICAL(CADR(s_tag))[0] == FALSE) {
-          set_error_msg("Duplicate map key: '%s'", coerce_keys ? CHAR(s_key) : R_inspect(s_key));
+          if (coerce_keys) {
+            inspect = CHAR(s_key);
+          }
+          else {
+            PROTECT(s_inspect = R_inspect(s_key));
+            inspect = CHAR(STRING_ELT(s_inspect, 0));
+          }
+          set_error_msg("Duplicate map key: '%s'", inspect);
+
+          if (!coerce_keys) {
+            UNPROTECT(1); /* s_inspect */
+          }
+
           map_err = 1;
         }
       }

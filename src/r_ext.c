@@ -63,7 +63,7 @@ R_collapse(obj, collapse)
 }
 
 /* Return a string representation of the object for error messages */
-const char *
+SEXP
 R_inspect(obj)
   SEXP obj;
 {
@@ -81,7 +81,7 @@ R_inspect(obj)
   result = R_collapse(str, " ");
   UNPROTECT(1);
 
-  return CHAR(STRING_ELT(result, 0));
+  return result;
 }
 
 /* Return 1 if obj is of the specified class */

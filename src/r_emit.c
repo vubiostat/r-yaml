@@ -393,7 +393,8 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
   int precision;
 {
   SEXP s_chr = NULL, s_names = NULL, s_thing = NULL, s_type = NULL,
-       s_class = NULL, s_tmp = NULL;
+       s_class = NULL, s_tmp = NULL, s_inspect = NULL;
+  char *inspect = NULL;
   int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0,
       len = 0;
 
@@ -658,7 +659,10 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
         set_error_msg("don't know how to emit object of s_type: '%s'\n", CHAR(s_type));
       }
       else {
-        set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), R_inspect(s_class));
+        PROTECT(s_inspect = R_inspect(s_class));
+        inspect = CHAR(STRING_ELT(s_inspect, 0));
+        set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), inspect);
+        UNPROTECT(1);
       }
       UNPROTECT(1);
       return 0;

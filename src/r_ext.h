@@ -23,7 +23,7 @@ char *find_implicit_tag(const char *value, size_t size);
 /* Common functions */
 int R_is_named_list(SEXP obj);
 SEXP R_collapse(SEXP obj, char *collapse);
-const char *R_inspect(SEXP obj);
+SEXP R_inspect(SEXP obj);
 int R_has_class(SEXP obj, char *name);
 void set_error_msg(const char *format, ...);
 

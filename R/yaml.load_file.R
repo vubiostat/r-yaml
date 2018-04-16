@@ -11,6 +11,8 @@ function(input, error.label, ...) {
     else if (is.character(input) && nzchar(input[1])) {
       error.label <- input[1]
     }
+   else
+     error.label <- NULL
   }
   
   if (is.character(input)) {

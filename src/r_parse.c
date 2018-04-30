@@ -120,20 +120,24 @@ find_handler(s_handlers, name)
   SEXP s_handlers;
   const char *name;
 {
-  SEXP s_names = NULL, s_retval = R_NilValue;
+  SEXP s_names = NULL, s_name = NULL, s_retval = R_NilValue;
+  const char *handler_name = NULL;
   int i = 0;
 
   /* Look for a custom R handler */
   if (s_handlers != R_NilValue) {
     PROTECT(s_names = GET_NAMES(s_handlers));
     for (i = 0; i < length(s_names); i++) {
-      if (STRING_ELT(s_names, i) != NA_STRING) {
-        if (strcmp(translateChar(STRING_ELT(s_names, i)), name) == 0) {
+      PROTECT(s_name = STRING_ELT(s_names, i));
+      if (s_name != NA_STRING) {
+        handler_name = CHAR(s_name);
+        if (strcmp(handler_name, name) == 0) {
           /* Found custom handler */
           s_retval = VECTOR_ELT(s_handlers, i);
           break;
         }
       }
+      UNPROTECT(1); /* s_name */
     }
     UNPROTECT(1); /* s_names */
   }
@@ -1065,15 +1069,17 @@ R_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
   SEXP s_eval_expr;
   SEXP s_eval_warning;
 {
-  SEXP s_retval = NULL, s_handler = NULL, s_names = NULL, s_handlers_2 = NULL,
-       s_stack_head = NULL, s_stack_tail = NULL, s_aliases_head = NULL,
-       s_aliases_tail = NULL, s_anchor = NULL;
+  SEXP s_retval = NULL, s_handler = NULL, s_names = NULL, s_names_2 = NULL,
+       s_name = NULL, s_handlers_2 = NULL, s_stack_head = NULL,
+       s_stack_tail = NULL, s_aliases_head = NULL, s_aliases_tail = NULL,
+       s_anchor = NULL;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *string = NULL, *name = NULL, *error_label = NULL;
+  const char *string = NULL, *name = NULL, *name_2 = NULL, *error_label = NULL;
   char *error_msg_copy = NULL;
   long len = 0;
   int as_named_list = 0, i = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0;
+  cetype_t encoding;
 
   if (!isString(s_string) || length(s_string) != 1) {
     error("string argument must be a character vector of length 1");
@@ -1083,37 +1089,6 @@ R_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
   if (!isLogical(s_as_named_list) || length(s_as_named_list) != 1) {
     error("as.named.list argument must be a logical vector of length 1");
     return R_NilValue;
-  }
-
-  if (s_handlers == R_NilValue) {
-    // Do nothing
-  }
-  else if (!R_is_named_list(s_handlers)) {
-    error("handlers must be either NULL or a named list of functions");
-    return R_NilValue;
-  }
-  else {
-    PROTECT(s_handlers_2 = allocVector(VECSXP, length(s_handlers)));
-    s_names = GET_NAMES(s_handlers);
-    SET_NAMES(s_handlers_2, s_names);
-    for (i = 0; i < length(s_handlers); i++) {
-      name = CHAR(STRING_ELT(s_names, i));
-      s_handler = VECTOR_ELT(s_handlers, i);
-
-      if (TYPEOF(s_handler) != CLOSXP) {
-        warning("Your handler for type '%s' is not a function; using default", name);
-        s_handler = R_NilValue;
-      }
-      else if (strcmp(name, "merge") == 0 || strcmp(name, "default") == 0) {
-        /* custom handlers for merge and default are illegal */
-        warning("Custom handling for type '%s' is not allowed; handler ignored", name);
-        s_handler = R_NilValue;
-      }
-
-      SET_VECTOR_ELT(s_handlers_2, i, s_handler);
-    }
-    s_handlers = s_handlers_2;
-    UNPROTECT(1);
   }
 
   if (s_error_label == R_NilValue) {
@@ -1136,6 +1111,56 @@ R_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
     return R_NilValue;
   }
 
+  if (s_handlers == R_NilValue) {
+    // Do nothing
+  }
+  else if (!R_is_named_list(s_handlers)) {
+    error("handlers must be either NULL or a named list of functions");
+    return R_NilValue;
+  }
+  else {
+    PROTECT(s_names = GET_NAMES(s_handlers));
+
+    PROTECT(s_handlers_2 = allocVector(VECSXP, length(s_handlers)));
+    PROTECT(s_names_2 = allocVector(STRSXP, length(s_names)));
+
+    for (i = 0; i < length(s_handlers); i++) {
+      /* Possibly convert name to UTF-8 */
+      PROTECT(s_name = STRING_ELT(s_names, i));
+      encoding = getCharCE(s_name);
+      if (encoding == CE_UTF8) {
+        SET_STRING_ELT(s_names_2, i, s_name);
+      }
+      else {
+        name = CHAR(s_name);
+        name_2 = reEnc(name, encoding, CE_UTF8, 1);
+        SET_STRING_ELT(s_names_2, i, mkCharCE(name_2, CE_UTF8));
+      }
+      UNPROTECT(1); /* s_name */
+
+      /* Validate handler */
+      s_handler = VECTOR_ELT(s_handlers, i);
+
+      if (TYPEOF(s_handler) != CLOSXP) {
+        warning("Your handler for type '%s' is not a function; using default", name);
+        s_handler = R_NilValue;
+      }
+      else if (strcmp(name, "merge") == 0 || strcmp(name, "default") == 0) {
+        /* custom handlers for merge and default are illegal */
+        warning("Custom handling for type '%s' is not allowed; handler ignored", name);
+        s_handler = R_NilValue;
+      }
+
+      SET_VECTOR_ELT(s_handlers_2, i, s_handler);
+    }
+
+    SET_NAMES(s_handlers_2, s_names_2);
+    s_handlers = s_handlers_2;
+
+    UNPROTECT(3); /* s_names, s_names_2, s_handlers_2 */
+  }
+  PROTECT(s_handlers);
+
   string = CHAR(STRING_ELT(s_string, 0));
   len = length(STRING_ELT(s_string, 0));
   as_named_list = LOGICAL(s_as_named_list)[0];
@@ -1147,7 +1172,6 @@ R_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
 
   PROTECT(s_stack_head = s_stack_tail = list1(R_Sentinel));
   PROTECT(s_aliases_head = s_aliases_tail = list1(R_Sentinel));
-  PROTECT(s_handlers);
   error_msg[0] = 0;
   while (!done) {
     if (yaml_parser_parse(&parser, &event)) {

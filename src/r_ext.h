@@ -21,18 +21,18 @@
 char *find_implicit_tag(const char *value, size_t size);
 
 /* Common functions */
-int R_is_named_list(SEXP obj);
-SEXP R_collapse(SEXP obj, char *collapse);
-SEXP R_inspect(SEXP obj);
-int R_has_class(SEXP obj, char *name);
+int Ryaml_is_named_list(SEXP obj);
+SEXP Ryaml_collapse(SEXP obj, char *collapse);
+SEXP Ryaml_inspect(SEXP obj);
+int Ryaml_has_class(SEXP obj, char *name);
 void set_error_msg(const char *format, ...);
 
 /* Exported functions */
-SEXP R_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap,
+SEXP Ryaml_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap,
     SEXP s_column_major, SEXP s_unicode, SEXP s_precision,
     SEXP s_indent_mapping_sequence);
 
-SEXP R_unserialize_from_yaml(SEXP s_string, SEXP s_as_named_list,
+SEXP Ryaml_unserialize_from_yaml(SEXP s_string, SEXP s_as_named_list,
     SEXP s_handlers, SEXP s_error_label, SEXP s_eval_expr,
     SEXP s_eval_warning);
 

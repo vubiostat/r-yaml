@@ -1,6 +1,6 @@
 #include "r_ext.h"
 
-extern SEXP R_DeparseFunc;
+extern SEXP Ryaml_DeparseFunc;
 extern char error_msg[ERROR_MSG_SIZE];
 
 typedef struct {
@@ -10,7 +10,7 @@ typedef struct {
 } s_emitter_output;
 
 static SEXP
-R_deparse_function(s_obj)
+Ryaml_deparse_function(s_obj)
   SEXP s_obj;
 {
   SEXP s_call = NULL, s_result = NULL, s_chr = NULL;
@@ -18,7 +18,7 @@ R_deparse_function(s_obj)
   char *str = NULL;
 
   /* first get R's deparsed character vector */
-  PROTECT(s_call = lang2(R_DeparseFunc, s_obj));
+  PROTECT(s_call = lang2(Ryaml_DeparseFunc, s_obj));
   s_result = eval(s_call, R_GlobalEnv);
   UNPROTECT(1);
   PROTECT(s_result);
@@ -66,7 +66,7 @@ R_deparse_function(s_obj)
 
 /* Format a vector of reals for emitting */
 static SEXP
-R_format_real(s_obj, precision)
+Ryaml_format_real(s_obj, precision)
   SEXP s_obj;
   int precision;
 {
@@ -146,7 +146,7 @@ R_format_real(s_obj, precision)
 
 /* Format a vector of ints for emitting. Handle NAs. */
 static SEXP
-R_format_int(s_obj)
+Ryaml_format_int(s_obj)
   SEXP s_obj;
 {
   SEXP s_retval = NULL;
@@ -165,7 +165,7 @@ R_format_int(s_obj)
 
 /* Format a vector of logicals for emitting. Handle NAs. */
 static SEXP
-R_format_logical(s_obj)
+Ryaml_format_logical(s_obj)
   SEXP s_obj;
 {
   SEXP s_retval = NULL;
@@ -191,7 +191,7 @@ R_format_logical(s_obj)
 
 /* Format a vector of strings for emitting. Handle NAs. */
 static SEXP
-R_format_string(s_obj)
+Ryaml_format_string(s_obj)
   SEXP s_obj;
 {
   SEXP s_retval = NULL;
@@ -210,7 +210,7 @@ R_format_string(s_obj)
 
 /* Take a CHARSXP, return a scalar style (for emitting) */
 static yaml_scalar_style_t
-R_string_style(s_obj)
+Ryaml_string_style(s_obj)
   SEXP s_obj;
 {
   char *tag = NULL;
@@ -242,7 +242,7 @@ R_string_style(s_obj)
 
 /* Take a vector and an index and return another vector of size 1 */
 static SEXP
-R_yoink(s_vec, index)
+Ryaml_yoink(s_vec, index)
   SEXP s_vec;
   int index;
 {
@@ -250,7 +250,7 @@ R_yoink(s_vec, index)
   int type = 0, factor = 0, level_idx = 0;
 
   type = TYPEOF(s_vec);
-  factor = type == INTSXP && R_has_class(s_vec, "factor");
+  factor = type == INTSXP && Ryaml_has_class(s_vec, "factor");
   PROTECT(s_tmp = allocVector(factor ? STRSXP : type, 1));
 
   switch(type) {
@@ -291,7 +291,7 @@ R_yoink(s_vec, index)
 }
 
 static int
-R_serialize_to_yaml_write_handler(data, buffer, size)
+Ryaml_serialize_to_yaml_write_handler(data, buffer, size)
   void *data;
   unsigned char *buffer;
   size_t size;
@@ -355,7 +355,7 @@ emit_factor(emitter, event, s_obj)
     else {
       s_level_chr = STRING_ELT(s_levels, level_idx - 1);
       if (!scalar_style_is_set[level_idx - 1]) {
-        scalar_styles[level_idx - 1] = R_string_style(s_level_chr);
+        scalar_styles[level_idx - 1] = Ryaml_string_style(s_level_chr);
       }
       scalar_style = scalar_styles[level_idx - 1];
     }
@@ -413,7 +413,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
       /* Function! Deparse, then fall through */
       tag = "!expr";
       implicit_tag = 0;
-      s_obj = R_deparse_function(s_obj);
+      s_obj = Ryaml_deparse_function(s_obj);
 
     /* atomic vector types */
     case LGLSXP:
@@ -435,7 +435,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
       }
 
       if (len >= 1) {
-        if (R_has_class(s_obj, "factor")) {
+        if (Ryaml_has_class(s_obj, "factor")) {
           PROTECT(s_obj);
           result = emit_factor(emitter, event, s_obj);
           UNPROTECT(1);
@@ -444,13 +444,13 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
         }
         else if (TYPEOF(s_obj) == STRSXP) {
           /* Might need to add quotes */
-          PROTECT(s_obj = R_format_string(s_obj));
+          PROTECT(s_obj = Ryaml_format_string(s_obj));
 
           result = 0;
           for (i = 0; i < length(s_obj); i++) {
             PROTECT(s_chr = STRING_ELT(s_obj, i));
             result = emit_char(emitter, event, s_chr, tag, implicit_tag,
-                R_string_style(s_chr));
+                Ryaml_string_style(s_chr));
             UNPROTECT(1);
 
             if (!result)
@@ -464,15 +464,15 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
         else {
           switch(TYPEOF(s_obj)) {
             case REALSXP:
-              s_obj = R_format_real(s_obj, precision);
+              s_obj = Ryaml_format_real(s_obj, precision);
               break;
 
             case INTSXP:
-              s_obj = R_format_int(s_obj);
+              s_obj = Ryaml_format_int(s_obj);
               break;
 
             case LGLSXP:
-              s_obj = R_format_logical(s_obj);
+              s_obj = Ryaml_format_logical(s_obj);
               break;
 
             default:
@@ -505,7 +505,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
       break;
 
     case VECSXP:
-      if (R_has_class(s_obj, "data.frame") && length(s_obj) > 0 && !column_major) {
+      if (Ryaml_has_class(s_obj, "data.frame") && length(s_obj) > 0 && !column_major) {
         rows = length(VECTOR_ELT(s_obj, 0));
         cols = length(s_obj);
         PROTECT(s_names = GET_NAMES(s_obj));
@@ -528,7 +528,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 
           for (j = 0; j < cols; j++) {
             PROTECT(s_chr = STRING_ELT(s_names, j));
-            result = emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr));
+            result = emit_char(emitter, event, s_chr, NULL, 1, Ryaml_string_style(s_chr));
             UNPROTECT(1);
             if (!result) {
               err = 1;
@@ -537,7 +537,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 
             /* Need to create a vector of size one, then emit it */
             s_thing = VECTOR_ELT(s_obj, j);
-            PROTECT(s_tmp = R_yoink(s_thing, i));
+            PROTECT(s_tmp = Ryaml_yoink(s_thing, i));
             result = emit_object(emitter, event, s_tmp, NULL, omap, column_major, precision);
             UNPROTECT(1);
 
@@ -570,7 +570,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
           return 0;
         }
       }
-      else if (R_is_named_list(s_obj)) {
+      else if (Ryaml_is_named_list(s_obj)) {
         if (omap) {
           yaml_sequence_start_event_initialize(event, NULL,
               (yaml_char_t *)"!omap", 0, YAML_ANY_SEQUENCE_STYLE);
@@ -599,7 +599,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
           }
 
           PROTECT(s_chr = STRING_ELT(s_names, i));
-          result = emit_char(emitter, event, s_chr, NULL, 1, R_string_style(s_chr));
+          result = emit_char(emitter, event, s_chr, NULL, 1, Ryaml_string_style(s_chr));
           UNPROTECT(1);
           if (!result) {
             err = 1;
@@ -659,7 +659,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
         set_error_msg("don't know how to emit object of s_type: '%s'\n", CHAR(s_type));
       }
       else {
-        PROTECT(s_inspect = R_inspect(s_class));
+        PROTECT(s_inspect = Ryaml_inspect(s_class));
         inspect = CHAR(STRING_ELT(s_inspect, 0));
         set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), inspect);
         UNPROTECT(1);
@@ -672,7 +672,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 }
 
 SEXP
-R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
+Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
@@ -771,7 +771,7 @@ R_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unico
 
   output.buffer = NULL;
   output.size = output.capa = 0;
-  yaml_emitter_set_output(&emitter, R_serialize_to_yaml_write_handler, &output);
+  yaml_emitter_set_output(&emitter, Ryaml_serialize_to_yaml_write_handler, &output);
 
   yaml_stream_start_event_initialize(&event, YAML_ANY_ENCODING);
   status = yaml_emitter_emit(&emitter, &event);

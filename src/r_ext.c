@@ -1,15 +1,15 @@
 #include "r_ext.h"
 
-SEXP R_KeysSymbol = NULL;
-SEXP R_IdenticalFunc = NULL;
-SEXP R_FormatFunc = NULL;
-SEXP R_PasteFunc = NULL;
-SEXP R_CollapseSymbol = NULL;
-SEXP R_DeparseFunc = NULL;
-SEXP R_Sentinel = NULL;
-SEXP R_SequenceStart = NULL;
-SEXP R_MappingStart = NULL;
-SEXP R_MappingEnd = NULL;
+SEXP Ryaml_KeysSymbol = NULL;
+SEXP Ryaml_IdenticalFunc = NULL;
+SEXP Ryaml_FormatFunc = NULL;
+SEXP Ryaml_PasteFunc = NULL;
+SEXP Ryaml_CollapseSymbol = NULL;
+SEXP Ryaml_DeparseFunc = NULL;
+SEXP Ryaml_Sentinel = NULL;
+SEXP Ryaml_SequenceStart = NULL;
+SEXP Ryaml_MappingStart = NULL;
+SEXP Ryaml_MappingEnd = NULL;
 char error_msg[ERROR_MSG_SIZE];
 
 void
@@ -30,7 +30,7 @@ set_error_msg(const char *format, ...)
 
 /* Returns true if obj is a named list */
 int
-R_is_named_list(obj)
+Ryaml_is_named_list(obj)
   SEXP obj;
 {
   SEXP names;
@@ -43,7 +43,7 @@ R_is_named_list(obj)
 
 /* Call R's paste() function with collapse */
 SEXP
-R_collapse(obj, collapse)
+Ryaml_collapse(obj, collapse)
   SEXP obj;
   char *collapse;
 {
@@ -51,11 +51,11 @@ R_collapse(obj, collapse)
 
   PROTECT(call = pcall = allocList(3));
   SET_TYPEOF(call, LANGSXP);
-  SETCAR(pcall, R_PasteFunc); pcall = CDR(pcall);
+  SETCAR(pcall, Ryaml_PasteFunc); pcall = CDR(pcall);
   SETCAR(pcall, obj);         pcall = CDR(pcall);
   SETCAR(pcall, PROTECT(allocVector(STRSXP, 1)));
   SET_STRING_ELT(CAR(pcall), 0, mkCharCE(collapse, CE_UTF8));
-  SET_TAG(pcall, R_CollapseSymbol);
+  SET_TAG(pcall, Ryaml_CollapseSymbol);
   retval = eval(call, R_GlobalEnv);
   UNPROTECT(2);
 
@@ -64,7 +64,7 @@ R_collapse(obj, collapse)
 
 /* Return a string representation of the object for error messages */
 SEXP
-R_inspect(obj)
+Ryaml_inspect(obj)
   SEXP obj;
 {
   SEXP call, str, result;
@@ -73,12 +73,12 @@ R_inspect(obj)
    * jumping through all kinds of hoops so that I can get the output
    * of print(), this is the most effort I want to put into this. */
 
-  PROTECT(call = lang2(R_FormatFunc, obj));
+  PROTECT(call = lang2(Ryaml_FormatFunc, obj));
   str = eval(call, R_GlobalEnv);
   UNPROTECT(1);
 
   PROTECT(str);
-  result = R_collapse(str, " ");
+  result = Ryaml_collapse(str, " ");
   UNPROTECT(1);
 
   return result;
@@ -86,7 +86,7 @@ R_inspect(obj)
 
 /* Return 1 if obj is of the specified class */
 int
-R_has_class(s_obj, name)
+Ryaml_has_class(s_obj, name)
   SEXP s_obj;
   char *name;
 {
@@ -109,22 +109,22 @@ R_has_class(s_obj, name)
 }
 
 R_CallMethodDef callMethods[] = {
-  {"unserialize_from_yaml", (DL_FUNC)&R_unserialize_from_yaml, 6},
-  {"serialize_to_yaml",     (DL_FUNC)&R_serialize_to_yaml,     8},
+  {"unserialize_from_yaml", (DL_FUNC)&Ryaml_unserialize_from_yaml, 6},
+  {"serialize_to_yaml",     (DL_FUNC)&Ryaml_serialize_to_yaml,     8},
   {NULL, NULL, 0}
 };
 
 void R_init_yaml(DllInfo *dll) {
-  R_KeysSymbol = install("keys");
-  R_CollapseSymbol = install("collapse");
-  R_IdenticalFunc = findFun(install("identical"), R_GlobalEnv);
-  R_FormatFunc = findFun(install("format"), R_GlobalEnv);
-  R_PasteFunc = findFun(install("paste"), R_GlobalEnv);
-  R_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
-  R_Sentinel = install("sentinel");
-  R_SequenceStart = install("sequence.start");
-  R_MappingStart = install("mapping.start");
-  R_MappingEnd = install("mapping.end");
+  Ryaml_KeysSymbol = install("keys");
+  Ryaml_CollapseSymbol = install("collapse");
+  Ryaml_IdenticalFunc = findFun(install("identical"), R_GlobalEnv);
+  Ryaml_FormatFunc = findFun(install("format"), R_GlobalEnv);
+  Ryaml_PasteFunc = findFun(install("paste"), R_GlobalEnv);
+  Ryaml_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
+  Ryaml_Sentinel = install("sentinel");
+  Ryaml_SequenceStart = install("sequence.start");
+  Ryaml_MappingStart = install("mapping.start");
+  Ryaml_MappingEnd = install("mapping.end");
   R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);

@@ -122,7 +122,7 @@ find_handler(s_handlers, name)
 {
   SEXP s_names = NULL, s_name = NULL, s_retval = R_NilValue;
   const char *handler_name = NULL;
-  int i = 0;
+  int i = 0, found = 0;
 
   /* Look for a custom R handler */
   if (s_handlers != R_NilValue) {
@@ -134,10 +134,12 @@ find_handler(s_handlers, name)
         if (strcmp(handler_name, name) == 0) {
           /* Found custom handler */
           s_retval = VECTOR_ELT(s_handlers, i);
-          break;
+          found = 1;
         }
       }
       UNPROTECT(1); /* s_name */
+
+      if (found) break;
     }
     UNPROTECT(1); /* s_names */
   }

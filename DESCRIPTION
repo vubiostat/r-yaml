@@ -2,7 +2,7 @@ Package: yaml
 Type: Package
 Title: Methods to Convert R Data to YAML and Back
 Version: 2.1.19
-Date: 2018-03-29
+Date: 2018-04-30
 Suggests: testthat
 Author: Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
   Zhuoer Dong [ctb], Hadley Wickham [ctb], Jeffrey Horner [ctb], reikoch [ctb],

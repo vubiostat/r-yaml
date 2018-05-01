@@ -1,6 +1,8 @@
 v2.1.19
-  - fix unserialization choking on int#base60 tag (reported by Nancy Irisarri)
+  - fix unserialization issues with int#base60 tag (reported by Nancy Irisarri)
   - add eval.expr option to yaml.load function
+  - fix issue with error.label argument (patch by Gregory R. Warnes)
+  - fix a few garbage collection protection issues
 
 v2.1.18
   - fix protection stack bugs (reported by Rich FitzJohn)

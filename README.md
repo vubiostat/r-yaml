@@ -340,7 +340,7 @@ installed.
 The algorithm used whenever there is no YAML tag explicitly provided is located
 in the [implicit.re](src/implicit.re) file. This file is used to create the
 [implicit.c](src/implicit.c) file via the [re2c](http://re2c.org/) program. If
-you want to change this algorith, make your changes in `implicit.re`, not
+you want to change this algorithm, make your changes in `implicit.re`, not
 `implicit.c`. The `make` targets will automatically update the C file as needed,
 but you'll need to have the `re2c` program installed for it to work.
 

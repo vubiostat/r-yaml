@@ -27,11 +27,13 @@
 \examples{
 \dontrun{
   # writing to a file connection
-  con <- file("data.yml", "w")
+  filename <- tempfile()
+  con <- file(filename, "w")
   write_yaml(data.frame(a=1:10, b=letters[1:10], c=11:20), con)
+  close(con)
 
   # using a filename to specify output file
-  write_yaml(data.frame(a=1:10, b=letters[1:10], c=11:20), "data.yml")
+  write_yaml(data.frame(a=1:10, b=letters[1:10], c=11:20), filename)
 }
 }
 \keyword{data}

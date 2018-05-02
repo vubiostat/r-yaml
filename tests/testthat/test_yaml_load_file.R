@@ -1,18 +1,20 @@
 context("yaml.load_file")
 
 test_that("reading from a connection works", {
-  cat("foo: 123", file="files/foo.yml", sep="\n")
-  foo <- file('files/foo.yml', 'r')
+  filename <- tempfile()
+  cat("foo: 123", file=filename, sep="\n")
+  foo <- file(filename, 'r')
   x <- yaml.load_file(foo)
   close(foo)
-  unlink("files/foo.yml")
+  unlink(filename)
   expect_equal(123L, x$foo)
 })
 
 test_that("reading from specified filename works", {
-  cat("foo: 123", file="files/foo.yml", sep="\n")
-  x <- yaml.load_file('files/foo.yml')
-  unlink("files/foo.yml")
+  filename <- tempfile()
+  cat("foo: 123", file=filename, sep="\n")
+  x <- yaml.load_file(filename)
+  unlink(filename)
   expect_equal(123L, x$foo)
 })
 
@@ -33,11 +35,12 @@ test_that("reading a complicated document works", {
 
 test_that("expressions are implicitly converted with warning", {
   warnings <- capture_warnings({
-    cat("!expr 123 + 456", file="files/foo.yml", sep="\n")
-    foo <- file('files/foo.yml', 'r')
+    filename <- tempfile()
+    cat("!expr 123 + 456", file=filename, sep="\n")
+    foo <- file(filename, 'r')
     x <- yaml.load_file(foo)
     close(foo)
-    unlink("files/foo.yml")
+    unlink(filename)
   })
   expect_equal("numeric", class(x))
   expect_equal(579, x)
@@ -46,11 +49,12 @@ test_that("expressions are implicitly converted with warning", {
 
 test_that("expressions are explicitly converted without warning", {
   warnings <- capture_warnings({
-    cat("!expr 123 + 456", file="files/foo.yml", sep="\n")
-    foo <- file('files/foo.yml', 'r')
+    filename <- tempfile()
+    cat("!expr 123 + 456", file=filename, sep="\n")
+    foo <- file(filename, 'r')
     x <- yaml.load_file(foo, eval.expr = TRUE)
     close(foo)
-    unlink("files/foo.yml")
+    unlink(filename)
   })
   expect_equal("numeric", class(x))
   expect_equal(579, x)
@@ -58,11 +62,12 @@ test_that("expressions are explicitly converted without warning", {
 })
 
 test_that("expressions are unconverted", {
-  cat("!expr 123 + 456", file="files/foo.yml", sep="\n")
-  foo <- file('files/foo.yml', 'r')
+  filename <- tempfile()
+  cat("!expr 123 + 456", file=filename, sep="\n")
+  foo <- file(filename, 'r')
   x <- yaml.load_file(foo, eval.expr = FALSE)
   close(foo)
-  unlink("files/foo.yml")
+  unlink(filename)
 
   expect_equal("character", class(x))
   expect_equal("123 + 456", x)

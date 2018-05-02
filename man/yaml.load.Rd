@@ -83,9 +83,9 @@
 
 \dontrun{
   # reading from a file (uses readLines internally)
-  cat("foo: 123", file="foo.yml", sep="\n")
-  yaml.load_file('foo.yml')
-  unlink("foo.yml") # tidy up
+  filename <- tempfile()
+  cat("foo: 123", file=filename, sep="\n")
+  yaml.load_file(filename)
 }
 
   # custom scalar handler

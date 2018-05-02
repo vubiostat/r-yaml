@@ -47,11 +47,14 @@
 \examples{
 \dontrun{
   # reading from a file connection
-  con <- file("data.yml", "w")
+  filename <- tempfile()
+  cat("test: data\n", file = filename)
+  con <- file(filename, "r")
   read_yaml(con)
+  close(con)
 
   # using a filename to specify input file
-  read_yaml("data.yml")
+  read_yaml(filename)
 }
 
   # reading from a character vector

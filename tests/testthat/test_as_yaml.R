@@ -250,3 +250,23 @@ test_that("factor with NAs is emitted properly", {
   result <- as.yaml(x)
   expect_equal(".na.character\n...\n", result, expected.label = result)
 })
+
+test_that("very small negative float is emitted properly", {
+  result <- as.yaml(-7.62e-24)
+  expect_equal("-7.62e-24\n...\n", result, expected.label = result)
+})
+
+test_that("very small positive float is emitted properly", {
+  result <- as.yaml(7.62e-24)
+  expect_equal("7.62e-24\n...\n", result, expected.label = result)
+})
+
+test_that("numeric zero is emitted properly", {
+  result <- as.yaml(0.0)
+  expect_equal("0.0\n...\n", result, expected.label = result)
+});
+
+test_that("numeric negative zero is emitted properly", {
+  result <- as.yaml(-0.0)
+  expect_equal("-0.0\n...\n", result, expected.label = result)
+});

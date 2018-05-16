@@ -1,3 +1,7 @@
+v2.1.20
+  - fix as.yaml representation of very small negative floating point numbers
+    (reported by Ryan Welch)
+
 v2.1.19
   - fix unserialization issues with int#base60 tag (reported by Nancy Irisarri)
   - add eval.expr option to yaml.load function

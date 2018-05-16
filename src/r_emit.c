@@ -91,9 +91,11 @@ Ryaml_format_real(s_obj, precision)
       SET_STRING_ELT(s_retval, i, mkChar(".nan"));
     }
     else {
-      e = log10(x);
-      if (e < -4 || e >= precision) {
-        format[3] = 'e';
+      if (x != 0) {
+        e = log10(fabs(x));
+        if (e < -4 || e >= precision) {
+          format[3] = 'e';
+        }
       }
       n = snprintf(str, REAL_BUF_SIZE, format, precision, x);
       if (n >= REAL_BUF_SIZE) {

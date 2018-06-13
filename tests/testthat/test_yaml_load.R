@@ -407,7 +407,7 @@ test_that("expressions are implicitly converted with warning", {
   })
   expect_equal("function", class(x))
   expect_equal("hey!", x())
-  expect_equal("R expressions in yaml.load will not be auto-evaluated by default in the near future", warnings)
+  expect_equal("Evaluating R expressions (!expr) will soon require explicit `eval.expr` option (see yaml.load help)", warnings)
 })
 
 test_that("expressions are explicitly converted without warning", {

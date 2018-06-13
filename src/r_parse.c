@@ -381,7 +381,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
           if (coercion_err) {
             set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(s_obj, 0)));
           } else if (eval_warning) {
-            warning("R expressions in yaml.load will not be auto-evaluated by default in the near future");
+            warning("Evaluating R expressions (!expr) will soon require explicit `eval.expr` option (see yaml.load help)");
           }
           UNPROTECT(2); /* s_expr, s_new_obj */
         }

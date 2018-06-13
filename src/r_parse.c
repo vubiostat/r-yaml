@@ -887,25 +887,27 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
         /* A matching key is already in the map. If the existing key is from a
          * merge, it's okay to ignore it. If not, it's a duplicate key error. */
         s_tag = TAG(s_result);
+        if (coerce_keys) {
+          inspect = CHAR(s_key);
+        }
+        else {
+          PROTECT(s_inspect = Ryaml_inspect(s_key));
+          inspect = CHAR(STRING_ELT(s_inspect, 0));
+        }
         if (LOGICAL(CADR(s_tag))[0] == FALSE) {
-          if (coerce_keys) {
-            inspect = CHAR(s_key);
-          }
-          else {
-            PROTECT(s_inspect = Ryaml_inspect(s_key));
-            inspect = CHAR(STRING_ELT(s_inspect, 0));
-          }
           set_error_msg("Duplicate map key: '%s'", inspect);
-
-          if (!coerce_keys) {
-            UNPROTECT(1); /* s_inspect */
-          }
-
           map_err = 1;
         }
-      }
+        else {
+          /* I think it's okay not to throw a warning here because this is
+           * probably an intentional ignore by the user. */
+          /*warning("Duplicate map key ignored after merge: '%s'", inspect);*/
+        }
 
-      if (!map_err) {
+        if (!coerce_keys) {
+          UNPROTECT(1); /* s_inspect */
+        }
+      } else {
         SETCDR(s_interim_map_tail, list1(s_value));
         s_interim_map_tail = CDR(s_interim_map_tail);
         SET_TAG(s_interim_map_tail, list2(s_key, ScalarLogical(FALSE)));

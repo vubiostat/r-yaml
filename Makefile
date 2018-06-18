@@ -98,6 +98,9 @@ gct-check: build/yaml
 test: build/lib/yaml
 	R --vanilla -e $(test_code)
 
+gct-test: build/lib/yaml
+	R --vanilla -e "library(testthat); library('yaml', lib.loc = 'build/lib'); gctorture(TRUE); test_dir('build/yaml/tests/testthat'); gctorture(FALSE)"
+
 gdb-test: build/lib/yaml
 	cd build; R -d gdb --vanilla -e $(test_code)
 
@@ -139,4 +142,4 @@ build/yaml/%: %
 clean:
 	rm -fr yaml_*.tar.gz build
 
-.PHONY: all check gct-check test gdb-test clean valgrind-test check-changelog check-description tarball
+.PHONY: all check gct-check test gct-test gdb-test clean valgrind-test check-changelog check-description tarball

@@ -202,7 +202,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
   PROTECT(s_obj = ScalarString(mkCharCE(value, CE_UTF8)));
 
   /* Look for a custom R handler */
-  s_handler = Ryaml_find_handler(s_handlers, (const char *)tag);
+  PROTECT(s_handler = Ryaml_find_handler(s_handlers, (const char *)tag));
   if (s_handler != R_NilValue) {
     if (Ryaml_run_handler(s_handler, s_obj, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
@@ -211,6 +211,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
       handled = 1;
     }
   }
+  UNPROTECT(1); /* s_handler */
 
   if (!handled) {
     /* Default handlers */

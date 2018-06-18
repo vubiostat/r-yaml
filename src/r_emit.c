@@ -1,7 +1,7 @@
 #include "r_ext.h"
 
 extern SEXP Ryaml_DeparseFunc;
-extern char error_msg[ERROR_MSG_SIZE];
+extern char Ryaml_error_msg[ERROR_MSG_SIZE];
 
 typedef struct {
   char *buffer;
@@ -658,12 +658,12 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
       PROTECT(s_type = type2str(TYPEOF(s_obj)));
       s_class = GET_CLASS(s_obj);
       if (TYPEOF(s_class) != STRSXP || LENGTH(s_class) == 0) {
-        set_error_msg("don't know how to emit object of s_type: '%s'\n", CHAR(s_type));
+        Ryaml_set_error_msg("don't know how to emit object of s_type: '%s'\n", CHAR(s_type));
       }
       else {
         PROTECT(s_inspect = Ryaml_inspect(s_class));
         inspect = CHAR(STRING_ELT(s_inspect, 0));
-        set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), inspect);
+        Ryaml_set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), inspect);
         UNPROTECT(1);
       }
       UNPROTECT(1);
@@ -806,10 +806,10 @@ done:
   }
   else {
     if (emitter.problem != NULL) {
-      set_error_msg("Emitter error: %s", emitter.problem);
+      Ryaml_set_error_msg("Emitter error: %s", emitter.problem);
     }
     else {
-      set_error_msg("Unknown emitter error");
+      Ryaml_set_error_msg("Unknown emitter error");
     }
     s_retval = R_NilValue;
   }
@@ -820,7 +820,7 @@ done:
     free(output.buffer);
   }
   else {
-    error(error_msg);
+    error(Ryaml_error_msg);
   }
 
   return s_retval;

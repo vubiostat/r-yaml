@@ -6,7 +6,7 @@ extern SEXP Ryaml_Sentinel;
 extern SEXP Ryaml_SequenceStart;
 extern SEXP Ryaml_MappingStart;
 extern SEXP Ryaml_MappingEnd;
-extern char error_msg[ERROR_MSG_SIZE];
+extern char Ryaml_error_msg[ERROR_MSG_SIZE];
 
 /* Compare two R objects (with the R identical function).
  * Returns 0 or 1 */
@@ -371,7 +371,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
 
         if (parse_status != PARSE_OK) {
           coercion_err = 1;
-          set_error_msg("Could not parse expression: %s", CHAR(STRING_ELT(s_obj, 0)));
+          Ryaml_set_error_msg("Could not parse expression: %s", CHAR(STRING_ELT(s_obj, 0)));
         }
         else {
           /* NOTE: R_tryEval will not return if R_Interactive is FALSE. */
@@ -379,7 +379,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
           PROTECT(s_new_obj = R_tryEval(VECTOR_ELT(s_expr, 0), R_GlobalEnv, &coercion_err));
 
           if (coercion_err) {
-            set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(s_obj, 0)));
+            Ryaml_set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(s_obj, 0)));
           } else if (eval_warning) {
             warning("Evaluating R expressions (!expr) will soon require explicit `eval.expr` option (see yaml.load help)");
           }
@@ -391,8 +391,8 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
   UNPROTECT(1); /* s_obj */
 
   if (coercion_err == 1) {
-    if (error_msg[0] == 0) {
-      set_error_msg("Invalid tag for scalar: %s", tag);
+    if (Ryaml_error_msg[0] == 0) {
+      Ryaml_set_error_msg("Invalid tag for scalar: %s", tag);
     }
     return 1;
   }
@@ -473,7 +473,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
     s_curr = CDR(s_curr);
   }
   if (s_sequence_start == NULL) {
-    set_error_msg("Internal error: couldn't find start of sequence!");
+    Ryaml_set_error_msg("Internal error: couldn't find start of sequence!");
     return 1;
   }
 
@@ -577,7 +577,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
       for (i = 0; i < len; i++) {
         s_obj = VECTOR_ELT(s_list, i);
         if ((coerce_keys && !Ryaml_is_named_list(s_obj)) || (!coerce_keys && !Ryaml_is_pseudo_hash(s_obj))) {
-          set_error_msg("omap must be a sequence of maps");
+          Ryaml_set_error_msg("omap must be a sequence of maps");
           coercion_err = 1;
           break;
         }
@@ -608,7 +608,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
 
               if (Ryaml_index(s_keys, s_key, 1, idx) >= 0) {
                 dup_key = 1;
-                set_error_msg("Duplicate omap key: '%s'", CHAR(s_key));
+                Ryaml_set_error_msg("Duplicate omap key: '%s'", CHAR(s_key));
               }
               UNPROTECT(1); /* s_key */
             }
@@ -621,7 +621,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
 
                 PROTECT(s_inspect = Ryaml_inspect(s_key));
                 inspect = CHAR(STRING_ELT(s_inspect, 0));
-                set_error_msg("Duplicate omap key: %s", inspect);
+                Ryaml_set_error_msg("Duplicate omap key: %s", inspect);
                 UNPROTECT(1);
               }
             }
@@ -663,8 +663,8 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   UNPROTECT(1); /* s_list */
 
   if (coercion_err == 1) {
-    if (error_msg[0] == 0) {
-      set_error_msg("Invalid tag: %s for sequence", tag);
+    if (Ryaml_error_msg[0] == 0) {
+      Ryaml_set_error_msg("Invalid tag: %s for sequence", tag);
     }
     return 1;
   }
@@ -791,7 +791,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
     s_curr = CDR(s_curr);
   }
   if (s_mapping_start == NULL) {
-    set_error_msg("Internal error: couldn't find start of mapping!");
+    Ryaml_set_error_msg("Internal error: couldn't find start of mapping!");
     return 1;
   }
 
@@ -842,7 +842,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
             /* Illegal merge */
             PROTECT(s_inspect = Ryaml_inspect(s_value));
             inspect = CHAR(STRING_ELT(s_inspect, 0));
-            set_error_msg("Illegal merge: %s", inspect);
+            Ryaml_set_error_msg("Illegal merge: %s", inspect);
             UNPROTECT(1);
 
             map_err = 1;
@@ -854,7 +854,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
         /* Illegal merge */
         PROTECT(s_inspect = Ryaml_inspect(s_value));
         inspect = CHAR(STRING_ELT(s_inspect, 0));
-        set_error_msg("Illegal merge: %s", inspect);
+        Ryaml_set_error_msg("Illegal merge: %s", inspect);
         UNPROTECT(1);
 
         map_err = 1;
@@ -895,7 +895,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
           inspect = CHAR(STRING_ELT(s_inspect, 0));
         }
         if (LOGICAL(CADR(s_tag))[0] == FALSE) {
-          set_error_msg("Duplicate map key: '%s'", inspect);
+          Ryaml_set_error_msg("Duplicate map key: '%s'", inspect);
           map_err = 1;
         }
         else {
@@ -1037,8 +1037,8 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   }
 
   if (coercion_err == 1) {
-    if (error_msg[0] == 0) {
-      set_error_msg("Invalid tag: %s for map");
+    if (Ryaml_error_msg[0] == 0) {
+      Ryaml_set_error_msg("Invalid tag: %s for map");
     }
     return 1;
   }
@@ -1176,7 +1176,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
 
   PROTECT(s_stack_head = s_stack_tail = list1(Ryaml_Sentinel));
   PROTECT(s_aliases_head = s_aliases_tail = list1(Ryaml_Sentinel));
-  error_msg[0] = 0;
+  Ryaml_error_msg[0] = 0;
   while (!done) {
     if (yaml_parser_parse(&parser, &event)) {
       err = 0;
@@ -1271,23 +1271,23 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
       /* Parser error */
       switch (parser.error) {
         case YAML_MEMORY_ERROR:
-          set_error_msg("Memory error: Not enough memory for parsing");
+          Ryaml_set_error_msg("Memory error: Not enough memory for parsing");
           break;
 
         case YAML_READER_ERROR:
           if (parser.problem_value != -1) {
-            set_error_msg("Reader error: %s: #%X at %d", parser.problem,
+            Ryaml_set_error_msg("Reader error: %s: #%X at %d", parser.problem,
               parser.problem_value, (int)parser.problem_offset);
           }
           else {
-            set_error_msg("Reader error: %s at %d", parser.problem,
+            Ryaml_set_error_msg("Reader error: %s at %d", parser.problem,
               (int)parser.problem_offset);
           }
           break;
 
         case YAML_SCANNER_ERROR:
           if (parser.context) {
-            set_error_msg("Scanner error: %s at line %d, column %d "
+            Ryaml_set_error_msg("Scanner error: %s at line %d, column %d "
               "%s at line %d, column %d\n", parser.context,
               (int)parser.context_mark.line+1,
               (int)parser.context_mark.column+1,
@@ -1295,7 +1295,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
               (int)parser.problem_mark.column+1);
           }
           else {
-            set_error_msg("Scanner error: %s at line %d, column %d",
+            Ryaml_set_error_msg("Scanner error: %s at line %d, column %d",
               parser.problem, (int)parser.problem_mark.line+1,
               (int)parser.problem_mark.column+1);
           }
@@ -1303,7 +1303,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
 
         case YAML_PARSER_ERROR:
           if (parser.context) {
-            set_error_msg("Parser error: %s at line %d, column %d "
+            Ryaml_set_error_msg("Parser error: %s at line %d, column %d "
               "%s at line %d, column %d", parser.context,
               (int)parser.context_mark.line+1,
               (int)parser.context_mark.column+1,
@@ -1311,7 +1311,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
               (int)parser.problem_mark.column+1);
           }
           else {
-            set_error_msg("Parser error: %s at line %d, column %d",
+            Ryaml_set_error_msg("Parser error: %s at line %d, column %d",
               parser.problem, (int)parser.problem_mark.line+1,
               (int)parser.problem_mark.column+1);
           }
@@ -1320,7 +1320,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
         default:
           /* Couldn't happen unless there is an undocumented/unhandled error
            * from LibYAML. */
-          set_error_msg("Internal error: unknown parser error");
+          Ryaml_set_error_msg("Internal error: unknown parser error");
           break;
       }
       done = 1;
@@ -1330,19 +1330,19 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   }
   yaml_parser_delete(&parser);
 
-  if (error_msg[0] != 0) {
+  if (Ryaml_error_msg[0] != 0) {
     /* Prepend label to error message if specified */
     if (error_label != NULL) {
       error_msg_copy = (char *)malloc(sizeof(char) * ERROR_MSG_SIZE);
       if (error_msg_copy == NULL) {
-        set_error_msg("Ran out of memory!");
+        Ryaml_set_error_msg("Ran out of memory!");
       } else {
-        memcpy(error_msg_copy, error_msg, ERROR_MSG_SIZE);
-        set_error_msg("(%s) %s", error_label, error_msg_copy);
+        memcpy(error_msg_copy, Ryaml_error_msg, ERROR_MSG_SIZE);
+        Ryaml_set_error_msg("(%s) %s", error_label, error_msg_copy);
         free(error_msg_copy);
       }
     }
-    error(error_msg);
+    error(Ryaml_error_msg);
   }
 
   UNPROTECT(3); /* s_stack_head, s_aliases_head, s_handlers */

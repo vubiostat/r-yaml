@@ -10,21 +10,21 @@ SEXP Ryaml_Sentinel = NULL;
 SEXP Ryaml_SequenceStart = NULL;
 SEXP Ryaml_MappingStart = NULL;
 SEXP Ryaml_MappingEnd = NULL;
-char error_msg[ERROR_MSG_SIZE];
+char Ryaml_error_msg[ERROR_MSG_SIZE];
 
 void
-set_error_msg(const char *format, ...)
+Ryaml_set_error_msg(const char *format, ...)
 {
   va_list args;
   int result;
 
   va_start(args, format);
-  result = vsnprintf(error_msg, ERROR_MSG_SIZE, format, args);
+  result = vsnprintf(Ryaml_error_msg, ERROR_MSG_SIZE, format, args);
   if (result >= ERROR_MSG_SIZE) {
     warning("an error occurred, but the message was too long to format properly");
 
     /* ensure the string is null terminated */
-    error_msg[ERROR_MSG_SIZE-1] = 0;
+    Ryaml_error_msg[ERROR_MSG_SIZE-1] = 0;
   }
 }
 

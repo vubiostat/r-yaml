@@ -115,38 +115,6 @@ process_tag(tag)
   return retval;
 }
 
-static SEXP
-find_handler(s_handlers, name)
-  SEXP s_handlers;
-  const char *name;
-{
-  SEXP s_names = NULL, s_name = NULL, s_retval = R_NilValue;
-  const char *handler_name = NULL;
-  int i = 0, found = 0;
-
-  /* Look for a custom R handler */
-  if (s_handlers != R_NilValue) {
-    PROTECT(s_names = GET_NAMES(s_handlers));
-    for (i = 0; i < length(s_names); i++) {
-      PROTECT(s_name = STRING_ELT(s_names, i));
-      if (s_name != NA_STRING) {
-        handler_name = CHAR(s_name);
-        if (strcmp(handler_name, name) == 0) {
-          /* Found custom handler */
-          s_retval = VECTOR_ELT(s_handlers, i);
-          found = 1;
-        }
-      }
-      UNPROTECT(1); /* s_name */
-
-      if (found) break;
-    }
-    UNPROTECT(1); /* s_names */
-  }
-
-  return s_retval;
-}
-
 static int
 run_handler(s_handler, s_arg, s_result)
   SEXP s_handler;
@@ -250,7 +218,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
   PROTECT(s_obj = ScalarString(mkCharCE(value, CE_UTF8)));
 
   /* Look for a custom R handler */
-  s_handler = find_handler(s_handlers, (const char *)tag);
+  s_handler = Ryaml_find_handler(s_handlers, (const char *)tag);
   if (s_handler != R_NilValue) {
     if (run_handler(s_handler, s_obj, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
@@ -522,7 +490,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   }
 
   /* Look for a custom R handler */
-  s_handler = find_handler(s_handlers, (const char *)tag);
+  s_handler = Ryaml_find_handler(s_handlers, (const char *)tag);
   if (s_handler != R_NilValue) {
     if (run_handler(s_handler, s_list, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
@@ -966,7 +934,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
 
   /* Look for a custom R handler */
   PROTECT(s_list);
-  s_handler = find_handler(s_handlers, (const char *) tag);
+  s_handler = Ryaml_find_handler(s_handlers, (const char *) tag);
   if (s_handler != R_NilValue) {
     if (run_handler(s_handler, s_list, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);

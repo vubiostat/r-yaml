@@ -108,6 +108,38 @@ Ryaml_has_class(s_obj, name)
   return result;
 }
 
+SEXP
+Ryaml_find_handler(s_handlers, name)
+  SEXP s_handlers;
+  const char *name;
+{
+  SEXP s_names = NULL, s_name = NULL, s_retval = R_NilValue;
+  const char *handler_name = NULL;
+  int i = 0, found = 0;
+
+  /* Look for a custom R handler */
+  if (s_handlers != R_NilValue) {
+    PROTECT(s_names = GET_NAMES(s_handlers));
+    for (i = 0; i < length(s_names); i++) {
+      PROTECT(s_name = STRING_ELT(s_names, i));
+      if (s_name != NA_STRING) {
+        handler_name = CHAR(s_name);
+        if (strcmp(handler_name, name) == 0) {
+          /* Found custom handler */
+          s_retval = VECTOR_ELT(s_handlers, i);
+          found = 1;
+        }
+      }
+      UNPROTECT(1); /* s_name */
+
+      if (found) break;
+    }
+    UNPROTECT(1); /* s_names */
+  }
+
+  return s_retval;
+}
+
 R_CallMethodDef callMethods[] = {
   {"unserialize_from_yaml", (DL_FUNC)&Ryaml_unserialize_from_yaml, 6},
   {"serialize_to_yaml",     (DL_FUNC)&Ryaml_serialize_to_yaml,     8},

@@ -235,7 +235,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
       default:
         /* Try to tag it */
         len = event->data.scalar.length;
-        tag = find_implicit_tag(value, len);
+        tag = Ryaml_find_implicit_tag(value, len);
     }
   }
   else {

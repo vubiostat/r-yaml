@@ -223,7 +223,7 @@ Ryaml_string_style(s_obj)
   len = length(s_obj);
   UNPROTECT(1);
 
-  tag = find_implicit_tag(chr, len);
+  tag = Ryaml_find_implicit_tag(chr, len);
   if (strcmp((char *) tag, "str#na") == 0) {
     return YAML_ANY_SCALAR_STYLE;
   }

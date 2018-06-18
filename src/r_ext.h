@@ -18,7 +18,7 @@
 #define ERROR_MSG_SIZE 512
 
 /* From implicit.c */
-char *find_implicit_tag(const char *value, size_t size);
+char *Ryaml_find_implicit_tag(const char *value, size_t size);
 
 /* Common functions */
 int Ryaml_is_named_list(SEXP obj);

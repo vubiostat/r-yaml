@@ -3,7 +3,7 @@
 #include "yaml.h"
 
 char *
-find_implicit_tag(str, len)
+Ryaml_find_implicit_tag(str, len)
   const char *str;
   size_t len;
 {

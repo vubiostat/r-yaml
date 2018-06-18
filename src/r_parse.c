@@ -116,22 +116,6 @@ process_tag(tag)
 }
 
 static int
-run_handler(s_handler, s_arg, s_result)
-  SEXP s_handler;
-  SEXP s_arg;
-  SEXP *s_result;
-{
-  SEXP s_cmd = NULL;
-  int err = 0;
-
-  PROTECT(s_cmd = lang2(s_handler, s_arg));
-  *s_result = R_tryEval(s_cmd, R_GlobalEnv, &err);
-  UNPROTECT(1);
-
-  return err;
-}
-
-static int
 handle_alias(event, s_stack_tail, s_aliases_head)
   yaml_event_t *event;
   SEXP *s_stack_tail;
@@ -220,7 +204,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
   /* Look for a custom R handler */
   s_handler = Ryaml_find_handler(s_handlers, (const char *)tag);
   if (s_handler != R_NilValue) {
-    if (run_handler(s_handler, s_obj, &s_new_obj) != 0) {
+    if (Ryaml_run_handler(s_handler, s_obj, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
     }
     else {
@@ -492,7 +476,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   /* Look for a custom R handler */
   s_handler = Ryaml_find_handler(s_handlers, (const char *)tag);
   if (s_handler != R_NilValue) {
-    if (run_handler(s_handler, s_list, &s_new_obj) != 0) {
+    if (Ryaml_run_handler(s_handler, s_list, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
     }
     else {
@@ -936,7 +920,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   PROTECT(s_list);
   s_handler = Ryaml_find_handler(s_handlers, (const char *) tag);
   if (s_handler != R_NilValue) {
-    if (run_handler(s_handler, s_list, &s_new_obj) != 0) {
+    if (Ryaml_run_handler(s_handler, s_list, &s_new_obj) != 0) {
       warning("an error occurred when handling type '%s'; using default handler", tag);
     }
     else {

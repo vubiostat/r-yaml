@@ -206,6 +206,22 @@ Ryaml_find_handler(s_handlers, name)
   return s_retval;
 }
 
+int
+Ryaml_run_handler(s_handler, s_arg, s_result)
+  SEXP s_handler;
+  SEXP s_arg;
+  SEXP *s_result;
+{
+  SEXP s_cmd = NULL;
+  int err = 0;
+
+  PROTECT(s_cmd = lang2(s_handler, s_arg));
+  *s_result = R_tryEval(s_cmd, R_GlobalEnv, &err);
+  UNPROTECT(1);
+
+  return err;
+}
+
 R_CallMethodDef callMethods[] = {
   {"unserialize_from_yaml", (DL_FUNC)&Ryaml_unserialize_from_yaml, 6},
   {"serialize_to_yaml",     (DL_FUNC)&Ryaml_serialize_to_yaml,     8},

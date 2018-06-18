@@ -26,6 +26,7 @@ SEXP Ryaml_collapse(SEXP obj, char *collapse);
 SEXP Ryaml_inspect(SEXP obj);
 int Ryaml_has_class(SEXP obj, char *name);
 void Ryaml_set_error_msg(const char *format, ...);
+SEXP Ryaml_sanitize_handlers(SEXP s_handlers);
 SEXP Ryaml_find_handler(SEXP s_handlers, const char *name);
 
 /* Exported functions */

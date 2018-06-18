@@ -109,6 +109,72 @@ Ryaml_has_class(s_obj, name)
 }
 
 SEXP
+Ryaml_sanitize_handlers(s_handlers)
+  SEXP s_handlers;
+{
+  SEXP s_handlers_2 = NULL, s_handler = NULL, s_names = NULL, s_names_2 = NULL,
+       s_name = NULL;
+  const char *name = NULL, *name_2 = NULL;
+  cetype_t encoding = CE_NATIVE;
+  int i = 0;
+
+  if (s_handlers == R_NilValue) {
+    return R_NilValue;
+  }
+  else if (!Ryaml_is_named_list(s_handlers)) {
+    error("handlers must be either NULL or a named list of functions");
+    return R_NilValue;
+  }
+  else {
+    PROTECT(s_names = GET_NAMES(s_handlers));
+
+    PROTECT(s_handlers_2 = allocVector(VECSXP, length(s_handlers)));
+    PROTECT(s_names_2 = allocVector(STRSXP, length(s_names)));
+
+    for (i = 0; i < length(s_handlers); i++) {
+      /* Possibly convert name to UTF-8 */
+      PROTECT(s_name = STRING_ELT(s_names, i));
+      encoding = getCharCE(s_name);
+      if (encoding == CE_UTF8) {
+        SET_STRING_ELT(s_names_2, i, s_name);
+      }
+      else {
+        name = CHAR(s_name);
+        name_2 = reEnc(name, encoding, CE_UTF8, 1);
+        UNPROTECT(1); /* s_name */
+
+        PROTECT(s_name = mkCharCE(name_2, CE_UTF8));
+        SET_STRING_ELT(s_names_2, i, s_name);
+      }
+      name = CHAR(s_name);
+
+      /* Validate handler */
+      s_handler = VECTOR_ELT(s_handlers, i);
+
+      if (TYPEOF(s_handler) != CLOSXP) {
+        warning("Your handler for type '%s' is not a function; using default", name);
+        s_handler = R_NilValue;
+      }
+      else if (strcmp(name, "merge") == 0 || strcmp(name, "default") == 0) {
+        /* custom handlers for merge and default are illegal */
+        warning("Custom handling for type '%s' is not allowed; handler ignored", name);
+        s_handler = R_NilValue;
+      }
+
+      SET_VECTOR_ELT(s_handlers_2, i, s_handler);
+      UNPROTECT(1); /* s_name */
+    }
+
+    SET_NAMES(s_handlers_2, s_names_2);
+    s_handlers = s_handlers_2;
+
+    UNPROTECT(3); /* s_names, s_names_2, s_handlers_2 */
+  }
+
+  return s_handlers_2;
+}
+
+SEXP
 Ryaml_find_handler(s_handlers, name)
   SEXP s_handlers;
   const char *name;

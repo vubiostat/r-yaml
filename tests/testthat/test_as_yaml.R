@@ -270,3 +270,17 @@ test_that("numeric negative zero is emitted properly", {
   result <- as.yaml(-0.0)
   expect_equal("-0.0\n...\n", result, expected.label = result)
 });
+
+test_that("custom handler is run for first class", {
+  x <- "foo"
+  class(x) <- "bar"
+  result <- as.yaml(x, handlers = list(bar = function(x) paste0("x", x, "x")))
+  expect_equal("xfoox\n...\n", result, expected.label = result)
+});
+
+test_that("custom handler is run for second class", {
+  x <- "foo"
+  class(x) <- c("bar", "baz")
+  result <- as.yaml(x, handlers = list(baz = function(x) paste0("x", x, "x")))
+  expect_equal("xfoox\n...\n", result, expected.label = result)
+});

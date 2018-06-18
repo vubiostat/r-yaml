@@ -326,10 +326,39 @@ emit_char(emitter, event, s_obj, tag, implicit_tag, scalar_style)
       (yaml_char_t *)CHAR(s_obj), LENGTH(s_obj),
       implicit_tag, implicit_tag, scalar_style);
 
-  if (!yaml_emitter_emit(emitter, event))
-    return 0;
+  return yaml_emitter_emit(emitter, event);
+}
 
-  return 1;
+static int
+emit_string(emitter, event, s_obj, tag, implicit_tag)
+  yaml_emitter_t *emitter;
+  yaml_event_t *event;
+  SEXP s_obj;
+  char *tag;
+  int implicit_tag;
+{
+  SEXP s_chr = NULL;
+  int result = 0, i = 0;
+
+  /* Might need to add quotes */
+  PROTECT(s_obj = Ryaml_format_string(s_obj));
+
+  result = 0;
+  for (i = 0; i < length(s_obj); i++) {
+    PROTECT(s_chr = STRING_ELT(s_obj, i));
+    result = emit_char(emitter, event, s_chr, tag, implicit_tag, Ryaml_string_style(s_chr));
+    UNPROTECT(1); /* s_chr */
+
+    if (!result) {
+      break;
+    }
+  }
+
+  UNPROTECT(1); /* s_obj */
+
+  if (result == 0) {
+    return 0;
+  }
 }
 
 static int
@@ -385,7 +414,7 @@ emit_nil(emitter, event, s_obj)
 }
 
 static int
-emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
+emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handlers)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
@@ -393,15 +422,57 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
   int omap;
   int column_major;
   int precision;
+  SEXP s_handlers;
 {
   SEXP s_chr = NULL, s_names = NULL, s_thing = NULL, s_type = NULL,
-       s_class = NULL, s_tmp = NULL, s_inspect = NULL;
-  const char *inspect = NULL;
+       s_classes = NULL, s_class = NULL, s_tmp = NULL, s_inspect = NULL,
+       s_handler = NULL, s_new_obj = NULL;
+  const char *inspect = NULL, *klass = NULL;
   int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0,
-      len = 0;
+      len = 0, handled = 0;
 
-  /*Rprintf("=== Emitting ===\n");*/
-  /*PrintValue(s_obj);*/
+#if DEBUG
+  Rprintf("=== Emitting ===\n");
+  PrintValue(s_obj);
+#endif
+
+  /* Look for custom handler by class */
+  PROTECT(s_classes = GET_CLASS(s_obj));
+  for (i = 0; i < length(s_classes); i++) {
+    PROTECT(s_class = STRING_ELT(s_classes, i));
+    klass = CHAR(s_class);
+    PROTECT(s_handler = Ryaml_find_handler(s_handlers, klass));
+    if (s_handler != R_NilValue) {
+      err = Ryaml_run_handler(s_handler, s_obj, &s_new_obj);
+      if (err != 0) {
+        warning("an error occurred when handling object of class '%s'; using default handler", klass);
+      }
+      else {
+        PROTECT(s_new_obj);
+        if (TYPEOF(s_new_obj) != STRSXP) {
+          warning("custom handler for object of class '%s' did not return a character vector, ignoring", klass);
+        }
+        else if (length(s_new_obj) != 1) {
+          warning("custom handler for object of class '%s' returned a character vector with length != 1, ignoring", klass);
+        }
+        else {
+          handled = 1;
+          result = emit_string(emitter, event, s_new_obj, NULL, 1);
+        }
+        UNPROTECT(1); /* s_new_obj */
+      }
+    }
+    UNPROTECT(2); /* s_handler, s_class */
+
+    if (handled) {
+      break;
+    }
+  }
+  UNPROTECT(1); /* s_classes */
+
+  if (handled) {
+    return result;
+  }
 
   implicit_tag = 1;
   tag = NULL;
@@ -445,23 +516,11 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
             return 0;
         }
         else if (TYPEOF(s_obj) == STRSXP) {
-          /* Might need to add quotes */
-          PROTECT(s_obj = Ryaml_format_string(s_obj));
+          result = emit_string(emitter, event, s_obj, tag, implicit_tag);
 
-          result = 0;
-          for (i = 0; i < length(s_obj); i++) {
-            PROTECT(s_chr = STRING_ELT(s_obj, i));
-            result = emit_char(emitter, event, s_chr, tag, implicit_tag,
-                Ryaml_string_style(s_chr));
-            UNPROTECT(1);
-
-            if (!result)
-              break;
-          }
-          UNPROTECT(1);
-
-          if (!result)
+          if (!result) {
             return 0;
+          }
         }
         else {
           switch(TYPEOF(s_obj)) {
@@ -540,7 +599,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
             /* Need to create a vector of size one, then emit it */
             s_thing = VECTOR_ELT(s_obj, j);
             PROTECT(s_tmp = Ryaml_yoink(s_thing, i));
-            result = emit_object(emitter, event, s_tmp, NULL, omap, column_major, precision);
+            result = emit_object(emitter, event, s_tmp, NULL, omap, column_major, precision, s_handlers);
             UNPROTECT(1);
 
             if (!result) {
@@ -608,7 +667,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
             break;
           }
 
-          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision)) {
+          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision, s_handlers)) {
             err = 1;
             break;
           }
@@ -645,7 +704,7 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
           return 0;
 
         for (i = 0; i < length(s_obj); i++) {
-          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision))
+          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision, s_handlers))
             return 0;
         }
         yaml_sequence_end_event_initialize(event);
@@ -656,17 +715,17 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 
     default:
       PROTECT(s_type = type2str(TYPEOF(s_obj)));
-      s_class = GET_CLASS(s_obj);
-      if (TYPEOF(s_class) != STRSXP || LENGTH(s_class) == 0) {
-        Ryaml_set_error_msg("don't know how to emit object of s_type: '%s'\n", CHAR(s_type));
+      PROTECT(s_classes = GET_CLASS(s_obj));
+      if (TYPEOF(s_classes) != STRSXP || LENGTH(s_classes) == 0) {
+        Ryaml_set_error_msg("don't know how to emit object of type: '%s'\n", CHAR(s_type));
       }
       else {
-        PROTECT(s_inspect = Ryaml_inspect(s_class));
+        PROTECT(s_inspect = Ryaml_inspect(s_classes));
         inspect = CHAR(STRING_ELT(s_inspect, 0));
-        Ryaml_set_error_msg("don't know how to emit object of s_type: '%s', s_class: %s\n", CHAR(s_type), inspect);
-        UNPROTECT(1);
+        Ryaml_set_error_msg("don't know how to emit object of type: '%s', class: %s\n", CHAR(s_type), inspect);
+        UNPROTECT(1); /* s_inspect */
       }
-      UNPROTECT(1);
+      UNPROTECT(2); /* s_type, s_classes */
       return 0;
   }
 
@@ -674,7 +733,8 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision)
 }
 
 SEXP
-Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_unicode, s_precision, s_indent_mapping_sequence)
+Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
+    s_unicode, s_precision, s_indent_mapping_sequence, s_handlers)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
@@ -683,6 +743,7 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_u
   SEXP s_unicode;
   SEXP s_precision;
   SEXP s_indent_mapping_sequence;
+  SEXP s_handlers;
 {
   SEXP s_retval = NULL;
   yaml_emitter_t emitter;
@@ -765,6 +826,8 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_u
   }
   indent_mapping_sequence = LOGICAL(s_indent_mapping_sequence)[0];
 
+  PROTECT(s_handlers = Ryaml_sanitize_handlers(s_handlers));
+
   yaml_emitter_initialize(&emitter);
   yaml_emitter_set_unicode(&emitter, unicode);
   yaml_emitter_set_break(&emitter, line_sep);
@@ -785,7 +848,7 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_u
   if (!status)
     goto done;
 
-  status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major, precision);
+  status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major, precision, s_handlers);
   if (!status)
     goto done;
 
@@ -798,6 +861,8 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major, s_u
   status = yaml_emitter_emit(&emitter, &event);
 
 done:
+
+  UNPROTECT(1); /* s_handlers */
 
   if (status) {
     PROTECT(s_retval = allocVector(STRSXP, 1));

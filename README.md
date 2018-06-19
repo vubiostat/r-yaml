@@ -311,6 +311,18 @@ Outputs:
     - a: 5
       b: 10
 
+##### handlers
+
+You can specify custom handler functions via the `handlers` argument.  This
+argument must be a named list of functions, where the names are R object class
+names (i.e., 'numeric', 'data.frame', 'list', etc).  The function(s) you
+provide will be passed one argument (the R object) and should return a
+character vector.  The returned character vector will be formatted (possibly
+quoted) and emitted to the resulting YAML document.  If you do not want the
+returned character vector to be formatted, set the class of the returned value
+to `"verbatim"`.  If the returned character vector has a length more than 1, a
+YAML sequence will be emitted.
+
 ### Additional documentation
 
 For more information, run `help(package='yaml')` or `example('yaml-package')`

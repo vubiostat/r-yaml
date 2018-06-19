@@ -7,7 +7,7 @@
 \usage{
   as.yaml(x, line.sep = c("\n", "\r\n", "\r"), indent = 2, omap = FALSE,
           column.major = TRUE, unicode = TRUE, precision = getOption('digits'),
-          indent.mapping.sequence = FALSE)
+          indent.mapping.sequence = FALSE, handlers = NULL)
 }
 \arguments{
   \item{x}{ the object to be converted }
@@ -18,6 +18,7 @@
   \item{unicode}{ determines whether or not to allow unescaped unicode characters in output }
   \item{precision}{ number of significant digits to use when formatting numeric values }
   \item{indent.mapping.sequence}{ determines whether or not to indent sequences in mapping context }
+  \item{handlers}{ named list of custom handler functions for R objects (see Details) }
 }
 \details{
   If you set the \code{omap} option to TRUE, as.yaml will create ordered maps
@@ -29,6 +30,16 @@
   row.  You'll probably almost always want to leave this as TRUE (which is the default),
   because using \code{\link{yaml.load}} on the resulting string returns an object which is
   much more easily converted into a data frame via \code{\link{as.data.frame}}.
+
+  You can specify custom handler functions via the \code{handlers} argument.
+  This argument must be a named list of functions, where the names are R object
+  class names (i.e., 'numeric', 'data.frame', 'list', etc).  The function(s)
+  you provide will be passed one argument (the R object) and should return a
+  character vector.  The returned character vector will be formatted (possibly
+  quoted) and emitted to the resulting YAML document.  If you do not want the
+  returned character vector to be formatted, set the class of the returned
+  value to \code{verbatim}.  If the returned character vector has a length more
+  than 1, a YAML sequence will be emitted.
 }
 \value{
   Returns a YAML string which can be loaded using \code{\link{yaml.load}} or copied into
@@ -51,6 +62,18 @@
   as.yaml("multi\nline\nstring")
   as.yaml(function(x) x + 1)
   as.yaml(list(foo=list(list(x = 1, y = 2), list(x = 3, y = 4))))
+
+  # custom handler
+  as.yaml(Sys.time(), handlers = list(POSIXct = function(x) format(Sys.time(), "\%Y-\%m-\%d")))
+
+  # custom handler with verbatim output
+  as.yaml(c(TRUE, FALSE), handlers = list(
+    logical = function(x) {
+      result <- ifelse(x, "true", "false")
+      class(result) <- "verbatim"
+      return(result)
+    }
+  ))
 }
 \keyword{ data }
 \keyword{ manip }

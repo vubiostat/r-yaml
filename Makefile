@@ -22,13 +22,13 @@ SRCS = src/yaml_private.h \
 	man/read_yaml.Rd \
 	inst/THANKS \
 	inst/CHANGELOG \
-	tests/testthat.R \
-	tests/testthat/test_yaml_load_file.R \
-	tests/testthat/test_yaml_load.R \
-	tests/testthat/test_as_yaml.R \
-	tests/testthat/test_read_yaml.R \
-	tests/testthat/test_write_yaml.R \
-	tests/testthat/files/test.yml \
+	tests/RUnit.R \
+	inst/tests/test_yaml_load_file.R \
+	inst/tests/test_yaml_load.R \
+	inst/tests/test_as_yaml.R \
+	inst/tests/test_read_yaml.R \
+	inst/tests/test_write_yaml.R \
+	inst/tests/files/test.yml \
 	DESCRIPTION \
 	COPYING \
 	LICENSE \
@@ -63,13 +63,13 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/inst/THANKS \
 	build/yaml/inst/CHANGELOG \
 	build/yaml/inst/implicit.re \
-	build/yaml/tests/testthat.R \
-	build/yaml/tests/testthat/test_yaml_load_file.R \
-	build/yaml/tests/testthat/test_yaml_load.R \
-	build/yaml/tests/testthat/test_as_yaml.R \
-	build/yaml/tests/testthat/test_read_yaml.R \
-	build/yaml/tests/testthat/test_write_yaml.R \
-	build/yaml/tests/testthat/files/test.yml \
+	build/yaml/inst/tests/test_yaml_load_file.R \
+	build/yaml/inst/tests/test_yaml_load.R \
+	build/yaml/inst/tests/test_as_yaml.R \
+	build/yaml/inst/tests/test_read_yaml.R \
+	build/yaml/inst/tests/test_write_yaml.R \
+	build/yaml/inst/tests/files/test.yml \
+	build/yaml/tests/RUnit.R \
 	build/yaml/DESCRIPTION \
 	build/yaml/COPYING \
 	build/yaml/LICENSE \
@@ -85,7 +85,7 @@ ifdef DEBUG
   CFLAGS += -DDEBUG
 endif
 
-test_code = "library(testthat); library('yaml', lib.loc = 'build/lib'); test_dir('build/yaml/tests/testthat')"
+test_code = "library(RUnit); library(yaml, lib.loc = 'build/lib'); source('build/yaml/tests/RUnit.R')"
 
 all: test
 
@@ -99,13 +99,13 @@ test: build/lib/yaml
 	R --vanilla -e $(test_code)
 
 gct-test: build/lib/yaml
-	R --vanilla -e "library(testthat); library('yaml', lib.loc = 'build/lib'); gctorture(TRUE); test_dir('build/yaml/tests/testthat'); gctorture(FALSE)"
+	R --vanilla -e "library(RUnit); library(yaml, lib.loc = 'build/lib'); options(yaml.verbose = TRUE); gctorture(TRUE); source('build/yaml/tests/RUnit.R'); gctorture(FALSE)"
 
 gdb-test: build/lib/yaml
-	cd build; R -d gdb --vanilla -e $(test_code)
+	R -d gdb --vanilla -e $(test_code)
 
 valgrind-test: build/lib/yaml
-	cd build; R -d "valgrind --leak-check=full" -e $(test_code)
+	R -d "valgrind --leak-check=full" -e $(test_code)
 
 check-changelog: VERSION inst/CHANGELOG
 	@if ! grep -q "$(VERSION)" inst/CHANGELOG; then echo -e "\033[31mWARNING: CHANGELOG has not been updated\033[0m"; fi

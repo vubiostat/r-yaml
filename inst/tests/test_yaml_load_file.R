@@ -1,25 +1,24 @@
-context("yaml.load_file")
-
-test_that("reading from a connection works", {
+test_reading_from_a_connection_works <- function() {
   filename <- tempfile()
   cat("foo: 123", file=filename, sep="\n")
   foo <- file(filename, 'r')
   x <- yaml.load_file(foo)
   close(foo)
   unlink(filename)
-  expect_equal(123L, x$foo)
-})
+  checkEquals(123L, x$foo)
+}
 
-test_that("reading from specified filename works", {
+test_reading_from_specified_filename_works <- function() {
   filename <- tempfile()
   cat("foo: 123", file=filename, sep="\n")
   x <- yaml.load_file(filename)
   unlink(filename)
-  expect_equal(123L, x$foo)
-})
+  checkEquals(123L, x$foo)
+}
 
-test_that("reading a complicated document works", {
-  x <- yaml.load_file('files/test.yml')
+test_reading_a_complicated_document_works <- function() {
+  filename <- system.file(file.path("tests", "files", "test.yml"), package = "yaml")
+  x <- yaml.load_file(filename)
   expected <- list(
     foo = list(one = 1, two = 2),
     bar = list(three = 3, four = 4),
@@ -30,11 +29,11 @@ test_that("reading a complicated document works", {
       list(xyzzy = list(one = 1, two = 2, three = 3, four = 4, five = 5, six = 6))
     )
   )
-  expect_equal(expected, x)
-})
+  checkEquals(expected, x)
+}
 
-test_that("expressions are implicitly converted with warning", {
-  warnings <- capture_warnings({
+test_expressions_are_implicitly_converted_with_warning <- function() {
+  warnings <- captureWarnings({
     filename <- tempfile()
     cat("!expr 123 + 456", file=filename, sep="\n")
     foo <- file(filename, 'r')
@@ -42,13 +41,13 @@ test_that("expressions are implicitly converted with warning", {
     close(foo)
     unlink(filename)
   })
-  expect_equal("numeric", class(x))
-  expect_equal(579, x)
-  expect_equal("Evaluating R expressions (!expr) will soon require explicit `eval.expr` option (see yaml.load help)", warnings)
-})
+  checkEquals("numeric", class(x))
+  checkEquals(579, x)
+  checkEquals("Evaluating R expressions (!expr) will soon require explicit `eval.expr` option (see yaml.load help)", warnings)
+}
 
-test_that("expressions are explicitly converted without warning", {
-  warnings <- capture_warnings({
+test_expressions_are_explicitly_converted_without_warning <- function() {
+  warnings <- captureWarnings({
     filename <- tempfile()
     cat("!expr 123 + 456", file=filename, sep="\n")
     foo <- file(filename, 'r')
@@ -56,12 +55,12 @@ test_that("expressions are explicitly converted without warning", {
     close(foo)
     unlink(filename)
   })
-  expect_equal("numeric", class(x))
-  expect_equal(579, x)
-  expect_equal(0, length(warnings))
-})
+  checkEquals("numeric", class(x))
+  checkEquals(579, x)
+  checkEquals(0, length(warnings))
+}
 
-test_that("expressions are unconverted", {
+test_expressions_are_unconverted <- function() {
   filename <- tempfile()
   cat("!expr 123 + 456", file=filename, sep="\n")
   foo <- file(filename, 'r')
@@ -69,6 +68,6 @@ test_that("expressions are unconverted", {
   close(foo)
   unlink(filename)
 
-  expect_equal("character", class(x))
-  expect_equal("123 + 456", x)
-})
+  checkEquals("character", class(x))
+  checkEquals("123 + 456", x)
+}

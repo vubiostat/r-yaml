@@ -21,11 +21,11 @@
 char *Ryaml_find_implicit_tag(const char *value, size_t size);
 
 /* Common functions */
-int Ryaml_is_named_list(SEXP obj);
-SEXP Ryaml_collapse(SEXP obj, char *collapse);
-SEXP Ryaml_inspect(SEXP obj);
+int Ryaml_is_named_list(SEXP s_obj);
+SEXP Ryaml_collapse(SEXP s_obj, char *collapse);
+SEXP Ryaml_inspect(SEXP s_obj);
 SEXP Ryaml_get_classes(SEXP s_obj);
-int Ryaml_has_class(SEXP obj, char *name);
+int Ryaml_has_class(SEXP s_obj, char *name);
 void Ryaml_set_error_msg(const char *format, ...);
 SEXP Ryaml_sanitize_handlers(SEXP s_handlers);
 SEXP Ryaml_find_handler(SEXP s_handlers, const char *name);

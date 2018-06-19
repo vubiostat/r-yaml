@@ -31,58 +31,53 @@ Ryaml_set_error_msg(const char *format, ...)
 
 /* Returns true if obj is a named list */
 int
-Ryaml_is_named_list(obj)
-  SEXP obj;
+Ryaml_is_named_list(s_obj)
+  SEXP s_obj;
 {
-  SEXP names;
-  if (TYPEOF(obj) != VECSXP)
+  SEXP s_names = NULL;
+  if (TYPEOF(s_obj) != VECSXP)
     return 0;
 
-  names = GET_NAMES(obj);
-  return (TYPEOF(names) == STRSXP && LENGTH(names) == LENGTH(obj));
+  s_names = GET_NAMES(s_obj);
+  return (TYPEOF(s_names) == STRSXP && LENGTH(s_names) == LENGTH(s_obj));
 }
 
 /* Call R's paste() function with collapse */
 SEXP
-Ryaml_collapse(obj, collapse)
-  SEXP obj;
+Ryaml_collapse(s_obj, collapse)
+  SEXP s_obj;
   char *collapse;
 {
-  SEXP call, pcall, retval;
+  SEXP s_call = NULL, s_retval = NULL;
 
-  PROTECT(call = pcall = allocList(3));
-  SET_TYPEOF(call, LANGSXP);
-  SETCAR(pcall, Ryaml_PasteFunc); pcall = CDR(pcall);
-  SETCAR(pcall, obj);         pcall = CDR(pcall);
-  SETCAR(pcall, PROTECT(allocVector(STRSXP, 1)));
-  SET_STRING_ELT(CAR(pcall), 0, mkCharCE(collapse, CE_UTF8));
-  SET_TAG(pcall, Ryaml_CollapseSymbol);
-  retval = eval(call, R_GlobalEnv);
-  UNPROTECT(2);
+  PROTECT(s_call = lang3(Ryaml_PasteFunc, s_obj, ScalarString(mkCharCE(collapse, CE_UTF8))));
+  SET_TAG(CDDR(s_call), Ryaml_CollapseSymbol);
+  s_retval = eval(s_call, R_GlobalEnv);
+  UNPROTECT(1);
 
-  return retval;
+  return s_retval;
 }
 
 /* Return a string representation of the object for error messages */
 SEXP
-Ryaml_inspect(obj)
-  SEXP obj;
+Ryaml_inspect(s_obj)
+  SEXP s_obj;
 {
-  SEXP call, str, result;
+  SEXP s_call = NULL, s_str = NULL, s_result = NULL;
 
   /* Using format/paste here is not really what I want, but without
    * jumping through all kinds of hoops so that I can get the output
    * of print(), this is the most effort I want to put into this. */
 
-  PROTECT(call = lang2(Ryaml_FormatFunc, obj));
-  str = eval(call, R_GlobalEnv);
+  PROTECT(s_call = lang2(Ryaml_FormatFunc, s_obj));
+  s_str = eval(s_call, R_GlobalEnv);
   UNPROTECT(1);
 
-  PROTECT(str);
-  result = Ryaml_collapse(str, " ");
+  PROTECT(s_str);
+  s_result = Ryaml_collapse(s_str, " ");
   UNPROTECT(1);
 
-  return result;
+  return s_result;
 }
 
 SEXP

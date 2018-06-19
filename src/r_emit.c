@@ -337,23 +337,29 @@ emit_string(emitter, event, s_obj, tag, implicit_tag)
   char *tag;
   int implicit_tag;
 {
-  SEXP s_chr = NULL;
-  int result = 0, i = 0;
+  SEXP s_new_obj = NULL, s_chr = NULL;
+  int result = 0, i = 0, verbatim = 0;
 
-  /* Might need to add quotes */
-  PROTECT(s_obj = Ryaml_format_string(s_obj));
+  verbatim = Ryaml_has_class(s_obj, "verbatim");
+  if (!verbatim) {
+    PROTECT(s_obj);
+    s_new_obj = Ryaml_format_string(s_obj);
+    UNPROTECT(1);
+    s_obj = s_new_obj;
+  }
 
+  PROTECT(s_obj);
   result = 0;
   for (i = 0; i < length(s_obj); i++) {
     PROTECT(s_chr = STRING_ELT(s_obj, i));
-    result = emit_char(emitter, event, s_chr, tag, implicit_tag, Ryaml_string_style(s_chr));
+    result = emit_char(emitter, event, s_chr, tag, implicit_tag,
+        verbatim ? YAML_PLAIN_SCALAR_STYLE : Ryaml_string_style(s_chr));
     UNPROTECT(1); /* s_chr */
 
     if (!result) {
       break;
     }
   }
-
   UNPROTECT(1); /* s_obj */
 
   if (result == 0) {
@@ -437,27 +443,46 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handler
 #endif
 
   /* Look for custom handler by class */
-  PROTECT(s_classes = GET_CLASS(s_obj));
+  PROTECT(s_classes = Ryaml_get_classes(s_obj));
   for (i = 0; i < length(s_classes); i++) {
     PROTECT(s_class = STRING_ELT(s_classes, i));
     klass = CHAR(s_class);
     PROTECT(s_handler = Ryaml_find_handler(s_handlers, klass));
     if (s_handler != R_NilValue) {
       err = Ryaml_run_handler(s_handler, s_obj, &s_new_obj);
+
       if (err != 0) {
         warning("an error occurred when handling object of class '%s'; using default handler", klass);
       }
       else {
         PROTECT(s_new_obj);
+        len = length(s_new_obj);
+
+#if DEBUG
+        Rprintf("Result from custom handler:\n");
+        PrintValue(s_new_obj);
+#endif
+
         if (TYPEOF(s_new_obj) != STRSXP) {
           warning("custom handler for object of class '%s' did not return a character vector, ignoring", klass);
         }
-        else if (length(s_new_obj) != 1) {
-          warning("custom handler for object of class '%s' returned a character vector with length != 1, ignoring", klass);
+        else if (len == 0) {
+          warning("custom handler for object of class '%s' returned an empty character vector, ignoring", klass);
         }
         else {
           handled = 1;
-          result = emit_string(emitter, event, s_new_obj, NULL, 1);
+          result = 1;
+          if (len > 1) {
+            yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
+            result = yaml_emitter_emit(emitter, event);
+          }
+          if (result) {
+            result = emit_string(emitter, event, s_new_obj, NULL, 1);
+          }
+          if (result && len > 1) {
+            yaml_sequence_end_event_initialize(event);
+            result = yaml_emitter_emit(emitter, event);
+          }
         }
         UNPROTECT(1); /* s_new_obj */
       }

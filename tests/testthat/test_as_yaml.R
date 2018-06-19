@@ -284,3 +284,14 @@ test_that("custom handler is run for second class", {
   result <- as.yaml(x, handlers = list(baz = function(x) paste0("x", x, "x")))
   expect_equal("xfoox\n...\n", result, expected.label = result)
 });
+
+test_that("custom handler with verbatim result is emitted properly", {
+  result <- as.yaml(c(TRUE, FALSE), handlers = list(
+    logical = function(x) {
+      result <- ifelse(x, "true", "false")
+      class(result) <- "verbatim"
+      return(result)
+    }
+  ))
+  expect_equal("- true\n- false\n", result, expected.label = result)
+})

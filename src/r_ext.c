@@ -4,8 +4,9 @@ SEXP Ryaml_KeysSymbol = NULL;
 SEXP Ryaml_IdenticalFunc = NULL;
 SEXP Ryaml_FormatFunc = NULL;
 SEXP Ryaml_PasteFunc = NULL;
-SEXP Ryaml_CollapseSymbol = NULL;
 SEXP Ryaml_DeparseFunc = NULL;
+SEXP Ryaml_ClassFunc = NULL;
+SEXP Ryaml_CollapseSymbol = NULL;
 SEXP Ryaml_Sentinel = NULL;
 SEXP Ryaml_SequenceStart = NULL;
 SEXP Ryaml_MappingStart = NULL;
@@ -84,21 +85,34 @@ Ryaml_inspect(obj)
   return result;
 }
 
+SEXP
+Ryaml_get_classes(s_obj)
+  SEXP s_obj;
+{
+  SEXP s_call = NULL, s_result = NULL;
+
+  PROTECT(s_call = lang2(Ryaml_ClassFunc, s_obj));
+  s_result = eval(s_call, R_GlobalEnv);
+  UNPROTECT(1);
+
+  return s_result;
+}
+
 /* Return 1 if obj is of the specified class */
 int
 Ryaml_has_class(s_obj, name)
   SEXP s_obj;
   char *name;
 {
-  SEXP s_class = NULL;
+  SEXP s_classes = NULL;
   int i = 0, len = 0, result = 0;
 
   PROTECT(s_obj);
-  PROTECT(s_class = GET_CLASS(s_obj));
-  if (TYPEOF(s_class) == STRSXP) {
-    len = length(s_class);
+  PROTECT(s_classes = Ryaml_get_classes(s_obj));
+  if (TYPEOF(s_classes) == STRSXP) {
+    len = length(s_classes);
     for (i = 0; i < len; i++) {
-      if (strcmp(CHAR(STRING_ELT(s_class, i)), name) == 0) {
+      if (strcmp(CHAR(STRING_ELT(s_classes, i)), name) == 0) {
         result = 1;
         break;
       }
@@ -235,6 +249,7 @@ void R_init_yaml(DllInfo *dll) {
   Ryaml_FormatFunc = findFun(install("format"), R_GlobalEnv);
   Ryaml_PasteFunc = findFun(install("paste"), R_GlobalEnv);
   Ryaml_DeparseFunc = findFun(install("deparse"), R_GlobalEnv);
+  Ryaml_ClassFunc = findFun(install("class"), R_GlobalEnv);
   Ryaml_Sentinel = install("sentinel");
   Ryaml_SequenceStart = install("sequence.start");
   Ryaml_MappingStart = install("mapping.start");

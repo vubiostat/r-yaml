@@ -13,14 +13,25 @@ static SEXP
 Ryaml_deparse_function(s_obj)
   SEXP s_obj;
 {
-  SEXP s_call = NULL, s_result = NULL, s_chr = NULL;
+  SEXP s_new_obj = NULL, s_call = NULL, s_result = NULL, s_chr = NULL;
   int i = 0, j = 0, res_len = 0, chr_len = 0, str_len = 0, str_end = 0;
   char *str = NULL;
 
+  /* Copy function without any attributes */
+  if (TYPEOF(s_obj) == CLOSXP) {
+    PROTECT(s_new_obj = allocSExp(CLOSXP));
+    SET_FORMALS(s_new_obj, FORMALS(s_obj));
+    SET_BODY(s_new_obj, BODY(s_obj));
+    SET_CLOENV(s_new_obj, CLOENV(s_obj));
+    UNPROTECT(1);
+    s_obj = s_new_obj;
+  }
+
   /* first get R's deparsed character vector */
+  PROTECT(s_obj);
   PROTECT(s_call = lang2(Ryaml_DeparseFunc, s_obj));
   s_result = eval(s_call, R_GlobalEnv);
-  UNPROTECT(1);
+  UNPROTECT(2);
   PROTECT(s_result);
 
   str_len = 0;

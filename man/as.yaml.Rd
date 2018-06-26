@@ -64,7 +64,7 @@
 
   YAML omap type: http://yaml.org/type/omap.html
 }
-\author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu> }
+\author{ Jeremy Stephens <jeremy.f.stephens@vumc.org> }
 \seealso{ \code{\link{yaml.load}} }
 \examples{
   as.yaml(1:10)

@@ -73,7 +73,7 @@
 
   libyaml: http://pyyaml.org/wiki/LibYAML
 }
-\author{ Jeremy Stephens <jeremy.stephens@vanderbilt.edu> }
+\author{ Jeremy Stephens <jeremy.f.stephens@vumc.org> }
 \seealso{ \code{\link{as.yaml}} }
 \examples{
   yaml.load("- hey\n- hi\n- hello")

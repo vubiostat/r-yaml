@@ -42,7 +42,7 @@
 
   libyaml: http://pyyaml.org/wiki/LibYAML
 }
-\author{Jeremy Stephens <jeremy.stephens@vanderbilt.edu>}
+\author{Jeremy Stephens <jeremy.f.stephens@vumc.org>}
 \seealso{\code{\link{yaml.load}}, \code{\link{write_yaml}}, \code{\link{yaml.load_file}}}
 \examples{
 \dontrun{

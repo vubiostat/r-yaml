@@ -22,7 +22,7 @@
 
   This function is a convenient wrapper around \code{\link{as.yaml}}.
 }
-\author{Jeremy Stephens <jeremy.stephens@vanderbilt.edu>}
+\author{Jeremy Stephens <jeremy.f.stephens@vumc.org>}
 \seealso{\code{\link{as.yaml}}, \code{\link{read_yaml}}, \code{\link{yaml.load_file}}}
 \examples{
 \dontrun{

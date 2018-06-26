@@ -148,20 +148,20 @@ test_unicode_strings_are_escaped <- function() {
   # 'é'
   x <- "\u00e9"
   result <- as.yaml(x, unicode = FALSE)
-  checkEquals("\"\\xE9\"\n", result, expected.label = result)
+  checkEquals("\"\\xE9\"\n", result)
 }
 
 test_unicode_strings_are_not_escaped_by_default <- function() {
   # list('é')
   x <- list("\u00e9")
   result <- as.yaml(x)
-  checkEquals("- \u00e9\n", result, expected.label = result)
+  checkEquals("- \u00e9\n", result)
 }
 
 test_named_list_with_unicode_character_is_correct_converted <- function() {
   x <- list(special.char = "\u00e9")
   result <- as.yaml(x)
-  checkEquals("special.char: \u00e9\n", result, expected.label = result)
+  checkEquals("special.char: \u00e9\n", result)
 }
 
 test_unknown_objects_cause_error <- function() {
@@ -170,62 +170,62 @@ test_unknown_objects_cause_error <- function() {
 
 test_inf_is_emitted_properly <- function() {
   result <- as.yaml(Inf)
-  checkEquals(".inf\n...\n", result, expected.label = result)
+  checkEquals(".inf\n...\n", result)
 }
 
 test_negative_inf_is_emitted_properly <- function() {
   result <- as.yaml(-Inf)
-  checkEquals("-.inf\n...\n", result, expected.label = result)
+  checkEquals("-.inf\n...\n", result)
 }
 
 test_nan_is_emitted_properly <- function() {
   result <- as.yaml(NaN)
-  checkEquals(".nan\n...\n", result, expected.label = result)
+  checkEquals(".nan\n...\n", result)
 }
 
 test_logical_na_is_emitted_properly <- function() {
   result <- as.yaml(NA)
-  checkEquals(".na\n...\n", result, expected.label = result)
+  checkEquals(".na\n...\n", result)
 }
 
 test_numeric_na_is_emitted_properly <- function() {
   result <- as.yaml(NA_real_)
-  checkEquals(".na.real\n...\n", result, expected.label = result)
+  checkEquals(".na.real\n...\n", result)
 }
 
 test_integer_na_is_emitted_properly <- function() {
   result <- as.yaml(NA_integer_)
-  checkEquals(".na.integer\n...\n", result, expected.label = result)
+  checkEquals(".na.integer\n...\n", result)
 }
 
 test_character_na_is_emitted_properly <- function() {
   result <- as.yaml(NA_character_)
-  checkEquals(".na.character\n...\n", result, expected.label = result)
+  checkEquals(".na.character\n...\n", result)
 }
 
 test_true_is_emitted_properly <- function() {
   result <- as.yaml(TRUE)
-  checkEquals("yes\n...\n", result, expected.label = result)
+  checkEquals("yes\n...\n", result)
 }
 
 test_false_is_emitted_properly <- function() {
   result <- as.yaml(FALSE)
-  checkEquals("no\n...\n", result, expected.label = result)
+  checkEquals("no\n...\n", result)
 }
 
 test_named_list_keys_are_escaped_properly <- function() {
   result <- as.yaml(list(n = 123))
-  checkEquals("'n': 123.0\n", result, expected.label = result)
+  checkEquals("'n': 123.0\n", result)
 }
 
 test_data_frame_keys_are_escaped_properly_when_row_major <- function() {
   result <- as.yaml(data.frame(n=1:3), column.major = FALSE)
-  checkEquals("- 'n': 1\n- 'n': 2\n- 'n': 3\n", result, expected.label = result)
+  checkEquals("- 'n': 1\n- 'n': 2\n- 'n': 3\n", result)
 }
 
 test_scientific_notation_is_valid_yaml <- function() {
   result <- as.yaml(10000000)
-  checkEquals("1.0e+07\n...\n", result, expected.label = result)
+  checkEquals("1.0e+07\n...\n", result)
 }
 
 test_precision_must_be_in_the_range_1..22 <- function() {
@@ -237,41 +237,41 @@ test_precision_must_be_in_the_range_1..22 <- function() {
 test_factor_with_missing_values_is_emitted_properly <- function() {
   x <- factor('foo', levels=c('bar', 'baz'))
   result <- as.yaml(x)
-  checkEquals(".na.character\n...\n", result, expected.label = result)
+  checkEquals(".na.character\n...\n", result)
 }
 
 test_very_small_negative_float_is_emitted_properly <- function() {
   result <- as.yaml(-7.62e-24)
-  checkEquals("-7.62e-24\n...\n", result, expected.label = result)
+  checkEquals("-7.62e-24\n...\n", result)
 }
 
 test_very_small_positive_float_is_emitted_properly <- function() {
   result <- as.yaml(7.62e-24)
-  checkEquals("7.62e-24\n...\n", result, expected.label = result)
+  checkEquals("7.62e-24\n...\n", result)
 }
 
 test_numeric_zero_is_emitted_properly <- function() {
   result <- as.yaml(0.0)
-  checkEquals("0.0\n...\n", result, expected.label = result)
+  checkEquals("0.0\n...\n", result)
 }
 
 test_numeric_negative_zero_is_emitted_properly <- function() {
   result <- as.yaml(-0.0)
-  checkEquals("-0.0\n...\n", result, expected.label = result)
+  checkEquals("-0.0\n...\n", result)
 }
 
 test_custom_handler_is_run_for_first_class <- function() {
   x <- "foo"
   class(x) <- "bar"
   result <- as.yaml(x, handlers = list(bar = function(x) paste0("x", x, "x")))
-  checkEquals("xfoox\n...\n", result, expected.label = result)
+  checkEquals("xfoox\n...\n", result)
 }
 
 test_custom_handler_is_run_for_second_class <- function() {
   x <- "foo"
   class(x) <- c("bar", "baz")
   result <- as.yaml(x, handlers = list(baz = function(x) paste0("x", x, "x")))
-  checkEquals("xfoox\n...\n", result, expected.label = result)
+  checkEquals("xfoox\n...\n", result)
 }
 
 test_custom_handler_with_verbatim_result_is_emitted_properly <- function() {
@@ -282,5 +282,5 @@ test_custom_handler_with_verbatim_result_is_emitted_properly <- function() {
       return(result)
     }
   ))
-  checkEquals("- true\n- false\n", result, expected.label = result)
+  checkEquals("- true\n- false\n", result)
 }

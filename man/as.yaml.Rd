@@ -18,7 +18,7 @@
   \item{unicode}{ determines whether or not to allow unescaped unicode characters in output }
   \item{precision}{ number of significant digits to use when formatting numeric values }
   \item{indent.mapping.sequence}{ determines whether or not to indent sequences in mapping context }
-  \item{handlers}{ named list of custom handler functions for R objects (see Details) }
+  \item{handlers}{ named list of custom handler functions for R objects; see Details }
 }
 \details{
   If you set the \code{omap} option to TRUE, as.yaml will create ordered maps

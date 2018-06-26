@@ -284,3 +284,131 @@ test_custom_handler_with_verbatim_result_is_emitted_properly <- function() {
   ))
   checkEquals("- true\n- false\n", result)
 }
+
+test_custom_tag_for_function <- function() {
+  f <- function(x) x + 1
+  attr(f, "tag") <- "!foo"
+  expected <- "!foo |\n  function (x)\n  x + 1\n"
+  result <- as.yaml(f)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_numeric_sequence <- function() {
+  x <- c(1, 2, 3)
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- 1.0\n- 2.0\n- 3.0\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_numeric_scalar <- function() {
+  x <- 1
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo 1.0\n...\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_integer_sequence <- function() {
+  x <- 1L:3L
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- 1\n- 2\n- 3\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_integer_scalar <- function() {
+  x <- 1L
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo 1\n...\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_logical_sequence <- function() {
+  x <- c(TRUE, FALSE)
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- yes\n- no\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_logical_scalar <- function() {
+  x <- TRUE
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo yes\n...\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_factor_sequence <- function() {
+  x <- factor(c("foo", "bar"))
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- foo\n- bar\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_factor_scalar <- function() {
+  x <- factor("foo")
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo foo\n...\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_character_sequence <- function() {
+  x <- c("foo", "bar")
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- foo\n- bar\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_character_scalar <- function() {
+  x <- "foo"
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo foo\n...\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_data_frame <- function() {
+  x <- data.frame(a = 1:3, b = 4:6)
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\na:\n- 1\n- 2\n- 3\nb:\n- 4\n- 5\n- 6\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_data_frame_column <- function() {
+  x <- data.frame(a = 1:3, b = 4:6)
+  attr(x$a, "tag") <- "!foo"
+  expected <- "a: !foo\n- 1\n- 2\n- 3\nb:\n- 4\n- 5\n- 6\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_omap <- function() {
+  x <- list(a=1:2, b=3:4)
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- a:\n  - 1\n  - 2\n- b:\n  - 3\n  - 4\n"
+  result <- as.yaml(x, omap = TRUE)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_named_list <- function() {
+  x <- list(a=1:2, b=3:4)
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\na:\n- 1\n- 2\nb:\n- 3\n- 4\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}
+
+test_custom_tag_for_unnamed_list <- function() {
+  x <- list(1, 2, 3)
+  attr(x, "tag") <- "!foo"
+  expected <- "!foo\n- 1.0\n- 2.0\n- 3.0\n"
+  result <- as.yaml(x)
+  checkEquals(expected, result)
+}

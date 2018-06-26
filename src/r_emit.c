@@ -1,5 +1,6 @@
 #include "r_ext.h"
 
+extern SEXP Ryaml_TagSymbol;
 extern SEXP Ryaml_DeparseFunc;
 extern char Ryaml_error_msg[ERROR_MSG_SIZE];
 
@@ -373,27 +374,27 @@ emit_string(emitter, event, s_obj, tag, implicit_tag)
   }
   UNPROTECT(1); /* s_obj */
 
-  if (result == 0) {
-    return 0;
-  }
+  return result;
 }
 
 static int
-emit_factor(emitter, event, s_obj)
+emit_factor(emitter, event, s_obj, tag, implicit_tag)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
+  char *tag;
+  int implicit_tag;
 {
   SEXP s_levels = NULL, s_level_chr = NULL;
   yaml_scalar_style_t *scalar_styles = NULL, scalar_style;
-  int i = 0, len = 0, level_idx = 0, retval = 0, *scalar_style_is_set = NULL;
+  int i = 0, len = 0, level_idx = 0, result = 0, *scalar_style_is_set = NULL;
 
   s_levels = GET_LEVELS(s_obj);
   len = length(s_levels);
   scalar_styles = (yaml_scalar_style_t *)malloc(sizeof(yaml_scalar_style_t) * len);
   scalar_style_is_set = (int *)calloc(len, sizeof(int));
 
-  retval = 1;
+  result = 1;
   for (i = 0; i < length(s_obj); i++) {
     level_idx = INTEGER(s_obj)[i];
     if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > len) {
@@ -408,14 +409,15 @@ emit_factor(emitter, event, s_obj)
       scalar_style = scalar_styles[level_idx - 1];
     }
 
-    if (!emit_char(emitter, event, s_level_chr, NULL, 1, scalar_style)) {
-      retval = 0;
+    result = emit_char(emitter, event, s_level_chr, tag, implicit_tag, scalar_style);
+    if (!result) {
       break;
     }
   }
+
   free(scalar_styles);
   free(scalar_style_is_set);
-  return retval;
+  return result;
 }
 
 static int
@@ -431,22 +433,21 @@ emit_nil(emitter, event, s_obj)
 }
 
 static int
-emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handlers)
+emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
-  char *tag;
   int omap;
   int column_major;
   int precision;
   SEXP s_handlers;
 {
-  SEXP s_chr = NULL, s_names = NULL, s_thing = NULL, s_type = NULL,
+  SEXP s_chr = NULL, s_names = NULL, s_elt = NULL, s_type = NULL,
        s_classes = NULL, s_class = NULL, s_tmp = NULL, s_inspect = NULL,
-       s_handler = NULL, s_new_obj = NULL;
-  const char *inspect = NULL, *klass = NULL;
-  int implicit_tag = 0, rows = 0, cols = 0, i = 0, j = 0, result = 0, err = 0,
-      len = 0, handled = 0;
+       s_handler = NULL, s_new_obj = NULL, s_tag = NULL;
+  const char *inspect = NULL, *klass = NULL, *tag = NULL;
+  int implicit_tag = 0, tag_applied = 0, rows = 0, cols = 0, i = 0, j = 0,
+      result = 0, err = 0, len = 0, handled = 0;
 
 #if DEBUG
   Rprintf("=== Emitting ===\n");
@@ -509,19 +510,38 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handler
   if (handled) {
     return result;
   }
+  PROTECT(s_obj);
 
+  /* Check for custom tag */
   implicit_tag = 1;
   tag = NULL;
+  PROTECT(s_tag = getAttrib(s_obj, Ryaml_TagSymbol));
+  if (s_tag != R_NilValue) {
+    if (TYPEOF(s_tag) != STRSXP || length(s_tag) != 1) {
+      PROTECT(s_inspect = Ryaml_inspect(s_tag));
+      inspect = CHAR(STRING_ELT(s_inspect, 0));
+      warning("Invalid 'tag' attribute: %s", inspect);
+      UNPROTECT(1); /* s_inspect */
+    } else {
+      tag = CHAR(STRING_ELT(s_tag, 0));
+      implicit_tag = 0;
+    }
+  }
+
   switch (TYPEOF(s_obj)) {
     case NILSXP:
-      return emit_nil(emitter, event, s_obj);
+      /* NOTE: There is no way to tag NILSXP */
+      result = emit_nil(emitter, event, s_obj);
+      break;
 
     case CLOSXP:
     case SPECIALSXP:
     case BUILTINSXP:
       /* Function! Deparse, then fall through */
-      tag = "!expr";
-      implicit_tag = 0;
+      if (tag == NULL) {
+        tag = "!expr";
+        implicit_tag = 0;
+      }
       s_obj = Ryaml_deparse_function(s_obj);
 
     /* atomic vector types */
@@ -529,75 +549,89 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handler
     case REALSXP:
     case INTSXP:
     case STRSXP:
-      /* FIXME: add complex and raw */
-      PROTECT(s_obj);
+      /* TODO: add complex and raw */
       len = length(s_obj);
-      UNPROTECT(1);
 
       if (len != 1) {
-        yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
-        PROTECT(s_obj);
+        /* Apply tag to sequence */
+        tag_applied = 1;
+        yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
+            implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+
         result = yaml_emitter_emit(emitter, event);
-        UNPROTECT(1);
-        if (!result)
-          return 0;
+
+        if (!result) {
+          break;
+        }
       }
 
       if (len >= 1) {
         if (Ryaml_has_class(s_obj, "factor")) {
-          PROTECT(s_obj);
-          result = emit_factor(emitter, event, s_obj);
-          UNPROTECT(1);
-          if (!result)
-            return 0;
+          if (tag_applied) {
+            result = emit_factor(emitter, event, s_obj, NULL, 1);
+          }
+          else {
+            result = emit_factor(emitter, event, s_obj, tag, implicit_tag);
+          }
+          if (!result) {
+            break;
+          }
         }
         else if (TYPEOF(s_obj) == STRSXP) {
-          result = emit_string(emitter, event, s_obj, tag, implicit_tag);
+          if (tag_applied) {
+            result = emit_string(emitter, event, s_obj, NULL, 1);
+          }
+          else {
+            result = emit_string(emitter, event, s_obj, tag, implicit_tag);
+          }
 
           if (!result) {
-            return 0;
+            break;
           }
         }
         else {
           switch(TYPEOF(s_obj)) {
             case REALSXP:
-              s_obj = Ryaml_format_real(s_obj, precision);
+              s_new_obj = Ryaml_format_real(s_obj, precision);
               break;
 
             case INTSXP:
-              s_obj = Ryaml_format_int(s_obj);
+              s_new_obj = Ryaml_format_int(s_obj);
               break;
 
             case LGLSXP:
-              s_obj = Ryaml_format_logical(s_obj);
-              break;
-
-            default:
-              /* If you get here, you made a mistake. */
-              return 0;
-          }
-          PROTECT(s_obj);
-
-          result = 0;
-          for (i = 0; i < length(s_obj); i++) {
-            s_chr = STRING_ELT(s_obj, i);
-            result = emit_char(emitter, event, s_chr, tag, implicit_tag,
-                YAML_ANY_SCALAR_STYLE);
-
-            if (!result)
+              s_new_obj = Ryaml_format_logical(s_obj);
               break;
           }
-          UNPROTECT(1);
 
-          if (!result)
-            return 0;
+          PROTECT(s_new_obj);
+          for (i = 0; i < length(s_new_obj); i++) {
+            PROTECT(s_chr = STRING_ELT(s_new_obj, i));
+            if (tag_applied) {
+              result = emit_char(emitter, event, s_chr, NULL, 1,
+                  YAML_ANY_SCALAR_STYLE);
+            }
+            else {
+              result = emit_char(emitter, event, s_chr, tag, implicit_tag,
+                  YAML_ANY_SCALAR_STYLE);
+            }
+            UNPROTECT(1); /* s_chr */
+
+            if (!result) {
+              break;
+            }
+          }
+          UNPROTECT(1); /* s_new_obj */
+
+          if (!result) {
+            break;
+          }
         }
       }
 
       if (length(s_obj) != 1) {
         yaml_sequence_end_event_initialize(event);
-        if (!yaml_emitter_emit(emitter, event))
-          return 0;
+        result = yaml_emitter_emit(emitter, event);
       }
       break;
 
@@ -609,143 +643,156 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handler
 
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
             implicit_tag, YAML_ANY_SEQUENCE_STYLE);
-        if (!yaml_emitter_emit(emitter, event)) {
+        result = yaml_emitter_emit(emitter, event);
+
+        if (!result) {
           UNPROTECT(1); /* s_names */
-          return 0;
+          break;
         }
 
         for (i = 0; i < rows; i++) {
-          yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-              implicit_tag, YAML_ANY_MAPPING_STYLE);
+          yaml_mapping_start_event_initialize(event, NULL, NULL, 1,
+              YAML_ANY_MAPPING_STYLE);
+          result = yaml_emitter_emit(emitter, event);
 
-          if (!yaml_emitter_emit(emitter, event)) {
-            err = 1;
+          if (!result) {
             break;
           }
 
           for (j = 0; j < cols; j++) {
             PROTECT(s_chr = STRING_ELT(s_names, j));
-            result = emit_char(emitter, event, s_chr, NULL, 1, Ryaml_string_style(s_chr));
+            result = emit_char(emitter, event, s_chr, NULL, 1,
+                Ryaml_string_style(s_chr));
             UNPROTECT(1);
+
             if (!result) {
-              err = 1;
               break;
             }
 
             /* Need to create a vector of size one, then emit it */
-            s_thing = VECTOR_ELT(s_obj, j);
-            PROTECT(s_tmp = Ryaml_yoink(s_thing, i));
-            result = emit_object(emitter, event, s_tmp, NULL, omap, column_major, precision, s_handlers);
-            UNPROTECT(1);
+            PROTECT(s_elt = VECTOR_ELT(s_obj, j));
+            PROTECT(s_tmp = Ryaml_yoink(s_elt, i));
+            result = emit_object(emitter, event, s_tmp, omap, column_major,
+                precision, s_handlers);
+            UNPROTECT(2);
 
             if (!result) {
-              err = 1;
               break;
             }
           }
 
-          if (err) {
-            break;
-          } else {
+          if (result) {
             yaml_mapping_end_event_initialize(event);
-            if (!yaml_emitter_emit(emitter, event)) {
-              err = 1;
-              break;
-            }
+            result = yaml_emitter_emit(emitter, event);
+          }
+
+          if (!result) {
+            break;
           }
         }
 
-        if (!err) {
+        if (result) {
           yaml_sequence_end_event_initialize(event);
-          if (!yaml_emitter_emit(emitter, event)) {
-            err = 1;
-          }
+          result = yaml_emitter_emit(emitter, event);
         }
 
         UNPROTECT(1); /* s_names */
-        if (err) {
-          return 0;
-        }
       }
       else if (Ryaml_is_named_list(s_obj)) {
         if (omap) {
-          yaml_sequence_start_event_initialize(event, NULL,
-              (yaml_char_t *)"!omap", 0, YAML_ANY_SEQUENCE_STYLE);
+          if (tag == NULL) {
+            tag = "!omap";
+            implicit_tag = 0;
+          }
 
-          if (!yaml_emitter_emit(emitter, event))
-            return 0;
+          yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
+              implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+
+          result = yaml_emitter_emit(emitter, event);
         }
         else {
           yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
               implicit_tag, YAML_ANY_MAPPING_STYLE);
 
-          if (!yaml_emitter_emit(emitter, event))
-            return 0;
+          result = yaml_emitter_emit(emitter, event);
+        }
+
+        if (!result) {
+          break;
         }
 
         PROTECT(s_names = GET_NAMES(s_obj));
         for (i = 0; i < length(s_obj); i++) {
           if (omap) {
-            yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-                implicit_tag, YAML_ANY_MAPPING_STYLE);
+            yaml_mapping_start_event_initialize(event, NULL, NULL, 1,
+                YAML_ANY_MAPPING_STYLE);
 
-            if (!yaml_emitter_emit(emitter, event)) {
-              err = 1;
+            result = yaml_emitter_emit(emitter, event);
+
+            if (!result) {
               break;
             }
           }
 
           PROTECT(s_chr = STRING_ELT(s_names, i));
-          result = emit_char(emitter, event, s_chr, NULL, 1, Ryaml_string_style(s_chr));
+          result = emit_char(emitter, event, s_chr, NULL, 1,
+              Ryaml_string_style(s_chr));
           UNPROTECT(1);
+
           if (!result) {
-            err = 1;
             break;
           }
 
-          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision, s_handlers)) {
-            err = 1;
-            break;
-          }
+          PROTECT(s_elt = VECTOR_ELT(s_obj, i));
+          result = emit_object(emitter, event, s_elt, omap, column_major,
+              precision, s_handlers);
+          UNPROTECT(1);
 
-          if (omap) {
+          if (result && omap) {
             yaml_mapping_end_event_initialize(event);
-            if (!yaml_emitter_emit(emitter, event)) {
-              err = 1;
-              break;
-            }
+            result = yaml_emitter_emit(emitter, event);
+          }
+
+          if (!result) {
+            break;
           }
         }
 
-        if (!err) {
+        if (result) {
           if (omap) {
             yaml_sequence_end_event_initialize(event);
           }
           else {
             yaml_mapping_end_event_initialize(event);
           }
-          if (!yaml_emitter_emit(emitter, event)) {
-            err = 1;
-          }
+
+          result = yaml_emitter_emit(emitter, event);
         }
 
         UNPROTECT(1); /* s_names */
-        if (err)
-          return 0;
       }
       else {
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-            1, YAML_ANY_SEQUENCE_STYLE);
-        if (!yaml_emitter_emit(emitter, event))
-          return 0;
+            implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+        result = yaml_emitter_emit(emitter, event);
+
+        if (!result) {
+          break;
+        }
 
         for (i = 0; i < length(s_obj); i++) {
-          if (!emit_object(emitter, event, VECTOR_ELT(s_obj, i), NULL, omap, column_major, precision, s_handlers))
-            return 0;
+          PROTECT(s_elt = VECTOR_ELT(s_obj, i));
+          result = emit_object(emitter, event, s_elt, omap, column_major,
+              precision, s_handlers);
+          UNPROTECT(1);
+
+          if (!result) {
+            break;
+          }
         }
+
         yaml_sequence_end_event_initialize(event);
-        if (!yaml_emitter_emit(emitter, event))
-          return 0;
+        result = yaml_emitter_emit(emitter, event);
       }
       break;
 
@@ -762,10 +809,11 @@ emit_object(emitter, event, s_obj, tag, omap, column_major, precision, s_handler
         UNPROTECT(1); /* s_inspect */
       }
       UNPROTECT(2); /* s_type, s_classes */
-      return 0;
+      result = 0;
   }
 
-  return 1;
+  UNPROTECT(2); /* s_obj, s_tag */
+  return result;
 }
 
 SEXP
@@ -884,7 +932,7 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
   if (!status)
     goto done;
 
-  status = emit_object(&emitter, &event, s_obj, NULL, omap, column_major, precision, s_handlers);
+  status = emit_object(&emitter, &event, s_obj, omap, column_major, precision, s_handlers);
   if (!status)
     goto done;
 

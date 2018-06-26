@@ -274,15 +274,33 @@ test_custom_handler_is_run_for_second_class <- function() {
   checkEquals("xfoox\n...\n", result)
 }
 
-test_custom_handler_with_verbatim_result_is_emitted_properly <- function() {
-  result <- as.yaml(c(TRUE, FALSE), handlers = list(
+test_custom_handler_with_verbatim_result <- function() {
+  result <- as.yaml(TRUE, handlers = list(
     logical = function(x) {
       result <- ifelse(x, "true", "false")
       class(result) <- "verbatim"
       return(result)
     }
   ))
-  checkEquals("- true\n- false\n", result)
+  checkEquals("true\n...\n", result)
+}
+
+test_custom_handler_with_sequence_result <- function() {
+  result <- as.yaml(c(1, 2, 3), handlers = list(
+    numeric = function(x) {
+      x + 1
+    }
+  ))
+  checkEquals("- 2.0\n- 3.0\n- 4.0\n", result)
+}
+
+test_custom_handler_with_mapping_result <- function() {
+  result <- as.yaml(1, handlers = list(
+    numeric = function(x) {
+      list(foo = 1:2, bar = 3:4)
+    }
+  ))
+  checkEquals("foo:\n- 1\n- 2\nbar:\n- 3\n- 4\n", result)
 }
 
 test_custom_tag_for_function <- function() {

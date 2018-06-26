@@ -467,36 +467,14 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
         warning("an error occurred when handling object of class '%s'; using default handler", klass);
       }
       else {
-        PROTECT(s_new_obj);
-        len = length(s_new_obj);
+        handled = 1;
 
 #if DEBUG
+        PROTECT(s_new_obj);
         Rprintf("Result from custom handler:\n");
         PrintValue(s_new_obj);
+        UNPROTECT(1);
 #endif
-
-        if (TYPEOF(s_new_obj) != STRSXP) {
-          warning("custom handler for object of class '%s' did not return a character vector, ignoring", klass);
-        }
-        else if (len == 0) {
-          warning("custom handler for object of class '%s' returned an empty character vector, ignoring", klass);
-        }
-        else {
-          handled = 1;
-          result = 1;
-          if (len > 1) {
-            yaml_sequence_start_event_initialize(event, NULL, NULL, 1, YAML_ANY_SEQUENCE_STYLE);
-            result = yaml_emitter_emit(emitter, event);
-          }
-          if (result) {
-            result = emit_string(emitter, event, s_new_obj, NULL, 1);
-          }
-          if (result && len > 1) {
-            yaml_sequence_end_event_initialize(event);
-            result = yaml_emitter_emit(emitter, event);
-          }
-        }
-        UNPROTECT(1); /* s_new_obj */
       }
     }
     UNPROTECT(2); /* s_handler, s_class */
@@ -508,8 +486,10 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
   UNPROTECT(1); /* s_classes */
 
   if (handled) {
-    return result;
+    s_obj = s_new_obj;
   }
+  /* If a custom handler transformed the object, it needs protecting.
+   * Protecting an unchanged object is not harmful. */
   PROTECT(s_obj);
 
   /* Check for custom tag */

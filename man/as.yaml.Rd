@@ -34,12 +34,26 @@
   You can specify custom handler functions via the \code{handlers} argument.
   This argument must be a named list of functions, where the names are R object
   class names (i.e., 'numeric', 'data.frame', 'list', etc).  The function(s)
-  you provide will be passed one argument (the R object) and should return a
-  character vector.  The returned character vector will be formatted (possibly
-  quoted) and emitted to the resulting YAML document.  If you do not want the
-  returned character vector to be formatted, set the class of the returned
-  value to \code{verbatim}.  If the returned character vector has a length more
-  than 1, a YAML sequence will be emitted.
+  you provide will be passed one argument (the R object) and can return any R
+  object.  The returned object will be emitted normally.
+
+  Character vectors that have a class of \sQuote{verbatim} will not be quoted
+  in the output YAML document except when the YAML specification requires it.
+  This means that you cannot do anything that would result in an invalid YAML
+  document, but you can emit strings that would otherwise be quoted.  This is
+  useful for changing how logical vectors are emitted (see below for example).
+
+  You can specify YAML tags for R objects by setting the \sQuote{tag} attribute
+  to a character vector of length 1.  If you set a tag for a vector, the tag
+  will be applied to the YAML sequence as a whole, unless the vector has only 1
+  element.  If you wish to tag individual elements, you must use a list of
+  1-length vectors, each with a tag attribute.  Likewise, if you set a tag for
+  an object that would be emitted as a YAML mapping (like a data frame or a
+  named list), it will be applied to the mapping as a whole.  Tags can be used
+  in conjunction with YAML deserialization functions like
+  \code{\link{yaml.load}} via custom handlers, however, if you set an internal
+  tag on an incompatible data type (like \dQuote{!seq 1.0}), errors will occur
+  when you try to deserialize the document.
 }
 \value{
   Returns a YAML string which can be loaded using \code{\link{yaml.load}} or copied into
@@ -64,9 +78,12 @@
   as.yaml(list(foo=list(list(x = 1, y = 2), list(x = 3, y = 4))))
 
   # custom handler
-  as.yaml(Sys.time(), handlers = list(POSIXct = function(x) format(Sys.time(), "\%Y-\%m-\%d")))
+  as.yaml(Sys.time(), handlers = list(
+    POSIXct = function(x) format(Sys.time(), "\%Y-\%m-\%d")
+  ))
 
-  # custom handler with verbatim output
+  # custom handler with verbatim output to change how logical vectors are
+  # emitted
   as.yaml(c(TRUE, FALSE), handlers = list(
     logical = function(x) {
       result <- ifelse(x, "true", "false")
@@ -74,6 +91,28 @@
       return(result)
     }
   ))
+
+  # custom tag for scalar
+  x <- "thing"
+  attr(x, "tag") <- "!thing"
+  as.yaml(x)
+
+  # custom tag for sequence
+  x <- 1:10
+  attr(x, "tag") <- "!thing"
+  as.yaml(x)
+
+  # custom tag for mapping
+  x <- data.frame(a = letters[1:5], b = letters[6:10])
+  attr(x, "tag") <- "!thing"
+  as.yaml(x)
+
+  # custom tag for each element in a list
+  x <- list(1, 2, 3)
+  attr(x[[1]], "tag") <- "!a"
+  attr(x[[2]], "tag") <- "!b"
+  attr(x[[3]], "tag") <- "!c"
+  as.yaml(x)
 }
 \keyword{ data }
 \keyword{ manip }

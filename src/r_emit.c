@@ -485,6 +485,29 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
   }
   UNPROTECT(1); /* s_classes */
 
+  /* Handle function objects if not yet handled */
+  if (!handled && (TYPEOF(s_obj) == CLOSXP || TYPEOF(s_obj) == SPECIALSXP ||
+      TYPEOF(s_obj) == BUILTINSXP)) {
+
+    /* Deparse function into a string */
+    PROTECT(s_new_obj = Ryaml_deparse_function(s_obj));
+
+    /* Add '!expr' tag if not already tagged, otherwise reuse tag */
+    s_tag = getAttrib(s_obj, Ryaml_TagSymbol);
+    if (s_tag == R_NilValue) {
+      PROTECT(s_tag = ScalarString(mkCharCE("!expr", CE_UTF8)));
+      setAttrib(s_new_obj, Ryaml_TagSymbol, s_tag);
+      UNPROTECT(1);
+    }
+    else {
+      /* Reuse tag for deparsed function string */
+      setAttrib(s_new_obj, Ryaml_TagSymbol, s_tag);
+    }
+
+    handled = 1;
+    UNPROTECT(1); /* s_new_obj */
+  }
+
   if (handled) {
     s_obj = s_new_obj;
   }
@@ -513,16 +536,6 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
       /* NOTE: There is no way to tag NILSXP */
       result = emit_nil(emitter, event, s_obj);
       break;
-
-    case CLOSXP:
-    case SPECIALSXP:
-    case BUILTINSXP:
-      /* Function! Deparse, then fall through */
-      if (tag == NULL) {
-        tag = "!expr";
-        implicit_tag = 0;
-      }
-      s_obj = Ryaml_deparse_function(s_obj);
 
     /* atomic vector types */
     case LGLSXP:

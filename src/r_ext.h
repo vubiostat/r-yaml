@@ -1,6 +1,10 @@
 #ifndef _R_EXT_H
 #define _R_EXT_H
 
+#ifdef __FAST_MATH__
+#error The R yaml package will not work correctly with the -ffast-math option of GCC.
+#endif
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -91,16 +91,16 @@ Ryaml_format_real(s_obj, precision)
   for (i = 0; i < length(s_obj); i++) {
     x = REAL(s_obj)[i];
     if (x == R_PosInf) {
-      SET_STRING_ELT(s_retval, i, mkChar(".inf"));
+      SET_STRING_ELT(s_retval, i, mkCharCE(".inf", CE_UTF8));
     }
     else if (x == R_NegInf) {
-      SET_STRING_ELT(s_retval, i, mkChar("-.inf"));
+      SET_STRING_ELT(s_retval, i, mkCharCE("-.inf", CE_UTF8));
     }
     else if (R_IsNA(x)) {
-      SET_STRING_ELT(s_retval, i, mkChar(".na.real"));
+      SET_STRING_ELT(s_retval, i, mkCharCE(".na.real", CE_UTF8));
     }
     else if (R_IsNaN(x)) {
-      SET_STRING_ELT(s_retval, i, mkChar(".nan"));
+      SET_STRING_ELT(s_retval, i, mkCharCE(".nan", CE_UTF8));
     }
     else {
       if (x != 0) {
@@ -169,7 +169,7 @@ Ryaml_format_int(s_obj)
   PROTECT(s_retval = coerceVector(s_obj, STRSXP));
   for (i = 0; i < length(s_obj); i++) {
     if (INTEGER(s_obj)[i] == NA_INTEGER) {
-      SET_STRING_ELT(s_retval, i, mkChar(".na.integer"));
+      SET_STRING_ELT(s_retval, i, mkCharCE(".na.integer", CE_UTF8));
     }
   }
   UNPROTECT(1);
@@ -189,13 +189,13 @@ Ryaml_format_logical(s_obj)
   for (i = 0; i < length(s_obj); i++) {
     val = LOGICAL(s_obj)[i];
     if (val == NA_LOGICAL) {
-      SET_STRING_ELT(s_retval, i, mkChar(".na"));
+      SET_STRING_ELT(s_retval, i, mkCharCE(".na", CE_UTF8));
     }
     else if (val == 0) {
-      SET_STRING_ELT(s_retval, i, mkChar("no"));
+      SET_STRING_ELT(s_retval, i, mkCharCE("no", CE_UTF8));
     }
     else {
-      SET_STRING_ELT(s_retval, i, mkChar("yes"));
+      SET_STRING_ELT(s_retval, i, mkCharCE("yes", CE_UTF8));
     }
   }
   UNPROTECT(1);
@@ -398,7 +398,7 @@ emit_factor(emitter, event, s_obj, tag, implicit_tag)
   for (i = 0; i < length(s_obj); i++) {
     level_idx = INTEGER(s_obj)[i];
     if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > len) {
-      s_level_chr = mkChar(".na.character");
+      s_level_chr = mkCharCE(".na.character", CE_UTF8);
       scalar_style = YAML_ANY_SCALAR_STYLE;
     }
     else {

@@ -145,7 +145,7 @@ handle_alias(event, s_stack_tail, s_aliases_head)
 
   if (!handled) {
     warning("Unknown anchor: %s", (char *)event->data.alias.anchor);
-    PROTECT(s_obj = ScalarString(mkChar("_yaml.bad-anchor_")));
+    PROTECT(s_obj = ScalarString(mkCharCE("_yaml.bad-anchor_", CE_UTF8)));
     Ryaml_set_class(s_obj, "_yaml.bad-anchor_");
     UNPROTECT(1);
 
@@ -294,7 +294,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
     }
     else if (strcmp(tag, "merge") == 0) {
       /* see http://yaml.org/type/merge.html */
-      PROTECT(s_new_obj = ScalarString(mkChar("_yaml.merge_")));
+      PROTECT(s_new_obj = ScalarString(mkCharCE("_yaml.merge_", CE_UTF8)));
       Ryaml_set_class(s_new_obj, "_yaml.merge_");
       UNPROTECT(1);
     }
@@ -383,14 +383,14 @@ handle_structure_start(event, s_stack_tail, is_map)
     s_tag_obj = R_NilValue;
   }
   else {
-    s_tag_obj = mkChar((const char *) tag);
+    s_tag_obj = mkCharCE((const char *)tag, CE_UTF8);
   }
   if (anchor == NULL) {
     s_anchor_obj = R_NilValue;
   }
   else {
     PROTECT(s_tag_obj);
-    s_anchor_obj = mkChar((const char *) anchor);
+    s_anchor_obj = mkCharCE((const char *)anchor, CE_UTF8);
     UNPROTECT(1);
   }
   s_tag = list2(s_tag_obj, s_anchor_obj);
@@ -824,7 +824,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
 
         if (len == 0) {
           warning("Empty character vector used as a list name");
-          s_key = mkChar("");
+          s_key = mkCharCE("", CE_UTF8);
         } else {
           if (len > 1) {
             warning("Character vector of length greater than 1 used as a list name");
@@ -1106,7 +1106,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
 #endif
           err = handle_scalar(&event, &s_stack_tail, s_handlers, eval_expr, eval_warning);
           if (!err && event.data.scalar.anchor != NULL) {
-            PROTECT(s_anchor = mkChar((char *) event.data.scalar.anchor));
+            PROTECT(s_anchor = mkCharCE((char *)event.data.scalar.anchor, CE_UTF8));
             possibly_record_alias(s_anchor, &s_aliases_tail, CAR(s_stack_tail));
             UNPROTECT(1);
           }

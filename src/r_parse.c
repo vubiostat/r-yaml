@@ -1105,12 +1105,10 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
           Rprintf("SCALAR: %s (%s) [%s]\n", event.data.scalar.value, event.data.scalar.tag, event.data.scalar.anchor);
 #endif
           err = handle_scalar(&event, &s_stack_tail, s_handlers, eval_expr, eval_warning);
-          if (!err) {
-            s_anchor = NULL;
-            if (event.data.scalar.anchor != NULL) {
-              s_anchor = mkChar((char *) event.data.scalar.anchor);
-            }
+          if (!err && event.data.scalar.anchor != NULL) {
+            PROTECT(s_anchor = mkChar((char *) event.data.scalar.anchor));
             possibly_record_alias(s_anchor, &s_aliases_tail, CAR(s_stack_tail));
+            UNPROTECT(1);
           }
           break;
 

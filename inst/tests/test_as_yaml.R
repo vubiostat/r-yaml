@@ -303,6 +303,16 @@ test_custom_handler_with_mapping_result <- function() {
   checkEquals("foo:\n- 1\n- 2\nbar:\n- 3\n- 4\n", result)
 }
 
+test_custom_handler_with_function_result <- function() {
+  result <- as.yaml(1, handlers = list(
+    numeric = function(x) {
+      function(y) y + 1
+    }
+  ))
+  expected <- "!expr |\n  function (y)\n  y + 1\n"
+  checkEquals(expected, result)
+}
+
 test_custom_tag_for_function <- function() {
   f <- function(x) x + 1
   attr(f, "tag") <- "!foo"

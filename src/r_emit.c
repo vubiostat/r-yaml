@@ -485,8 +485,13 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
   }
   UNPROTECT(1); /* s_classes */
 
-  /* Handle function objects if not yet handled */
-  if (!handled && (TYPEOF(s_obj) == CLOSXP || TYPEOF(s_obj) == SPECIALSXP ||
+  if (handled) {
+    s_obj = s_new_obj;
+  }
+
+  /* Deparse function objects first, since this operation creates a new object.
+   * Doing this here prevents having to reprotect an object later. */
+  if ((TYPEOF(s_obj) == CLOSXP || TYPEOF(s_obj) == SPECIALSXP ||
       TYPEOF(s_obj) == BUILTINSXP)) {
 
     /* Deparse function into a string */
@@ -504,13 +509,10 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
       setAttrib(s_new_obj, Ryaml_TagSymbol, s_tag);
     }
 
-    handled = 1;
     UNPROTECT(1); /* s_new_obj */
-  }
-
-  if (handled) {
     s_obj = s_new_obj;
   }
+
   /* If a custom handler transformed the object, it needs protecting.
    * Protecting an unchanged object is not harmful. */
   PROTECT(s_obj);

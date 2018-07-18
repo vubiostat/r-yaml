@@ -1,4 +1,4 @@
-VERSION = $(file < VERSION)
+VERSION = $(shell cat VERSION)
 
 SRCS = src/yaml_private.h \
 	src/yaml.h \

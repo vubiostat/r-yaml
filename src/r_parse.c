@@ -1026,17 +1026,14 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   SEXP s_eval_expr;
   SEXP s_eval_warning;
 {
-  SEXP s_retval = NULL, s_handler = NULL, s_names = NULL, s_names_2 = NULL,
-       s_name = NULL, s_handlers_2 = NULL, s_stack_head = NULL,
-       s_stack_tail = NULL, s_aliases_head = NULL, s_aliases_tail = NULL,
-       s_anchor = NULL;
+  SEXP s_retval = NULL, s_stack_head = NULL, s_stack_tail = NULL,
+       s_aliases_head = NULL, s_aliases_tail = NULL, s_anchor = NULL;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *string = NULL, *name = NULL, *name_2 = NULL, *error_label = NULL;
+  const char *string = NULL, *error_label = NULL;
   char *error_msg_copy = NULL;
   long len = 0;
-  int as_named_list = 0, i = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0;
-  cetype_t encoding;
+  int as_named_list = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0;
 
   if (!isString(s_string) || length(s_string) != 1) {
     error("string argument must be a character vector of length 1");

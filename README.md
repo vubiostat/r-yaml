@@ -10,10 +10,10 @@ The R [YAML](http://yaml.org) package implements the
 * [What is YAML?](#what-is-yaml)
 * [Installation](#installation)
 * [Usage](#usage)
-  * [yaml.load](#yaml.load)
-  * [yaml.load_file](#yaml.load_file)
+  * [yaml.load](#yamlload)
+  * [yaml.load_file](#yamlload_file)
   * [read_yaml](#read_yaml)
-  * [as.yaml](#as.yaml)
+  * [as.yaml](#asyaml)
   * [write_yaml](#write_yaml)
 * [Development](#development)
 

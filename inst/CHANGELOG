@@ -1,6 +1,16 @@
-v2.1.20
+v2.2.0
+  - add custom handlers to as.yaml
+  - add processing of 'verbatim' class in as.yaml
+  - add processing of 'tag' class in as.yaml
+  - change examples/tests to write to tempfiles to appease CRAN
   - fix as.yaml representation of very small negative floating point numbers
     (reported by Ryan Welch)
+  - properly ignore a map key that would override a key from a merged map
+    (reported by Bradley Saul)
+  - gracefully fail compilation if GCC fast-math flag is enabled (reported by
+    Dmitriy Selivanov)
+  - switch from testthat to RUnit for unit testing since RUnit has fewer
+    dependencies and does not require compilation
 
 v2.1.19
   - fix unserialization issues with int#base60 tag (reported by Nancy Irisarri)

@@ -396,9 +396,9 @@ installed.
 | `compile`       | Compile the source files                    |
 | `check`         | Run CRAN checks                             |
 | `gct-check`     | Run CRAN checks with gctorture              |
-| `test`          | Run _testthat_ tests                        |
-| `gdb-test`      | Run _testthat_ tests with gdb               |
-| `valgrind-test` | Run _testthat_ tests with valgrind          |
+| `test`          | Run unit tests                              |
+| `gdb-test`      | Run unit tests with gdb                     |
+| `valgrind-test` | Run unit tests with valgrind                |
 | `tarball`       | Create tarball suitable for CRAN submission |
 | `all`           | Default target, runs `compile` and `test`   |
 

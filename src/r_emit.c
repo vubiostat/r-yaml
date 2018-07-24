@@ -20,11 +20,13 @@ Ryaml_deparse_function(s_obj)
 
   /* Copy function without any attributes */
   if (TYPEOF(s_obj) == CLOSXP) {
+    PROTECT(s_obj);
     PROTECT(s_new_obj = allocSExp(CLOSXP));
     SET_FORMALS(s_new_obj, FORMALS(s_obj));
     SET_BODY(s_new_obj, BODY(s_obj));
     SET_CLOENV(s_new_obj, CLOENV(s_obj));
-    UNPROTECT(1);
+    SET_OBJECT(s_new_obj, OBJECT(s_obj));
+    UNPROTECT(2);
     s_obj = s_new_obj;
   }
 
@@ -38,7 +40,9 @@ Ryaml_deparse_function(s_obj)
   str_len = 0;
   res_len = length(s_result);
   for (i = 0; i < res_len; i++) {
-    str_len += length(STRING_ELT(s_result, i));
+    PROTECT(s_chr = STRING_ELT(s_result, i));
+    str_len += length(s_chr);
+    UNPROTECT(1);
   }
   str_len += length(s_result);  /* for newlines */
 

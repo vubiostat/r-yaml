@@ -564,3 +564,10 @@ test_list_of_one_list_is_loaded_properly <- function() {
   result <- yaml.load('a:\n -\n  - b\n  - c\n')
   checkEquals(list(a = list(c("b", "c"))), result)
 }
+
+test_override_merge_precedence <- function() {
+  doc <- "[ &one { foo: bar }, { <<: *one, foo: baz } ]"
+  expected <- list(list(foo = 'bar'), list(foo = 'baz'))
+  result <- yaml.load(doc, merge.precedence = "override")
+  checkEquals(expected, result)
+}

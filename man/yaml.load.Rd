@@ -8,7 +8,8 @@
 }
 \usage{
   yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL,
-            eval.expr = getOption("yaml.eval.expr", TRUE))
+            eval.expr = getOption("yaml.eval.expr", TRUE),
+            merge.precedence = c("order", "override"))
   yaml.load_file(input, error.label, ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -19,6 +20,7 @@
   \item{input}{ a filename or connection; if \code{input} is a filename, that file must be encoded in UTF-8 }
   \item{error.label}{ a label to prepend to error messages (see Details) }
   \item{eval.expr}{ whether or not to evaluate expressions found in the YAML document (see Details) }
+  \item{merge.precedence}{ behavior of precedence during map merges (see Details) }
   \item{...}{ arguments to pass to yaml.load }
 }
 \details{
@@ -60,6 +62,16 @@
   \sQuote{yaml.eval.expr} via the \code{options} function to turn off the
   warning.
 
+  The \code{merge.precedence} parameter controls how merge keys are handled.
+  The YAML merge key specification is not specific about how key/value
+  conflicts are resolved during map merges.  As a result, various YAML library
+  implementations vary in merge key behavior (notably Python and Ruby).  This
+  package's default behavior (when \code{merge.precedence} is \sQuote{order})
+  is to give precedence to key/value pairs that appear first.  If you set
+  \code{merge.precedence} to \sQuote{override}, natural map key/value pairs
+  will override any duplicate keys found in merged maps, regardless of order.
+  This is the default behavior in Python's YAML library.
+
   This function uses the YAML parser provided by libyaml, which conforms to the YAML 1.1
   specification.
 }
@@ -72,6 +84,8 @@
   YAML: http://yaml.org
 
   libyaml: http://pyyaml.org/wiki/LibYAML
+
+  YAML merge specification: http://yaml.org/type/merge.html
 }
 \author{ Jeremy Stephens <jeremy.f.stephens@vumc.org> }
 \seealso{ \code{\link{as.yaml}} }

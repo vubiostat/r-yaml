@@ -719,23 +719,160 @@ is_mergeable(s_merge_list, coerce_keys)
     (!coerce_keys && Ryaml_is_pseudo_hash(s_merge_list));
 }
 
+/* Return -1 on error or number of entries added to map. */
 static int
-handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
+handle_map_entry(s_key, s_value, s_interim_map_head, s_interim_map_tail, coerce_keys)
+  SEXP s_key;
+  SEXP s_value;
+  SEXP s_interim_map_head;
+  SEXP *s_interim_map_tail;
+  int coerce_keys;
+{
+  SEXP s_result = NULL, s_tag = NULL, s_inspect = NULL;
+  const char *inspect = NULL;
+  int len = 0, count = 0;
+
+  if (coerce_keys) {
+    /* (Possibly) convert this key to a character vector, and then save
+     * the first element in the vector (CHARSXP element). Throw away
+     * the containing vector, since it's not needed anymore. */
+    PROTECT(s_key = AS_CHARACTER(s_key));
+    len = length(s_key);
+
+    if (len == 0) {
+      warning("Empty character vector used as a list name");
+      s_key = mkCharCE("", CE_UTF8);
+    } else {
+      if (len > 1) {
+        warning("Character vector of length greater than 1 used as a list name");
+      }
+      s_key = STRING_ELT(s_key, 0);
+    }
+    UNPROTECT(1);
+  }
+
+  PROTECT(s_key);
+  s_result = find_map_entry(s_interim_map_head, s_key, coerce_keys);
+  if (s_result != NULL) {
+    /* A matching key is already in the map. If the existing key is from a
+     * merge, it's okay to ignore it. If not, it's a duplicate key error. */
+    s_tag = TAG(s_result);
+    if (coerce_keys) {
+      inspect = CHAR(s_key);
+    }
+    else {
+      PROTECT(s_inspect = Ryaml_inspect(s_key));
+      inspect = CHAR(STRING_ELT(s_inspect, 0));
+    }
+
+    if (LOGICAL(CADR(s_tag))[0] == FALSE) {
+      Ryaml_set_error_msg("Duplicate map key: '%s'", inspect);
+      count = -1;
+    }
+    else {
+      /* I think it's okay not to throw a warning here because this is
+       * probably an intentional ignore by the user. */
+      /*warning("Duplicate map key ignored after merge: '%s'", inspect);*/
+    }
+
+    if (!coerce_keys) {
+      UNPROTECT(1); /* s_inspect */
+    }
+  } else {
+    SETCDR(*s_interim_map_tail, list1(s_value));
+    *s_interim_map_tail = CDR(*s_interim_map_tail);
+    SET_TAG(*s_interim_map_tail, list2(s_key, ScalarLogical(FALSE)));
+    count = 1;
+  }
+  UNPROTECT(1); /* s_key */
+
+  return count;
+}
+
+/* Return -1 on error or number of entries added to map. */
+static int
+handle_merge(s_value, s_interim_map_head, s_interim_map_tail, coerce_keys)
+  SEXP s_value;
+  SEXP s_interim_map_head;
+  SEXP *s_interim_map_tail;
+  int coerce_keys;
+{
+  SEXP s_obj = NULL, s_inspect = NULL;
+  const char *inspect = NULL;
+  int i = 0, count = 0, len = 0;
+
+  if (is_mergeable(s_value, coerce_keys)) {
+    /* i.e.
+     *    - &bar { hey: dude }
+     *    - foo:
+     *        hello: friend
+     *        <<: *bar
+     */
+    count = expand_merge(s_value, s_interim_map_head, s_interim_map_tail, coerce_keys);
+  }
+  else if (TYPEOF(s_value) == VECSXP) {
+    /* i.e.
+     *    - &bar { hey: dude }
+     *    - &baz { hi: buddy }
+     *    - foo:
+     *        hello: friend
+     *        <<: [*bar, *baz]
+     */
+
+    for (i = 0; i < length(s_value); i++) {
+      s_obj = VECTOR_ELT(s_value, i);
+      if (is_mergeable(s_obj, coerce_keys)) {
+        len = expand_merge(s_obj, s_interim_map_head, s_interim_map_tail, coerce_keys);
+        if (len >= 0) {
+          count += len;
+        }
+        else {
+          count = -1;
+          break;
+        }
+      }
+      else {
+        /* Illegal merge */
+        PROTECT(s_inspect = Ryaml_inspect(s_value));
+        inspect = CHAR(STRING_ELT(s_inspect, 0));
+        Ryaml_set_error_msg("Illegal merge: %s", inspect);
+        UNPROTECT(1);
+
+        count = -1;
+        break;
+      }
+    }
+  }
+  else {
+    /* Illegal merge */
+    PROTECT(s_inspect = Ryaml_inspect(s_value));
+    inspect = CHAR(STRING_ELT(s_inspect, 0));
+    Ryaml_set_error_msg("Illegal merge: %s", inspect);
+    UNPROTECT(1);
+
+    count = -1;
+  }
+
+  return count;
+}
+
+static int
+handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_override)
   yaml_event_t *event;
   SEXP s_stack_head;
   SEXP *s_stack_tail;
   SEXP s_handlers;
   int coerce_keys;
+  int merge_override;
 {
   SEXP s_list = NULL, s_keys = NULL, s_key = NULL, s_value = NULL,
-       s_obj = NULL, s_curr = NULL, s_mapping_start = NULL,
-       s_interim_map_head = NULL, s_interim_map_tail = NULL,
-       s_new_obj = NULL, s_handler = NULL, s_tag = NULL, s_result = NULL,
-       s_inspect = NULL;
+       s_prev = NULL, s_curr = NULL, s_mapping_start = NULL,
+       s_interim_map_head = NULL, s_interim_map_tail = NULL, s_new_obj = NULL,
+       s_handler = NULL, s_tag = NULL;
   int count = 0, i = 0, map_err = 0, handled = 0, coercion_err = 0, len = 0;
-  const char *tag = NULL, *inspect = NULL;
+  const char *tag = NULL;
 
-  /* Find beginning of map */
+  /* Find beginning of last map */
   s_curr = CDR(s_stack_head);
   while (s_curr != R_NilValue) {
     if (CAR(s_curr) == Ryaml_MappingStart) {
@@ -748,125 +885,68 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
     return 1;
   }
 
+  /* Set up interim map */
+  PROTECT(s_interim_map_head = s_interim_map_tail = list1(Ryaml_MappingStart));
+
+  if (merge_override) {
+    /* If merge override is turned on, then normal map entries always take
+     * precedence over any merged map entries. Therefore, go through and look
+     * for any normal entries and place them in the interim map first. */
+
+    s_prev = s_mapping_start;
+    s_curr = CDR(s_mapping_start);
+    while (!map_err && s_curr != R_NilValue) {
+      s_key = CAR(s_curr);
+      s_value = CADR(s_curr);
+
+      if (!Ryaml_has_class(s_key, "_yaml.merge_")) {
+        len = handle_map_entry(s_key, s_value, s_interim_map_head, &s_interim_map_tail, coerce_keys);
+        if (len >= 0) {
+          count += len;
+
+          /* Remove key/value from stack to prevent double processing */
+          SETCDR(s_prev, CDDR(s_curr));
+          s_prev = CDR(s_curr);
+          s_curr = CDDR(s_curr);
+        }
+        else {
+          map_err = 1;
+        }
+      }
+      else {
+        /* Skip over merge key/value */
+        s_prev = CDR(s_curr);
+        s_curr = CDDR(s_curr);
+      }
+    }
+  }
+
   /* Iterate keys and values */
   s_curr = CDR(s_mapping_start);
-  PROTECT(s_interim_map_head = s_interim_map_tail = list1(Ryaml_MappingStart));
   while (!map_err && s_curr != R_NilValue) {
     s_key = CAR(s_curr);
     s_value = CADR(s_curr);
     s_curr = CDDR(s_curr);
 
     if (Ryaml_has_class(s_key, "_yaml.merge_")) {
-      if (is_mergeable(s_value, coerce_keys)) {
-        /* i.e.
-         *    - &bar { hey: dude }
-         *    - foo:
-         *        hello: friend
-         *        <<: *bar
-         */
-        len = expand_merge(s_value, s_interim_map_head, &s_interim_map_tail, coerce_keys);
-        if (len >= 0) {
-          count += len;
-        } else {
-          map_err = 1;
-        }
-      }
-      else if (TYPEOF(s_value) == VECSXP) {
-        /* i.e.
-         *    - &bar { hey: dude }
-         *    - &baz { hi: buddy }
-         *    - foo:
-         *        hello: friend
-         *        <<: [*bar, *baz]
-         */
-
-        for (i = 0; i < length(s_value); i++) {
-          s_obj = VECTOR_ELT(s_value, i);
-          if (is_mergeable(s_obj, coerce_keys)) {
-            len = expand_merge(s_obj, s_interim_map_head, &s_interim_map_tail, coerce_keys);
-            if (len >= 0) {
-              count += len;
-            } else {
-              map_err = 1;
-              break;
-            }
-          }
-          else {
-            /* Illegal merge */
-            PROTECT(s_inspect = Ryaml_inspect(s_value));
-            inspect = CHAR(STRING_ELT(s_inspect, 0));
-            Ryaml_set_error_msg("Illegal merge: %s", inspect);
-            UNPROTECT(1);
-
-            map_err = 1;
-            break;
-          }
-        }
-      }
-      else {
-        /* Illegal merge */
-        PROTECT(s_inspect = Ryaml_inspect(s_value));
-        inspect = CHAR(STRING_ELT(s_inspect, 0));
-        Ryaml_set_error_msg("Illegal merge: %s", inspect);
-        UNPROTECT(1);
-
-        map_err = 1;
-      }
+      len = handle_merge(s_value, s_interim_map_head, &s_interim_map_tail, coerce_keys);
     }
     else {
-      /* Normal map entry */
-      if (coerce_keys) {
-        /* (Possibly) convert this key to a character vector, and then save
-         * the first element in the vector (CHARSXP element). Throw away
-         * the containing vector, since we don't need it anymore. */
-        PROTECT(s_key = AS_CHARACTER(s_key));
-        len = length(s_key);
-
-        if (len == 0) {
-          warning("Empty character vector used as a list name");
-          s_key = mkCharCE("", CE_UTF8);
-        } else {
-          if (len > 1) {
-            warning("Character vector of length greater than 1 used as a list name");
-          }
-          s_key = STRING_ELT(s_key, 0);
-        }
-        UNPROTECT(1);
+      if (merge_override) {
+        /* If merge override is turned on, merges should have already been processed. */
+        Ryaml_set_error_msg("Merge override failed");
+        map_err = 1;
+        break;
       }
 
-      PROTECT(s_key);
-      s_result = find_map_entry(s_interim_map_head, s_key, coerce_keys);
-      if (s_result != NULL) {
-        /* A matching key is already in the map. If the existing key is from a
-         * merge, it's okay to ignore it. If not, it's a duplicate key error. */
-        s_tag = TAG(s_result);
-        if (coerce_keys) {
-          inspect = CHAR(s_key);
-        }
-        else {
-          PROTECT(s_inspect = Ryaml_inspect(s_key));
-          inspect = CHAR(STRING_ELT(s_inspect, 0));
-        }
-        if (LOGICAL(CADR(s_tag))[0] == FALSE) {
-          Ryaml_set_error_msg("Duplicate map key: '%s'", inspect);
-          map_err = 1;
-        }
-        else {
-          /* I think it's okay not to throw a warning here because this is
-           * probably an intentional ignore by the user. */
-          /*warning("Duplicate map key ignored after merge: '%s'", inspect);*/
-        }
+      len = handle_map_entry(s_key, s_value, s_interim_map_head, &s_interim_map_tail, coerce_keys);
+    }
 
-        if (!coerce_keys) {
-          UNPROTECT(1); /* s_inspect */
-        }
-      } else {
-        SETCDR(s_interim_map_tail, list1(s_value));
-        s_interim_map_tail = CDR(s_interim_map_tail);
-        SET_TAG(s_interim_map_tail, list2(s_key, ScalarLogical(FALSE)));
-        count++;
-      }
-      UNPROTECT(1); /* s_key */
+    if (len >= 0) {
+      count += len;
+    }
+    else {
+      map_err = 1;
     }
   }
 
@@ -1018,22 +1098,24 @@ possibly_record_alias(s_anchor, s_aliases_tail, s_obj)
 
 SEXP
 Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
-    s_eval_expr, s_eval_warning)
+    s_eval_expr, s_eval_warning, s_merge_precedence)
   SEXP s_string;
   SEXP s_as_named_list;
   SEXP s_handlers;
   SEXP s_error_label;
   SEXP s_eval_expr;
   SEXP s_eval_warning;
+  SEXP s_merge_precedence;
 {
   SEXP s_retval = NULL, s_stack_head = NULL, s_stack_tail = NULL,
        s_aliases_head = NULL, s_aliases_tail = NULL, s_anchor = NULL;
   yaml_parser_t parser;
   yaml_event_t event;
-  const char *string = NULL, *error_label = NULL;
+  const char *string = NULL, *error_label = NULL, *merge_precedence = NULL;
   char *error_msg_copy = NULL;
   long len = 0;
-  int as_named_list = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0;
+  int as_named_list = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0,
+      merge_override = 0;
 
   if (!isString(s_string) || length(s_string) != 1) {
     error("string argument must be a character vector of length 1");
@@ -1063,6 +1145,24 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   if (!isLogical(s_eval_warning) || length(s_eval_warning) != 1) {
     error("eval.warning argument must be a logical vector of length 1");
     return R_NilValue;
+  }
+
+  if (!isString(s_merge_precedence) || length(s_merge_precedence) != 1) {
+    error("merge.precedence argument must be a character vector of length 1");
+    return R_NilValue;
+  }
+  else {
+    merge_precedence = CHAR(STRING_ELT(s_merge_precedence, 0));
+    if (strcmp(merge_precedence, "order") == 0) {
+      merge_override = 0;
+    }
+    else if (strcmp(merge_precedence, "override") == 0) {
+      merge_override = 1;
+    }
+    else {
+      error("merge.precedence must be either 'ordered' or 'override'");
+      return R_NilValue;
+    }
   }
 
   PROTECT(s_handlers = Ryaml_sanitize_handlers(s_handlers));
@@ -1139,7 +1239,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
 #if DEBUG
           Rprintf("MAPPING END\n");
 #endif
-          err = handle_map(&event, s_stack_head, &s_stack_tail, s_handlers, as_named_list);
+          err = handle_map(&event, s_stack_head, &s_stack_tail, s_handlers, as_named_list, merge_override);
           if (!err) {
             s_anchor = CADR(TAG(s_stack_tail));
             possibly_record_alias(s_anchor, &s_aliases_tail, CAR(s_stack_tail));

@@ -42,6 +42,6 @@ SEXP Ryaml_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_
 
 SEXP Ryaml_unserialize_from_yaml(SEXP s_string, SEXP s_as_named_list,
     SEXP s_handlers, SEXP s_error_label, SEXP s_eval_expr,
-    SEXP s_eval_warning);
+    SEXP s_eval_warning, SEXP s_merge_precedence);
 
 #endif

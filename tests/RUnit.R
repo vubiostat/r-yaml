@@ -25,6 +25,17 @@ checkWarning <- function(expr) {
   checkTrue(length(warnings) > 0)
 }
 
+checkNamedListEquals <- function(x, y) {
+  checkEquals(class(x), class(y))
+  checkEquals(length(x), length(y))
+
+  ns <- sort(names(x))
+  checkEquals(ns, sort(names(y)))
+  for (n in ns) {
+    checkEquals(x[[n]], y[[n]])
+  }
+}
+
 # Define tests
 testSuite <- defineTestSuite(name = "yaml tests",
                              dirs = system.file("tests", package = "yaml"),

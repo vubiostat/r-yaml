@@ -29,6 +29,7 @@ SRCS = src/yaml_private.h \
 	inst/tests/test_read_yaml.R \
 	inst/tests/test_write_yaml.R \
 	inst/tests/files/test.yml \
+	inst/tests/files/merge.yml \
 	DESCRIPTION \
 	COPYING \
 	LICENSE \
@@ -69,6 +70,7 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/inst/tests/test_read_yaml.R \
 	build/yaml/inst/tests/test_write_yaml.R \
 	build/yaml/inst/tests/files/test.yml \
+	build/yaml/inst/tests/files/merge.yml \
 	build/yaml/tests/RUnit.R \
 	build/yaml/DESCRIPTION \
 	build/yaml/COPYING \

@@ -721,11 +721,11 @@ is_mergeable(s_merge_list, coerce_keys)
 
 /* Return -1 on error or number of entries added to map. */
 static int
-handle_map_entry(s_key, s_value, s_interim_map_head, s_interim_map_tail, coerce_keys)
+handle_map_entry(s_key, s_value, s_map_head, s_map_tail, coerce_keys)
   SEXP s_key;
   SEXP s_value;
-  SEXP s_interim_map_head;
-  SEXP *s_interim_map_tail;
+  SEXP s_map_head;
+  SEXP *s_map_tail;
   int coerce_keys;
 {
   SEXP s_result = NULL, s_tag = NULL, s_inspect = NULL;
@@ -752,7 +752,7 @@ handle_map_entry(s_key, s_value, s_interim_map_head, s_interim_map_tail, coerce_
   }
 
   PROTECT(s_key);
-  s_result = find_map_entry(s_interim_map_head, s_key, coerce_keys);
+  s_result = find_map_entry(s_map_head, s_key, coerce_keys);
   if (s_result != NULL) {
     /* A matching key is already in the map. If the existing key is from a
      * merge, it's okay to ignore it. If not, it's a duplicate key error. */
@@ -779,9 +779,9 @@ handle_map_entry(s_key, s_value, s_interim_map_head, s_interim_map_tail, coerce_
       UNPROTECT(1); /* s_inspect */
     }
   } else {
-    SETCDR(*s_interim_map_tail, list1(s_value));
-    *s_interim_map_tail = CDR(*s_interim_map_tail);
-    SET_TAG(*s_interim_map_tail, list2(s_key, ScalarLogical(FALSE)));
+    SETCDR(*s_map_tail, list1(s_value));
+    *s_map_tail = CDR(*s_map_tail);
+    SET_TAG(*s_map_tail, list2(s_key, ScalarLogical(FALSE)));
     count = 1;
   }
   UNPROTECT(1); /* s_key */
@@ -791,10 +791,10 @@ handle_map_entry(s_key, s_value, s_interim_map_head, s_interim_map_tail, coerce_
 
 /* Return -1 on error or number of entries added to map. */
 static int
-handle_merge(s_value, s_interim_map_head, s_interim_map_tail, coerce_keys)
+handle_merge(s_value, s_map_head, s_map_tail, coerce_keys)
   SEXP s_value;
-  SEXP s_interim_map_head;
-  SEXP *s_interim_map_tail;
+  SEXP s_map_head;
+  SEXP *s_map_tail;
   int coerce_keys;
 {
   SEXP s_obj = NULL, s_inspect = NULL;
@@ -808,7 +808,7 @@ handle_merge(s_value, s_interim_map_head, s_interim_map_tail, coerce_keys)
      *        hello: friend
      *        <<: *bar
      */
-    count = expand_merge(s_value, s_interim_map_head, s_interim_map_tail, coerce_keys);
+    count = expand_merge(s_value, s_map_head, s_map_tail, coerce_keys);
   }
   else if (TYPEOF(s_value) == VECSXP) {
     /* i.e.
@@ -822,7 +822,7 @@ handle_merge(s_value, s_interim_map_head, s_interim_map_tail, coerce_keys)
     for (i = 0; i < length(s_value); i++) {
       s_obj = VECTOR_ELT(s_value, i);
       if (is_mergeable(s_obj, coerce_keys)) {
-        len = expand_merge(s_obj, s_interim_map_head, s_interim_map_tail, coerce_keys);
+        len = expand_merge(s_obj, s_map_head, s_map_tail, coerce_keys);
         if (len >= 0) {
           count += len;
         }
@@ -906,7 +906,6 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_ove
 
           /* Remove key/value from stack to prevent double processing */
           SETCDR(s_prev, CDDR(s_curr));
-          s_prev = CDR(s_curr);
           s_curr = CDDR(s_curr);
         }
         else {

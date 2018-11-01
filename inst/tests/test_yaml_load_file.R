@@ -71,3 +71,13 @@ test_expressions_are_unconverted <- function() {
   checkEquals("character", class(x))
   checkEquals("123 + 456", x)
 }
+
+test_merge_specification_example_with_merge_override <- function() {
+  filename <- system.file(file.path("tests", "files", "merge.yml"), package = "yaml")
+  x <- yaml.load_file(filename, merge.precedence = "override")
+  expected <- list(x = 1, y = 2, r = 10, label = "center/big")
+  checkNamedListEquals(expected, x[[5]])
+  checkNamedListEquals(expected, x[[6]])
+  checkNamedListEquals(expected, x[[7]])
+  checkNamedListEquals(expected, x[[8]])
+}

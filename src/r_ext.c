@@ -233,7 +233,7 @@ Ryaml_run_handler(s_handler, s_arg, s_result)
 }
 
 R_CallMethodDef callMethods[] = {
-  {"unserialize_from_yaml", (DL_FUNC)&Ryaml_unserialize_from_yaml, 7},
+  {"unserialize_from_yaml", (DL_FUNC)&Ryaml_unserialize_from_yaml, 8},
   {"serialize_to_yaml",     (DL_FUNC)&Ryaml_serialize_to_yaml,     9},
   {NULL, NULL, 0}
 };

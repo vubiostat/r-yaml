@@ -9,7 +9,7 @@
 \usage{
   yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL,
             eval.expr = getOption("yaml.eval.expr", TRUE),
-            merge.precedence = c("order", "override"))
+            merge.precedence = c("order", "override"), merge.warning = FALSE)
   yaml.load_file(input, error.label, ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -21,6 +21,7 @@
   \item{error.label}{ a label to prepend to error messages (see Details) }
   \item{eval.expr}{ whether or not to evaluate expressions found in the YAML document (see Details) }
   \item{merge.precedence}{ behavior of precedence during map merges (see Details) }
+  \item{merge.warning}{ whether or not to warn about ignored key/value pairs during map merges }
   \item{...}{ arguments to pass to yaml.load }
 }
 \details{

@@ -874,7 +874,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_ove
        s_interim_map_head = NULL, s_interim_map_tail = NULL, s_new_obj = NULL,
        s_handler = NULL, s_tag = NULL;
   int count = 0, i = 0, map_err = 0, handled = 0, coercion_err = 0, len = 0;
-  const char *tag = NULL;
+  const char *tag = NULL, *original_tag = NULL;
 
   /* Find beginning of last map */
   s_curr = CDR(s_stack_head);
@@ -992,7 +992,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_ove
 
   /* Tags! */
   s_tag = CAR(TAG(s_mapping_start));
-  tag = s_tag == R_NilValue ? NULL : CHAR(s_tag);
+  original_tag = tag = (s_tag == R_NilValue ? NULL : CHAR(s_tag));
   if (tag == NULL) {
     tag = "map";
   }
@@ -1074,7 +1074,7 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_ove
 
   if (coercion_err == 1) {
     if (Ryaml_error_msg[0] == 0) {
-      Ryaml_set_error_msg("Invalid tag: %s for map");
+      Ryaml_set_error_msg("Invalid tag: %s for map", original_tag);
     }
     return 1;
   }

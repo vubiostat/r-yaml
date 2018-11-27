@@ -627,3 +627,34 @@ test_override_merge_precedence <- function() {
   result <- yaml.load(doc, merge.precedence = "override")
   checkEquals(expected, result)
 }
+
+test_explicit_bool_tag_for_true_value <- function() {
+  doc <- "!!bool 'true'"
+  expected <- TRUE
+  result <- yaml.load(doc)
+  checkEquals(expected, result)
+}
+
+test_explicit_bool_tag_for_false_value <- function() {
+  doc <- "!!bool 'false'"
+  expected <- FALSE
+  result <- yaml.load(doc)
+  checkEquals(expected, result)
+}
+
+test_explicit_bool_tag_for_na_value <- function() {
+  doc <- "!!bool '.na'"
+  expected <- NA
+  result <- yaml.load(doc)
+  checkEquals(expected, result)
+}
+
+test_explicit_bool_tag_for_invalid_value <- function() {
+  doc <- "!!bool foo"
+  expected <- NA
+  warnings <- captureWarnings({
+    result <- yaml.load(doc)
+  })
+  checkEquals(expected, result)
+  checkEquals(c("NAs introduced by coercion: foo is not a recognized boolean value"), warnings)
+}

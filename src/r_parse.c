@@ -175,6 +175,7 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
 
   tag = (const char *)event->data.scalar.tag;
   value = (const char *)event->data.scalar.value;
+  len = event->data.scalar.length;
   if (tag == NULL || strcmp(tag, "!") == 0) {
     /* There's no tag! */
 
@@ -186,7 +187,6 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
         break;
       default:
         /* Try to tag it */
-        len = event->data.scalar.length;
         tag = Ryaml_find_implicit_tag(value, len);
     }
   }
@@ -279,6 +279,23 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
       }
 
       s_new_obj = ScalarReal(f);
+    }
+    else if (strcmp(tag, "bool") == 0) {
+      /* This would happen if someone explicitly specified a tag of 'bool' */
+      tag = Ryaml_find_implicit_tag(value, len);
+      if (strcmp(tag, "bool#yes") == 0) {
+        s_new_obj = ScalarLogical(TRUE);
+      }
+      else if (strcmp(tag, "bool#no") == 0) {
+        s_new_obj = ScalarLogical(FALSE);
+      }
+      else if (strcmp(tag, "bool#na") == 0) {
+        s_new_obj = ScalarLogical(NA_LOGICAL);
+      }
+      else {
+        warning("NAs introduced by coercion: %s is not a recognized boolean value", value);
+        s_new_obj = ScalarLogical(NA_LOGICAL);
+      }
     }
     else if (strcmp(tag, "bool#yes") == 0) {
       s_new_obj = ScalarLogical(TRUE);

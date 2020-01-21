@@ -1,5 +1,5 @@
 `write_yaml` <-
-function(x, file, fileEncoding = "UTF-8", ...) {
+function(x, file, fileEncoding = "UTF-8", delimiter = FALSE,...) {
   result <- as.yaml(x, ...)
 
   if (is.character(file)) {
@@ -18,6 +18,7 @@ function(x, file, fileEncoding = "UTF-8", ...) {
   if (!inherits(file, "connection")) {
     stop("'file' must be a character string or connection")
   }
-
+  if (delimiter) cat ("---", file=file, sep="\n")
   cat(result, file=file, sep="")
+  if (delimiter) cat ("---", file=file, sep="\n")
 }

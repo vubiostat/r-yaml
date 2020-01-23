@@ -118,6 +118,11 @@ check-description: VERSION DESCRIPTION
 tarball: yaml_$(VERSION).tar.gz check-changelog check-description
 	check_dir=`mktemp -d`; echo Check directory: $$check_dir; R CMD check --as-cran -o "$$check_dir" yaml_$(VERSION).tar.gz
 
+check-revdeps: yaml_$(VERSION).tar.gz check-changelog check-description
+	mkdir -p check
+	cp yaml_$(VERSION).tar.gz check
+	R --vanilla -e "options(repos = 'https://cloud.r-project.org'); checkResult <- tools::check_packages_in_dir('check', reverse = TRUE); save(checkResult, file='check/checkResult.RData')"
+
 yaml_$(VERSION).tar.gz: build/yaml
 	R CMD build build/yaml
 

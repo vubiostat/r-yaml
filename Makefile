@@ -97,6 +97,9 @@ check: build/yaml
 gct-check: build/yaml
 	R CMD check --use-gct -o `mktemp -d` build/yaml
 
+valgrind-check: build/yaml
+	R CMD check --use-valgrind -o `mktemp -d` build/yaml
+
 test: build/lib/yaml
 	R --vanilla -e $(test_code)
 

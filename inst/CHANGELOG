@@ -1,3 +1,10 @@
+v2.2.1
+  - add merge.precedence option to yaml.load
+  - fix improper handling of explicit '!bool' tag (reported by Luke Goodsell)
+  - fix memory issue flagged by valgrind
+  - update LibYAML to 0.2.2
+  - fix some -Wall warnings to appease CRAN
+
 v2.2.0
   - add custom handlers to as.yaml
   - add processing of 'verbatim' class in as.yaml

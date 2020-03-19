@@ -6,7 +6,8 @@ Version: 2.2.1
 Suggests: RUnit
 Author: Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
   Zhuoer Dong [ctb], Hadley Wickham [ctb], Jeffrey Horner [ctb], reikoch [ctb],
-  Will Beasley [ctb], Brendan O'Connor [ctb], Gregory R. Warnes [ctb]
+  Will Beasley [ctb], Brendan O'Connor [ctb], Gregory R. Warnes [ctb],
+  Michael Quinn [ctb]
 Maintainer: Jeremy Stephens <jeremy.f.stephens@vumc.org>
 License: BSD_3_clause + file LICENSE
 Description: Implements the 'libyaml' 'YAML' 1.1 parser and emitter

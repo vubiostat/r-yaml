@@ -22,6 +22,8 @@ Ryaml_set_error_msg(const char *format, ...)
 
   va_start(args, format);
   result = vsnprintf(Ryaml_error_msg, ERROR_MSG_SIZE, format, args);
+  va_end(args);
+
   if (result >= ERROR_MSG_SIZE) {
     warning("an error occurred, but the message was too long to format properly");
 

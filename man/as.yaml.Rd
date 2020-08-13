@@ -79,7 +79,7 @@
 
   # custom handler
   as.yaml(Sys.time(), handlers = list(
-    POSIXct = function(x) format(Sys.time(), "\%Y-\%m-\%d")
+    POSIXct = function(x) format(x, "\%Y-\%m-\%d")
   ))
 
   # custom handler with verbatim output to change how logical vectors are

@@ -3,5 +3,10 @@ build
 Session.vim
 yaml_*.tar.gz
 .Renv-version
+*.Rproj
 *.o
 *.so
+*.dll
+.Rproj.user
+.Rbuildignore
+.Rhistory

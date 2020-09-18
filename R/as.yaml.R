@@ -3,10 +3,11 @@ function(x, line.sep = c('\n', '\r\n', '\r'), indent = 2, omap = FALSE,
          column.major = TRUE, unicode = TRUE, precision = getOption('digits'),
          indent.mapping.sequence = FALSE, handlers = NULL) {
 
+  x <- as.utf8(x)
   line.sep <- match.arg(line.sep)
   res <- .Call(C_serialize_to_yaml, x, line.sep, indent, omap, column.major,
                unicode, precision, indent.mapping.sequence, handlers,
-               PACKAGE="yaml")
+               PACKAGE = "yaml")
   Encoding(res) <- "UTF-8"
   res
 }

@@ -148,12 +148,41 @@ Example of handler usage:
 
 Handlers are passed to `yaml.load` through the `handlers` argument. The
 `handlers` argument must be a named list of functions, where each name is the
-YAML type that you want to be handled by your function. The functions you
-provide must accept one argument and must return an R object.
+[YAML type](https://yaml.org/type/) that you want to be handled by your
+function. The functions you provide must accept one argument and must return an
+R object.
 
 Handler functions will be passed a string or list, depending on the original
 type of the object. In the example above, `integer.handler` was passed the
 string "123".
+
+##### Integer handlers
+
+Note that YAML parses any numeric representations which do not have decimal
+places as `int` types, whereas R only stores objects as `integer` if they have
+a terminal `L`, so `storage.mode(1)` is `"double"`, while storage.mode(1L)` is
+`"integer"`. YAML will parse `1` as `int`, and `1L` as `str`. To parse these as
+`double` and `integer` values in R, you'll also need custom handlers.
+
+The following handler converts YAML's default `int` to `numeric`:
+
+    integer.handler <- function(x) { as.double (x) }
+    yaml.load("1", handlers = list(int = integer.handler)) # The YAML type is "int"
+
+And the following handler can be used to convert R `integer`-type
+representations with terminal "L" to the expected type, noting that these are
+identified by YAML as `str` (string) objects.
+
+    str.handler <- function(x) {
+      index <- as.integer(gregexpr("[0-9]", x)[[1]])
+      if (identical(index, seq_len(nchar(x) - 1)) &
+        substring(x, nchar(x), nchar(x)) == "L")
+        return(as.integer(substring(x, 1, nchar(x) - 1)))
+      else
+        return(x)
+    }
+    yaml.load("1L", handlers = list(str = str.handler, int = integer.handler))
+
 
 ##### Sequence handlers
 

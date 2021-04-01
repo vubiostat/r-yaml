@@ -33,6 +33,10 @@ function(file, fileEncoding = "UTF-8", text, error.label, ...) {
     stop("'file' must be a character string or connection")
   }
 
-  string <- paste(readLines(file), collapse="\n")
+  # Suppress warning about incomplete last line.
+  # Also suppresses warning about embedded nul.
+  # See r-lib/pkgdown issue #1419.
+
+  string <- paste(readLines(file, warn = FALSE), collapse="\n")
   yaml.load(string, error.label = error.label, ...)
 }

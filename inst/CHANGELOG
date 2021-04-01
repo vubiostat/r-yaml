@@ -1,3 +1,6 @@
+v2.2.1.99
+  - suppress warning if .yaml file does not end in LF.
+
 v2.2.1
   - add merge.precedence option to yaml.load
   - fix improper handling of explicit '!bool' tag (reported by Luke Goodsell)

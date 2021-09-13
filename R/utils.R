@@ -1,12 +1,14 @@
 `as.utf8` <-
 function(x) {
-  
   if (is.character(x)) {
-    enc2utf8(x)
+    coded <- enc2utf8(x)
+    attributes(coded) <- attributes(x)
+    coded
   } else if (is.list(x)) {
-    lapply(x, as.utf8)
+    coded <- lapply(x, as.utf8)
+    attributes(coded) <- attributes(x)
+    coded
   } else {
     x
   }
-  
 }

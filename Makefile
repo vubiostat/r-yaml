@@ -35,6 +35,7 @@ SRCS = src/yaml_private.h \
 	LICENSE \
 	R/yaml.load.R \
 	R/zzz.R \
+	R/utils.R \
 	R/yaml.load_file.R \
 	R/as.yaml.R \
 	R/read_yaml.R \
@@ -77,6 +78,7 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/LICENSE \
 	build/yaml/R/yaml.load.R \
 	build/yaml/R/zzz.R \
+	build/yaml/R/utils.R \
 	build/yaml/R/yaml.load_file.R \
 	build/yaml/R/as.yaml.R \
 	build/yaml/R/read_yaml.R \

@@ -444,5 +444,12 @@ test_custom_tag_for_unnamed_list <- function() {
 test_latin1_strings <- function() {
   data <- list(description = enc2native("á"))
   result <- as.yaml(data)
-  checkEquals(result, enc2utf8("description: á\n"))
+  checkEquals(result, "description: á\n")
 }
+
+test_unknown_strings <- function() {
+  data <- list(x="\x9b")
+  result <- as.yaml(data)
+  checkEquals(result, "x: <9b>\n")
+}
+

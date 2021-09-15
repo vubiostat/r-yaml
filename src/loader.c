@@ -68,8 +68,8 @@ yaml_parser_load(yaml_parser_t *parser, yaml_document_t *document)
 {
     yaml_event_t event;
 
-    assert(parser);     /* Non-NULL parser object is expected. */
-    assert(document);   /* Non-NULL document object is expected. */
+    assert(parser && "Non-NULL parser object is expected.");
+    assert(document && "Non-NULL document object is expected.");
 
     memset(document, 0, sizeof(yaml_document_t));
     if (!STACK_INIT(parser, document->nodes, yaml_node_t*))
@@ -77,8 +77,8 @@ yaml_parser_load(yaml_parser_t *parser, yaml_document_t *document)
 
     if (!parser->stream_start_produced) {
         if (!yaml_parser_parse(parser, &event)) goto error;
-        assert(event.type == YAML_STREAM_START_EVENT);
-                        /* STREAM-START is expected. */
+        assert(event.type == YAML_STREAM_START_EVENT 
+               && "STREAM-START is expected.");
     }
 
     if (parser->stream_end_produced) {
@@ -166,8 +166,8 @@ yaml_parser_load_document(yaml_parser_t *parser, yaml_event_t *first_event)
 {
     yaml_event_t event;
 
-    assert(first_event->type == YAML_DOCUMENT_START_EVENT);
-                        /* DOCUMENT-START is expected. */
+    assert(first_event->type == YAML_DOCUMENT_START_EVENT
+           && "DOCUMENT-START is expected.");
 
     parser->document->version_directive
         = first_event->data.document_start.version_directive;
@@ -184,8 +184,8 @@ yaml_parser_load_document(yaml_parser_t *parser, yaml_event_t *first_event)
     if (!yaml_parser_load_node(parser, &event)) return 0;
 
     if (!yaml_parser_parse(parser, &event)) return 0;
-    assert(event.type == YAML_DOCUMENT_END_EVENT);
-                        /* DOCUMENT-END is expected. */
+    assert(event.type == YAML_DOCUMENT_END_EVENT
+           && "DOCUMENT-END is expected.");
 
     parser->document->end_implicit = event.data.document_end.implicit;
     parser->document->end_mark = event.end_mark;
@@ -210,7 +210,7 @@ yaml_parser_load_node(yaml_parser_t *parser, yaml_event_t *first_event)
         case YAML_MAPPING_START_EVENT:
             return yaml_parser_load_mapping(parser, first_event);
         default:
-            assert(0);  /* Could not happen. */
+            assert(0 && "Could not happen.");
             return 0;
     }
 

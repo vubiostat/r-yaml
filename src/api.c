@@ -176,7 +176,7 @@ yaml_queue_extend(void **start, void **head, void **tail, void **end)
 YAML_DECLARE(int)
 yaml_parser_initialize(yaml_parser_t *parser)
 {
-    assert(parser);     /* Non-NULL parser object expected. */
+    assert(parser && "Non-NULL parser object expected.");
 
     memset(parser, 0, sizeof(yaml_parser_t));
     if (!BUFFER_INIT(parser, parser->raw_buffer, INPUT_RAW_BUFFER_SIZE))
@@ -219,7 +219,7 @@ error:
 YAML_DECLARE(void)
 yaml_parser_delete(yaml_parser_t *parser)
 {
-    assert(parser); /* Non-NULL parser object expected. */
+    assert(parser && "Non-NULL parser object expected.");
 
     BUFFER_DEL(parser, parser->raw_buffer);
     BUFFER_DEL(parser, parser->buffer);
@@ -289,9 +289,9 @@ YAML_DECLARE(void)
 yaml_parser_set_input_string(yaml_parser_t *parser,
         const unsigned char *input, size_t size)
 {
-    assert(parser); /* Non-NULL parser object expected. */
-    assert(!parser->read_handler);  /* You can set the source only once. */
-    assert(input);  /* Non-NULL input string expected. */
+    assert(parser && "Non-NULL parser object expected.");
+    assert(!parser->read_handler && "You can set the source only once.");
+    assert(input && "Non-NULL input string expected.");
 
     parser->read_handler = yaml_string_read_handler;
     parser->read_handler_data = parser;
@@ -308,9 +308,9 @@ yaml_parser_set_input_string(yaml_parser_t *parser,
 YAML_DECLARE(void)
 yaml_parser_set_input_file(yaml_parser_t *parser, FILE *file)
 {
-    assert(parser); /* Non-NULL parser object expected. */
-    assert(!parser->read_handler);  /* You can set the source only once. */
-    assert(file);   /* Non-NULL file object expected. */
+    assert(parser && "Non-NULL parser object expected.");
+    assert(!parser->read_handler && "You can set the source only once.");
+    assert(file && "Non-NULL file object expected.");
 
     parser->read_handler = yaml_file_read_handler;
     parser->read_handler_data = parser;
@@ -326,9 +326,9 @@ YAML_DECLARE(void)
 yaml_parser_set_input(yaml_parser_t *parser,
         yaml_read_handler_t *handler, void *data)
 {
-    assert(parser); /* Non-NULL parser object expected. */
-    assert(!parser->read_handler);  /* You can set the source only once. */
-    assert(handler);    /* Non-NULL read handler expected. */
+    assert(parser && "Non-NULL parser object expected.");
+    assert(!parser->read_handler && "You can set the source only once.");
+    assert(handler && "Non-NULL read handler expected.");
 
     parser->read_handler = handler;
     parser->read_handler_data = data;
@@ -341,8 +341,8 @@ yaml_parser_set_input(yaml_parser_t *parser,
 YAML_DECLARE(void)
 yaml_parser_set_encoding(yaml_parser_t *parser, yaml_encoding_t encoding)
 {
-    assert(parser); /* Non-NULL parser object expected. */
-    assert(!parser->encoding); /* Encoding is already set or detected. */
+    assert(parser && "Non-NULL parser object expected.");
+    assert(!parser->encoding && "Encoding is already set or detected.");
 
     parser->encoding = encoding;
 }
@@ -354,7 +354,7 @@ yaml_parser_set_encoding(yaml_parser_t *parser, yaml_encoding_t encoding)
 YAML_DECLARE(int)
 yaml_emitter_initialize(yaml_emitter_t *emitter)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     memset(emitter, 0, sizeof(yaml_emitter_t));
     if (!BUFFER_INIT(emitter, emitter->buffer, OUTPUT_BUFFER_SIZE))
@@ -391,7 +391,7 @@ error:
 YAML_DECLARE(void)
 yaml_emitter_delete(yaml_emitter_t *emitter)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     BUFFER_DEL(emitter, emitter->buffer);
     BUFFER_DEL(emitter, emitter->raw_buffer);
@@ -457,9 +457,9 @@ YAML_DECLARE(void)
 yaml_emitter_set_output_string(yaml_emitter_t *emitter,
         unsigned char *output, size_t size, size_t *size_written)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
-    assert(!emitter->write_handler);    /* You can set the output only once. */
-    assert(output);     /* Non-NULL output string expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
+    assert(!emitter->write_handler && "You can set the output only once.");
+    assert(output && "Non-NULL output string expected.");
 
     emitter->write_handler = yaml_string_write_handler;
     emitter->write_handler_data = emitter;
@@ -477,9 +477,9 @@ yaml_emitter_set_output_string(yaml_emitter_t *emitter,
 YAML_DECLARE(void)
 yaml_emitter_set_output_file(yaml_emitter_t *emitter, FILE *file)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
-    assert(!emitter->write_handler);    /* You can set the output only once. */
-    assert(file);       /* Non-NULL file object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
+    assert(!emitter->write_handler && "You can set the output only once.");
+    assert(file && "Non-NULL file object expected.");
 
     emitter->write_handler = yaml_file_write_handler;
     emitter->write_handler_data = emitter;
@@ -495,9 +495,9 @@ YAML_DECLARE(void)
 yaml_emitter_set_output(yaml_emitter_t *emitter,
         yaml_write_handler_t *handler, void *data)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
-    assert(!emitter->write_handler);    /* You can set the output only once. */
-    assert(handler);    /* Non-NULL handler object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
+    assert(!emitter->write_handler && "You can set the output only once.");
+    assert(handler && "Non-NULL handler object expected.");
 
     emitter->write_handler = handler;
     emitter->write_handler_data = data;
@@ -510,8 +510,8 @@ yaml_emitter_set_output(yaml_emitter_t *emitter,
 YAML_DECLARE(void)
 yaml_emitter_set_encoding(yaml_emitter_t *emitter, yaml_encoding_t encoding)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
-    assert(!emitter->encoding);     /* You can set encoding only once. */
+    assert(emitter && "Non-NULL emitter object expected.");
+    assert(!emitter->encoding && "You can set encoding only once.");
 
     emitter->encoding = encoding;
 }
@@ -523,7 +523,7 @@ yaml_emitter_set_encoding(yaml_emitter_t *emitter, yaml_encoding_t encoding)
 YAML_DECLARE(void)
 yaml_emitter_set_canonical(yaml_emitter_t *emitter, int canonical)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     emitter->canonical = (canonical != 0);
 }
@@ -535,7 +535,7 @@ yaml_emitter_set_canonical(yaml_emitter_t *emitter, int canonical)
 YAML_DECLARE(void)
 yaml_emitter_set_indent(yaml_emitter_t *emitter, int indent)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     emitter->best_indent = (1 < indent && indent < 10) ? indent : 2;
 }
@@ -547,7 +547,7 @@ yaml_emitter_set_indent(yaml_emitter_t *emitter, int indent)
 YAML_DECLARE(void)
 yaml_emitter_set_indent_mapping_sequence(yaml_emitter_t *emitter, int indent_mapping_sequence)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     emitter->indent_mapping_sequence = indent_mapping_sequence;
 }
@@ -559,7 +559,7 @@ yaml_emitter_set_indent_mapping_sequence(yaml_emitter_t *emitter, int indent_map
 YAML_DECLARE(void)
 yaml_emitter_set_width(yaml_emitter_t *emitter, int width)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     emitter->best_width = (width >= 0) ? width : -1;
 }
@@ -571,7 +571,7 @@ yaml_emitter_set_width(yaml_emitter_t *emitter, int width)
 YAML_DECLARE(void)
 yaml_emitter_set_unicode(yaml_emitter_t *emitter, int unicode)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     emitter->unicode = (unicode != 0);
 }
@@ -583,7 +583,7 @@ yaml_emitter_set_unicode(yaml_emitter_t *emitter, int unicode)
 YAML_DECLARE(void)
 yaml_emitter_set_break(yaml_emitter_t *emitter, yaml_break_t line_break)
 {
-    assert(emitter);    /* Non-NULL emitter object expected. */
+    assert(emitter && "Non-NULL emitter object expected.");
 
     emitter->line_break = line_break;
 }
@@ -595,7 +595,7 @@ yaml_emitter_set_break(yaml_emitter_t *emitter, yaml_break_t line_break)
 YAML_DECLARE(void)
 yaml_token_delete(yaml_token_t *token)
 {
-    assert(token);  /* Non-NULL token object expected. */
+    assert(token && "Non-NULL token object expected.");
 
     switch (token->type)
     {
@@ -683,7 +683,7 @@ yaml_stream_start_event_initialize(yaml_event_t *event,
 {
     yaml_mark_t mark = { 0, 0, 0 };
 
-    assert(event);  /* Non-NULL event object is expected. */
+    assert(event && "Non-NULL event object is expected.");
 
     STREAM_START_EVENT_INIT(*event, encoding, mark, mark);
 
@@ -699,7 +699,7 @@ yaml_stream_end_event_initialize(yaml_event_t *event)
 {
     yaml_mark_t mark = { 0, 0, 0 };
 
-    assert(event);  /* Non-NULL event object is expected. */
+    assert(event && "Non-NULL event object is expected.");
 
     STREAM_END_EVENT_INIT(*event, mark, mark);
 
@@ -729,10 +729,9 @@ yaml_document_start_event_initialize(yaml_event_t *event,
     } tag_directives_copy = { NULL, NULL, NULL };
     yaml_tag_directive_t value = { NULL, NULL };
 
-    assert(event);          /* Non-NULL event object is expected. */
-    assert((tag_directives_start && tag_directives_end) ||
-            (tag_directives_start == tag_directives_end));
-                            /* Valid tag directives are expected. */
+    assert(event && "Non-NULL event object is expected.");
+    assert(((tag_directives_start && tag_directives_end) ||
+            (tag_directives_start == tag_directives_end) ) && "Valid tag directives are expected.");
 
     if (version_directive) {
         version_directive_copy = YAML_MALLOC_STATIC(yaml_version_directive_t);
@@ -747,8 +746,8 @@ yaml_document_start_event_initialize(yaml_event_t *event,
             goto error;
         for (tag_directive = tag_directives_start;
                 tag_directive != tag_directives_end; tag_directive ++) {
-            assert(tag_directive->handle);
-            assert(tag_directive->prefix);
+            assert(tag_directive->handle && "Non-NULL tag directive handle expected");
+            assert(tag_directive->prefix && "Non-NULL tag directive prefix expected");
             if (!yaml_check_utf8(tag_directive->handle,
                         strlen((char *)tag_directive->handle)))
                 goto error;
@@ -794,7 +793,7 @@ yaml_document_end_event_initialize(yaml_event_t *event, int implicit)
 {
     yaml_mark_t mark = { 0, 0, 0 };
 
-    assert(event);      /* Non-NULL emitter object is expected. */
+    assert(event && "Non-NULL emitter object is expected.");
 
     DOCUMENT_END_EVENT_INIT(*event, implicit, mark, mark);
 
@@ -811,8 +810,8 @@ yaml_alias_event_initialize(yaml_event_t *event, yaml_char_t *anchor)
     yaml_mark_t mark = { 0, 0, 0 };
     yaml_char_t *anchor_copy = NULL;
 
-    assert(event);      /* Non-NULL event object is expected. */
-    assert(anchor);     /* Non-NULL anchor is expected. */
+    assert(event && "Non-NULL event object is expected.");
+    assert(anchor && "Non-NULL anchor is expected.");
 
     if (!yaml_check_utf8(anchor, strlen((char *)anchor))) return 0;
 
@@ -841,8 +840,8 @@ yaml_scalar_event_initialize(yaml_event_t *event,
     yaml_char_t *tag_copy = NULL;
     yaml_char_t *value_copy = NULL;
 
-    assert(event);      /* Non-NULL event object is expected. */
-    assert(value);      /* Non-NULL anchor is expected. */
+    assert(event && "Non-NULL event object is expected.");
+    assert(value && "Non-NULL value is expected.");
 
     if (anchor) {
         if (!yaml_check_utf8(anchor, strlen((char *)anchor))) goto error;
@@ -892,7 +891,7 @@ yaml_sequence_start_event_initialize(yaml_event_t *event,
     yaml_char_t *anchor_copy = NULL;
     yaml_char_t *tag_copy = NULL;
 
-    assert(event);      /* Non-NULL event object is expected. */
+    assert(event && "Non-NULL event object is expected.");
 
     if (anchor) {
         if (!yaml_check_utf8(anchor, strlen((char *)anchor))) goto error;
@@ -927,7 +926,7 @@ yaml_sequence_end_event_initialize(yaml_event_t *event)
 {
     yaml_mark_t mark = { 0, 0, 0 };
 
-    assert(event);      /* Non-NULL event object is expected. */
+    assert(event && "Non-NULL event object is expected.");
 
     SEQUENCE_END_EVENT_INIT(*event, mark, mark);
 
@@ -947,7 +946,7 @@ yaml_mapping_start_event_initialize(yaml_event_t *event,
     yaml_char_t *anchor_copy = NULL;
     yaml_char_t *tag_copy = NULL;
 
-    assert(event);      /* Non-NULL event object is expected. */
+    assert(event && "Non-NULL event object is expected.");
 
     if (anchor) {
         if (!yaml_check_utf8(anchor, strlen((char *)anchor))) goto error;
@@ -982,7 +981,7 @@ yaml_mapping_end_event_initialize(yaml_event_t *event)
 {
     yaml_mark_t mark = { 0, 0, 0 };
 
-    assert(event);      /* Non-NULL event object is expected. */
+    assert(event && "Non-NULL event object is expected.");
 
     MAPPING_END_EVENT_INIT(*event, mark, mark);
 
@@ -998,7 +997,7 @@ yaml_event_delete(yaml_event_t *event)
 {
     yaml_tag_directive_t *tag_directive;
 
-    assert(event);  /* Non-NULL event object expected. */
+    assert(event && "Non-NULL event object expected.");
 
     switch (event->type)
     {
@@ -1068,10 +1067,10 @@ yaml_document_initialize(yaml_document_t *document,
     yaml_tag_directive_t value = { NULL, NULL };
     yaml_mark_t mark = { 0, 0, 0 };
 
-    assert(document);       /* Non-NULL document object is expected. */
-    assert((tag_directives_start && tag_directives_end) ||
-            (tag_directives_start == tag_directives_end));
-                            /* Valid tag directives are expected. */
+    assert(document && "Non-NULL document object is expected. ");
+    assert(((tag_directives_start && tag_directives_end) ||
+            (tag_directives_start == tag_directives_end)) &&
+             "Valid tag directives are expected.");
 
     if (!STACK_INIT(&context, nodes, yaml_node_t*)) goto error;
 
@@ -1088,8 +1087,8 @@ yaml_document_initialize(yaml_document_t *document,
             goto error;
         for (tag_directive = tag_directives_start;
                 tag_directive != tag_directives_end; tag_directive ++) {
-            assert(tag_directive->handle);
-            assert(tag_directive->prefix);
+            assert(tag_directive->handle && "A non-NULL tag directive handle is expected");
+            assert(tag_directive->prefix && "A non-NULL tag directive prefix is expected");
             if (!yaml_check_utf8(tag_directive->handle,
                         strlen((char *)tag_directive->handle)))
                 goto error;
@@ -1136,7 +1135,7 @@ yaml_document_delete(yaml_document_t *document)
 {
     yaml_tag_directive_t *tag_directive;
 
-    assert(document);   /* Non-NULL document object is expected. */
+    assert(document && "Non-NULL document object is expected.");
 
     while (!STACK_EMPTY(&context, document->nodes)) {
         yaml_node_t node = POP(&context, document->nodes);
@@ -1152,7 +1151,7 @@ yaml_document_delete(yaml_document_t *document)
                 STACK_DEL(&context, node.data.mapping.pairs);
                 break;
             default:
-                assert(0);  /* Should not happen. */
+                assert(0 && "Should not happen.");
         }
     }
     STACK_DEL(&context, document->nodes);
@@ -1176,7 +1175,7 @@ yaml_document_delete(yaml_document_t *document)
 YAML_DECLARE(yaml_node_t *)
 yaml_document_get_node(yaml_document_t *document, int index)
 {
-    assert(document);   /* Non-NULL document object is expected. */
+    assert(document && "Non-NULL document object is expected.");
 
     if (index > 0 && document->nodes.start + index <= document->nodes.top) {
         return document->nodes.start + index - 1;
@@ -1191,7 +1190,7 @@ yaml_document_get_node(yaml_document_t *document, int index)
 YAML_DECLARE(yaml_node_t *)
 yaml_document_get_root_node(yaml_document_t *document)
 {
-    assert(document);   /* Non-NULL document object is expected. */
+    assert(document && "Non-NULL document object is expected. ");
 
     if (document->nodes.top != document->nodes.start) {
         return document->nodes.start;
@@ -1216,8 +1215,8 @@ yaml_document_add_scalar(yaml_document_t *document,
     yaml_char_t *value_copy = NULL;
     yaml_node_t node;
 
-    assert(document);   /* Non-NULL document object is expected. */
-    assert(value);      /* Non-NULL value is expected. */
+    assert(document && "Non-NULL document object is expected.");
+    assert(value && "Non-NULL value is expected.");
 
     if (!tag) {
         tag = (yaml_char_t *)YAML_DEFAULT_SCALAR_TAG;
@@ -1269,7 +1268,7 @@ yaml_document_add_sequence(yaml_document_t *document,
     } items = { NULL, NULL, NULL };
     yaml_node_t node;
 
-    assert(document);   /* Non-NULL document object is expected. */
+    assert(document && "Non-NULL document object is expected.");
 
     if (!tag) {
         tag = (yaml_char_t *)YAML_DEFAULT_SEQUENCE_TAG;
@@ -1314,7 +1313,7 @@ yaml_document_add_mapping(yaml_document_t *document,
     } pairs = { NULL, NULL, NULL };
     yaml_node_t node;
 
-    assert(document);   /* Non-NULL document object is expected. */
+    assert(document && "Non-NULL document object is expected.");
 
     if (!tag) {
         tag = (yaml_char_t *)YAML_DEFAULT_MAPPING_TAG;
@@ -1351,14 +1350,15 @@ yaml_document_append_sequence_item(yaml_document_t *document,
         yaml_error_type_t error;
     } context;
 
-    assert(document);       /* Non-NULL document is required. */
+    assert(document && "Non-NULL document is required.");
     assert(sequence > 0
-            && document->nodes.start + sequence <= document->nodes.top);
-                            /* Valid sequence id is required. */
-    assert(document->nodes.start[sequence-1].type == YAML_SEQUENCE_NODE);
-                            /* A sequence node is required. */
-    assert(item > 0 && document->nodes.start + item <= document->nodes.top);
-                            /* Valid item id is required. */
+           && document->nodes.start + sequence <= document->nodes.top
+           && "Valid sequence id is required.");
+    assert(document->nodes.start[sequence-1].type == YAML_SEQUENCE_NODE
+           && "A sequence node is required.");
+    assert(item > 0
+           && document->nodes.start + item <= document->nodes.top
+           && "Valid item id is required.");
 
     if (!PUSH(&context,
                 document->nodes.start[sequence-1].data.sequence.items, item))
@@ -1381,16 +1381,18 @@ yaml_document_append_mapping_pair(yaml_document_t *document,
 
     yaml_node_pair_t pair;
 
-    assert(document);       /* Non-NULL document is required. */
+    assert(document && "Non-NULL document is required.");
     assert(mapping > 0
-            && document->nodes.start + mapping <= document->nodes.top);
-                            /* Valid mapping id is required. */
-    assert(document->nodes.start[mapping-1].type == YAML_MAPPING_NODE);
-                            /* A mapping node is required. */
-    assert(key > 0 && document->nodes.start + key <= document->nodes.top);
-                            /* Valid key id is required. */
-    assert(value > 0 && document->nodes.start + value <= document->nodes.top);
-                            /* Valid value id is required. */
+           && document->nodes.start + mapping <= document->nodes.top
+           && "Valid mapping id is required.");
+    assert(document->nodes.start[mapping-1].type == YAML_MAPPING_NODE
+           && "A mapping node is required.");
+    assert(key > 0
+           && document->nodes.start + key <= document->nodes.top
+           && "Valid key id is required.");
+    assert(value > 0
+           && document->nodes.start + value <= document->nodes.top
+           && "Valid value id is required.");
 
     pair.key = key;
     pair.value = value;

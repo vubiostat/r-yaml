@@ -358,6 +358,19 @@ as.yaml(c(TRUE, FALSE), handlers = list(
 ))
 ```
 
+##### Quoted Strings
+
+There are times you might need to ensure a string scalar is quoted.  Apply a
+non-null attribute of "quoted" to the string you need quoted and it will come
+out with double quotes around it.
+
+```r
+port_def <- "80:80"
+attr(port_def, "quoted") <- TRUE
+x <- list(ports = list(port_def))
+as.yaml(x)
+```
+
 ##### Custom tags
 
 You can specify YAML tags for R objects by setting the `'tag'` attribute

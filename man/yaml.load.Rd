@@ -84,7 +84,7 @@
 \references{
   YAML: http://yaml.org
 
-  libyaml: http://pyyaml.org/wiki/LibYAML
+  libyaml: https://pyyaml.org/wiki/LibYAML
 
   YAML merge specification: http://yaml.org/type/merge.html
 }

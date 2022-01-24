@@ -40,7 +40,7 @@
 \references{
   YAML: http://yaml.org
 
-  libyaml: http://pyyaml.org/wiki/LibYAML
+  libyaml: https://pyyaml.org/wiki/LibYAML
 }
 \author{Jeremy Stephens <jeremy.f.stephens@vumc.org>}
 \seealso{\code{\link{yaml.load}}, \code{\link{write_yaml}}, \code{\link{yaml.load_file}}}

@@ -11,6 +11,6 @@ Author: Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
 Maintainer: Shawn Garbett <shawn.garbett@vumc.org>
 License: BSD_3_clause + file LICENSE
 Description: Implements the 'libyaml' 'YAML' 1.1 parser and emitter
-  (<http://pyyaml.org/wiki/LibYAML>) for R.
+  (<https://pyyaml.org/wiki/LibYAML>) for R.
 URL: https://github.com/vubiostat/r-yaml/
 BugReports: https://github.com/vubiostat/r-yaml/issues

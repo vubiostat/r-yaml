@@ -3,7 +3,7 @@ R YAML package
 ==============
 
 The R [YAML](http://yaml.org) package implements the
-[libyaml](http://pyyaml.org/wiki/LibYAML) YAML parser and emitter for R.
+[libyaml](https://pyyaml.org/wiki/LibYAML) YAML parser and emitter for R.
 
 ## Table of Contents
 

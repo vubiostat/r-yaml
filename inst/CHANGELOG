@@ -1,3 +1,7 @@
+v2.2.2
+  - change maintainer from Jeremy Stephens to Shawn Garbett
+  - move Git repository to https://github.com/vubiostat/r-yaml
+
 v2.2.1
   - add merge.precedence option to yaml.load
   - fix improper handling of explicit '!bool' tag (reported by Luke Goodsell)

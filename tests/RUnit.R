@@ -40,7 +40,9 @@ checkNamedListEquals <- function(x, y) {
 testSuite <- defineTestSuite(name = "yaml tests",
                              dirs = system.file("tests", package = "yaml"),
                              testFileRegexp = "^test_.+",
-                             testFuncRegexp = "^test_.+")
+                             testFuncRegexp = "^test_.+",
+                             rngKind = 'Mersenne-Twister',
+                             rngNormalKind = 'Inversion')
 
 tests <- runTestSuite(testSuite)
 

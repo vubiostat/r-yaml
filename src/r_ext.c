@@ -257,3 +257,12 @@ void R_init_yaml(DllInfo *dll) {
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);
 }
+
+/*      .;   ;.
+ *     / |   | \
+ *    |  |   |  |
+ *   .-----------.
+ *  '             '
+ *  |             |
+ *  '============='  viking was here <3
+ */

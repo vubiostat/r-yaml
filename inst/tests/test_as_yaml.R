@@ -446,5 +446,6 @@ test_quotes_for_string <- function() {
   attr(port_def, "quoted") <- TRUE
   x <- list(ports = list(port_def))
   result <- as.yaml(x)
+  expected <- "ports:\n- \"80:80\"\n"
   checkEquals(expected, result)
 }

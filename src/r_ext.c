@@ -2,6 +2,7 @@
 
 SEXP Ryaml_KeysSymbol = NULL;
 SEXP Ryaml_TagSymbol = NULL;
+SEXP Ryaml_QuotedSymbol = NULL;
 SEXP Ryaml_IdenticalFunc = NULL;
 SEXP Ryaml_FormatFunc = NULL;
 SEXP Ryaml_PasteFunc = NULL;
@@ -243,6 +244,7 @@ R_CallMethodDef callMethods[] = {
 void R_init_yaml(DllInfo *dll) {
   Ryaml_KeysSymbol = install("keys");
   Ryaml_TagSymbol = install("tag");
+  Ryaml_QuotedSymbol = install("quoted");
   Ryaml_CollapseSymbol = install("collapse");
   Ryaml_IdenticalFunc = findFun(install("identical"), R_GlobalEnv);
   Ryaml_FormatFunc = findFun(install("format"), R_GlobalEnv);

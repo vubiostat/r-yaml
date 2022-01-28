@@ -43,6 +43,9 @@
   document, but you can emit strings that would otherwise be quoted.  This is
   useful for changing how logical vectors are emitted (see below for example).
 
+  Character vectors that have an attribute of \sQuote{quoted} will be wrapped
+  in double quotes (see below for example).
+
   You can specify YAML tags for R objects by setting the \sQuote{tag} attribute
   to a character vector of length 1.  If you set a tag for a vector, the tag
   will be applied to the YAML sequence as a whole, unless the vector has only 1
@@ -91,6 +94,12 @@
       return(result)
     }
   ))
+
+  # force quotes around a string
+  port_def <- "80:80"
+  attr(port_def, "quoted") <- TRUE
+  x <- list(ports = list(port_def))
+  as.yaml(x)
 
   # custom tag for scalar
   x <- "thing"

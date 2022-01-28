@@ -5,3 +5,6 @@ yaml_*.tar.gz
 .Renv-version
 *.o
 *.so
+.Rproj.user
+*.Rproj
+.Rbuildignore

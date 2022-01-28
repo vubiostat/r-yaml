@@ -1,6 +1,7 @@
 #include "r_ext.h"
 
 extern SEXP Ryaml_TagSymbol;
+extern SEXP Ryaml_QuotedSymbol;
 extern SEXP Ryaml_DeparseFunc;
 extern char Ryaml_error_msg[ERROR_MSG_SIZE];
 
@@ -353,8 +354,9 @@ emit_string(emitter, event, s_obj, tag, implicit_tag)
   char *tag;
   int implicit_tag;
 {
-  SEXP s_new_obj = NULL, s_chr = NULL;
-  int result = 0, i = 0, verbatim = 0;
+  SEXP s_new_obj = NULL, s_chr = NULL, quoted = NULL;
+  int result = 0, i = 0, verbatim = 0, quote_it = 0;
+  yaml_scalar_style_t scalar_style = YAML_PLAIN_SCALAR_STYLE;
 
   verbatim = Ryaml_has_class(s_obj, "verbatim");
   if (!verbatim) {
@@ -364,12 +366,20 @@ emit_string(emitter, event, s_obj, tag, implicit_tag)
     s_obj = s_new_obj;
   }
 
+  quoted = getAttrib(s_obj, Ryaml_QuotedSymbol);
+  if (quoted != R_NilValue) {
+    scalar_style = YAML_DOUBLE_QUOTED_SCALAR_STYLE;
+    quote_it = 1;
+  }
+
   PROTECT(s_obj);
   result = 0;
   for (i = 0; i < length(s_obj); i++) {
     PROTECT(s_chr = STRING_ELT(s_obj, i));
-    result = emit_char(emitter, event, s_chr, tag, implicit_tag,
-        verbatim ? YAML_PLAIN_SCALAR_STYLE : Ryaml_string_style(s_chr));
+    if (!verbatim && !quote_it) {
+      scalar_style = Ryaml_string_style(s_chr);
+    }
+    result = emit_char(emitter, event, s_chr, tag, implicit_tag, scalar_style);
     UNPROTECT(1); /* s_chr */
 
     if (!result) {

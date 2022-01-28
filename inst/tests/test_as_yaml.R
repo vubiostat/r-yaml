@@ -440,3 +440,12 @@ test_custom_tag_for_unnamed_list <- function() {
   result <- as.yaml(x)
   checkEquals(expected, result)
 }
+
+test_quotes_for_string <- function() {
+  port_def <- "80:80"
+  attr(port_def, "quoted") <- TRUE
+  x <- list(ports = list(port_def))
+  result <- as.yaml(x)
+  expected <- "ports:\n- \"80:80\"\n"
+  checkEquals(expected, result)
+}

@@ -24,8 +24,8 @@
  */
 
 #define PUT_BREAK(emitter)                                                      \
-    (FLUSH(emitter) ?                                                           \
-        ((emitter->line_break == YAML_CR_BREAK ?                                \
+    (FLUSH(emitter)                                                             \
+     && ((emitter->line_break == YAML_CR_BREAK ?                                \
              (*(emitter->buffer.pointer++) = (yaml_char_t) '\r') :              \
           emitter->line_break == YAML_LN_BREAK ?                                \
              (*(emitter->buffer.pointer++) = (yaml_char_t) '\n') :              \
@@ -34,7 +34,7 @@
               *(emitter->buffer.pointer++) = (yaml_char_t) '\n') : 0),          \
          emitter->column = 0,                                                   \
          emitter->line ++,                                                      \
-         1) : 0)
+         1))
 
 /*
  * Copy a character from a string into buffer.
@@ -495,6 +495,7 @@ static int
 yaml_emitter_emit_stream_start(yaml_emitter_t *emitter,
         yaml_event_t *event)
 {
+    emitter->open_ended = 0;
     if (event->type == YAML_STREAM_START_EVENT)
     {
         if (!emitter->encoding) {
@@ -597,13 +598,20 @@ yaml_emitter_emit_document_start(yaml_emitter_t *emitter,
             if (!yaml_emitter_write_indent(emitter))
                 return 0;
         }
+        emitter->open_ended = 0;
 
         if (event->data.document_start.version_directive) {
             implicit = 0;
             if (!yaml_emitter_write_indicator(emitter, "%YAML", 1, 0, 0))
                 return 0;
-            if (!yaml_emitter_write_indicator(emitter, "1.1", 1, 0, 0))
-                return 0;
+            if (event->data.document_start.version_directive->minor == 1) {
+                if (!yaml_emitter_write_indicator(emitter, "1.1", 1, 0, 0))
+                    return 0;
+            }
+            else {
+                if (!yaml_emitter_write_indicator(emitter, "1.2", 1, 0, 0))
+                    return 0;
+            }
             if (!yaml_emitter_write_indent(emitter))
                 return 0;
         }
@@ -644,12 +652,25 @@ yaml_emitter_emit_document_start(yaml_emitter_t *emitter,
 
         emitter->state = YAML_EMIT_DOCUMENT_CONTENT_STATE;
 
+        emitter->open_ended = 0;
         return 1;
     }
 
     else if (event->type == YAML_STREAM_END_EVENT)
     {
 
+        /**
+         * This can happen if a block scalar with trailing empty lines
+         * is at the end of the stream
+         */
+        if (emitter->open_ended == 2)
+        {
+            if (!yaml_emitter_write_indicator(emitter, "...", 1, 0, 0))
+                return 0;
+            emitter->open_ended = 0;
+            if (!yaml_emitter_write_indent(emitter))
+                return 0;
+        }
         if (!yaml_emitter_flush(emitter))
             return 0;
 
@@ -691,9 +712,12 @@ yaml_emitter_emit_document_end(yaml_emitter_t *emitter,
         if (!event->data.document_end.implicit) {
             if (!yaml_emitter_write_indicator(emitter, "...", 1, 0, 0))
                 return 0;
+            emitter->open_ended = 0;
             if (!yaml_emitter_write_indent(emitter))
                 return 0;
         }
+        else if (!emitter->open_ended)
+            emitter->open_ended = 1;
         if (!yaml_emitter_flush(emitter))
             return 0;
 
@@ -1001,6 +1025,8 @@ yaml_emitter_emit_alias(yaml_emitter_t *emitter, SHIM(yaml_event_t *event))
 {
     if (!yaml_emitter_process_anchor(emitter))
         return 0;
+    if (emitter->simple_key_context)
+        if (!PUT(emitter, ' ')) return 0;
     emitter->state = POP(emitter, emitter->states);
 
     return 1;
@@ -1229,7 +1255,7 @@ yaml_emitter_select_scalar_style(yaml_emitter_t *emitter, yaml_event_t *event)
 }
 
 /*
- * Write an achor.
+ * Write an anchor.
  */
 
 static int
@@ -1328,7 +1354,10 @@ static int
 yaml_emitter_analyze_version_directive(yaml_emitter_t *emitter,
         yaml_version_directive_t version_directive)
 {
-    if (version_directive.major != 1 || version_directive.minor != 1) {
+    if (version_directive.major != 1 || (
+        version_directive.minor != 1
+        && version_directive.minor != 2
+        )) {
         return yaml_emitter_set_emitter_error(emitter,
                 "incompatible %YAML directive");
     }
@@ -1899,7 +1928,17 @@ yaml_emitter_write_plain_scalar(yaml_emitter_t *emitter,
 
     STRING_ASSIGN(string, value, length);
 
-    if (!emitter->whitespace) {
+    /**
+     * Avoid trailing spaces for empty values in block mode.
+     * In flow mode, we still want the space to prevent ambiguous things
+     * like {a:}.
+     * Currently, the emitter forbids any plain empty scalar in flow mode
+     * (e.g. it outputs {a: ''} instead), so emitter->flow_level will
+     * never be true here.
+     * But if the emitter is ever changed to allow emitting empty values,
+     * the check for flow_level is already here.
+     */
+    if (!emitter->whitespace && (length || emitter->flow_level)) {
         if (!PUT(emitter, ' ')) return 0;
     }
 
@@ -2205,7 +2244,7 @@ yaml_emitter_write_block_scalar_hints(yaml_emitter_t *emitter,
         else if (string.start == string.pointer)
         {
             chomp_hint = "+";
-            emitter->open_ended = 1;
+            emitter->open_ended = 2;
         }
         else
         {
@@ -2215,7 +2254,7 @@ yaml_emitter_write_block_scalar_hints(yaml_emitter_t *emitter,
             if (IS_BREAK(string))
             {
                 chomp_hint = "+";
-                emitter->open_ended = 1;
+                emitter->open_ended = 2;
             }
         }
     }

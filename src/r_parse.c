@@ -350,11 +350,12 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
 
           if (coercion_err) {
             Ryaml_set_error_msg("Could not evaluate expression: %s", CHAR(STRING_ELT(s_obj, 0)));
-          } else if (eval_warning) {
-            warning("Evaluating R expressions (!expr) will soon require explicit `eval.expr` option (see yaml.load help)");
-          }
+          } 
           UNPROTECT(2); /* s_expr, s_new_obj */
         }
+      }
+      else if (eval_warning) {
+        warning("Evaluating R expressions (!expr) requires explicit `eval.expr=TRUE` option (see yaml.load help)");
       }
     }
   }

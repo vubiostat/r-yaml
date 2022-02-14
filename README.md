@@ -434,6 +434,7 @@ during the CRAN submission process.
 
 ### Release Notes
 
+* 2.3.2 Removed some code that got revert in the libyaml 0.2.5 merge at 2.2.4 release
 * 2.3.1 Added omap support for output using proper tag.
 * 2.3.0 Made eval.expr default to FALSE
 * 2.2.4 Updated libyaml code from 0.2.5

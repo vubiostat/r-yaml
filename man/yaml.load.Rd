@@ -8,7 +8,7 @@
 }
 \usage{
   yaml.load(string, as.named.list = TRUE, handlers = NULL, error.label = NULL,
-            eval.expr = getOption("yaml.eval.expr", TRUE),
+            eval.expr = getOption("yaml.eval.expr", FALSE),
             merge.precedence = c("order", "override"), merge.warning = FALSE)
   yaml.load_file(input, error.label, ...)
 }
@@ -118,7 +118,7 @@
 
   # loading R expressions
   # NOTE: this will not be done by default in the near future
-  doc <- yaml.load("inc: !expr function(x) x + 1")
+  doc <- yaml.load("inc: !expr function(x) x + 1", eval.expr=TRUE)
   doc$inc(1)
 
   # adding a label to error messages

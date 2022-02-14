@@ -710,7 +710,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
       else if (Ryaml_is_named_list(s_obj)) {
         if (omap) {
           if (tag == NULL) {
-            tag = "!omap";
+            tag = "tag:yaml.org,2002:omap";
             implicit_tag = 0;
           }
 

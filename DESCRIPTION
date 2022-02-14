@@ -2,7 +2,7 @@ Package: yaml
 Type: Package
 Title: Methods to Convert R Data to YAML and Back
 Date: 2022-01-24
-Version: 2.3.0
+Version: 2.3.1
 Suggests: RUnit
 Author: Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
   Zhuoer Dong [ctb], Hadley Wickham [ctb], Jeffrey Horner [ctb], reikoch [ctb],

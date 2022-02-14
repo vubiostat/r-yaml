@@ -2,6 +2,8 @@
 R YAML package
 ==============
 
+[![](https://cranlogs.r-pkg.org/badges/yaml)](https://cran.r-project.org/package=yaml)
+
 The R [YAML](http://yaml.org) package implements the
 [libyaml](https://pyyaml.org/wiki/LibYAML) YAML parser and emitter for R.
 

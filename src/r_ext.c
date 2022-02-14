@@ -164,11 +164,14 @@ Ryaml_sanitize_handlers(s_handlers)
       /* Validate handler */
       s_handler = VECTOR_ELT(s_handlers, i);
 
-      if (TYPEOF(s_handler) != CLOSXP) {
+      if (TYPEOF(s_handler) != CLOSXP &&
+          TYPEOF(s_handler) != BUILTINSXP)
+      {
         warning("Your handler for type '%s' is not a function; using default", name);
         s_handler = R_NilValue;
       }
-      else if (strcmp(name, "merge") == 0 || strcmp(name, "default") == 0) {
+      else if (strcmp(name, "merge") == 0 || strcmp(name, "default") == 0)
+      {
         /* custom handlers for merge and default are illegal */
         warning("Custom handling for type '%s' is not allowed; handler ignored", name);
         s_handler = R_NilValue;

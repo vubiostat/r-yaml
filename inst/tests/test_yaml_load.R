@@ -659,3 +659,12 @@ test_explicit_bool_tag_for_invalid_value <- function() {
   checkEquals(expected, result)
   checkEquals(c("NAs introduced by coercion: foo is not a recognized boolean value"), warnings)
 }
+
+test_builtin_as_handler_works <- function() {
+  x <- "{a: 1, b: 2, c: 3}"
+  warnings <- captureWarnings({
+    results <- yaml.load(x, handlers=list(int=as.double))
+  })
+  checkEquals(class(results$a), "numeric")
+  checkEquals(0, length(warnings))
+}

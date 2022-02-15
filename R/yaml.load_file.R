@@ -1,5 +1,5 @@
 `yaml.load_file` <-
-function(input, error.label, ...) {
+function(input, error.label, readLines.warn=TRUE, ...) {
   if (missing(error.label)) {
     if (inherits(input, "connection")) {
       # try to guess filename
@@ -22,6 +22,6 @@ function(input, error.label, ...) {
   } else {
     con <- input
   }
-  yaml.load(readLines(con),
+  yaml.load(readLines(con, warn=readLines.warn),
             error.label = error.label, ...)
 }

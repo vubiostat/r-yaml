@@ -36,3 +36,27 @@ test_reading_a_complicated_document_works <- function() {
   )
   checkEquals(expected, x)
 }
+
+test_warns_about_incomplete_last_line <- function() 
+{
+  filename <- tempfile()
+  cat("foo: 123", file=filename, sep="")
+  foo <- file(filename, 'r')
+  checkWarning(x <- read_yaml(foo))
+  #, readLines.warn=FALSE)
+  close(foo)
+  unlink(filename)
+  checkEquals(123L, x$foo)
+}
+
+test_supress_warning_incomplete_last_line <- function() 
+{
+  filename <- tempfile()
+  cat("foo: 123", file=filename, sep="")
+  foo <- file(filename, 'r')
+  warnings <- captureWarnings(x <- read_yaml(foo, readLines.warn=FALSE))
+  close(foo)
+  unlink(filename)
+  checkEquals(123L, x$foo)
+  checkEquals(0, length(warnings))
+}

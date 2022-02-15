@@ -5,7 +5,7 @@
   Read a YAML document from a file and create an R object from it
 }
 \usage{
-  read_yaml(file, fileEncoding = "UTF-8", text, error.label, \dots)
+  read_yaml(file, fileEncoding = "UTF-8", text, error.label, readLines.warn=TRUE, \dots)
 }
 \arguments{
   \item{file}{either a character string naming a file or a \link{connection}
@@ -18,6 +18,7 @@
     Notice that a literal string can be used to include (small) data sets
     within R code.}
   \item{error.label}{a label to prepend to error messages (see Details).}
+  \item{readLines.warn}{logical (default:TRUE) suppress warnings from readLines used inside read_yaml}
   \item{...}{arguments to pass to \code{\link{yaml.load}}}
 }
 \details{

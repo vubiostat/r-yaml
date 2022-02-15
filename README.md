@@ -18,7 +18,6 @@ The R [YAML](http://yaml.org) package implements the
   * [as.yaml](#asyaml)
   * [write_yaml](#write_yaml)
 * [Development](#development)
-* [Release Notes](#release)
 
 ## What is YAML?
 
@@ -434,12 +433,4 @@ Warnings are displayed if the `DESCRIPTION` and `CHANGELOG` files are not
 properly updated when creating a tarball. This is to help prevent problems
 during the CRAN submission process.
 
-### Release Notes
-
-* 2.3.3 Fixed Bug #99, support for BUILTINSXP functions as handlers
-* 2.3.2 Removed some code that got revert in the libyaml 0.2.5 merge at 2.2.4 release
-* 2.3.1 Added omap support for output using proper tag.
-* 2.3.0 Made eval.expr default to FALSE
-* 2.2.4 Updated libyaml code from 0.2.5
-* 2.2.3 Added attribute quote support for strings #72 #109
 

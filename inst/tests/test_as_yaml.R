@@ -449,3 +449,18 @@ test_quotes_for_string <- function() {
   expected <- "ports:\n- \"80:80\"\n"
   checkEquals(expected, result)
 }
+
+
+# UTF-8 testing
+test_latin1_strings <- function() {
+ latin1_in <- list("\xAB", "\xBF")
+ as.yaml(latin1_in)
+}
+
+# This cause a full crash
+#
+# test_latin1_names <- function() {
+#  latin1_in <- list("a", "b")
+#  names(latin1_in) <- c("\xAB", "\xBF")
+#  as.yaml(latin1_in)
+# }

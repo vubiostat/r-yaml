@@ -60,3 +60,12 @@ test_supress_warning_incomplete_last_line <- function()
   checkEquals(123L, x$foo)
   checkEquals(0, length(warnings))
 }
+
+# Latin1 / UTF-8 tests
+test_reading_from_latin1_works <- function() {
+  filename <- tempfile()
+  cat("foo: \xab", file=filename, sep="\n")
+  x <- read_yaml(filename)
+  unlink(filename)
+  checkEquals("\xab", x$foo)
+}

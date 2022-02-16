@@ -81,3 +81,14 @@ test_merge_specification_example_with_merge_override <- function() {
   checkNamedListEquals(expected, x[[7]])
   checkNamedListEquals(expected, x[[8]])
 }
+
+# UTF-8 test
+
+test_reading_from_latin1_file_works <- function()
+{
+  filename <- tempfile()
+  cat("foo: \xab", file=filename, sep="\n")
+  x <- yaml.load_file(filename)
+  unlink(filename)
+  checkEquals("\xab", x$foo)
+}

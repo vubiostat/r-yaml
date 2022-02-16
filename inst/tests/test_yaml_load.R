@@ -668,3 +668,11 @@ test_builtin_as_handler_works <- function() {
   checkEquals(class(results$a), "numeric")
   checkEquals(0, length(warnings))
 }
+
+
+# UTF-8 test
+test_reading_from_latin1_file_works <- function()
+{
+  x <- yaml.load("foo: \xab")
+  checkEquals("\xab", x$foo)
+}

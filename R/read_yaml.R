@@ -41,7 +41,7 @@ function(file, fileEncoding = "UTF-8", text, error.label, readLines.warn=TRUE, .
     stop("'file' must be a character string or connection")
   }
 
-  string <- paste(readLines(file,warn=readLines.warn), collapse="\n")
+  string <- paste(readLines(file, warn=readLines.warn), collapse="\n")
   if(fileEncoding != "UTF-8") string <- enc2utf8(string)
   yaml.load(string, error.label = error.label, ...)
 }

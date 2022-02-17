@@ -84,11 +84,11 @@ test_merge_specification_example_with_merge_override <- function() {
 
 # UTF-8 test
 
-test_reading_from_latin1_file_works <- function()
+test_yaml_load_file_with_latin1_encoding <- function()
 {
   filename <- tempfile()
   cat("foo: \xab", file=filename, sep="\n")
-  x <- yaml.load_file(filename)
+  x <- yaml.load_file(filename, fileEncoding="latin1")
   unlink(filename)
-  checkEquals("\xab", x$foo)
+  checkEquals("\u00ab", x$foo)
 }

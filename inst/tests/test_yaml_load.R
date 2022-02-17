@@ -673,6 +673,8 @@ test_builtin_as_handler_works <- function() {
 # UTF-8 test
 test_reading_from_latin1_file_works <- function()
 {
-  x <- yaml.load("foo: \xab")
-  checkEquals("\xab", x$foo)
+  stuff <- "foo: \xab"
+  Encoding(stuff) <- "latin1"
+  x <- yaml.load(stuff)
+  checkEquals("\u00ab", x$foo)
 }

@@ -65,7 +65,7 @@ test_supress_warning_incomplete_last_line <- function()
 test_reading_from_latin1_works <- function() {
   filename <- tempfile()
   cat("foo: \xab", file=filename, sep="\n")
-  x <- read_yaml(filename)
+  x <- read_yaml(filename, fileEncoding = "latin1")
   unlink(filename)
-  checkEquals("\xab", x$foo)
+  checkEquals("\u00ab", x$foo)
 }

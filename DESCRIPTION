@@ -4,7 +4,7 @@ Title: Methods to Convert R Data to YAML and Back
 Date: 2022-01-24
 Version: 2.3.4
 Suggests: RUnit
-Author: Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
+Author: Shawn P Garbett [aut], Jeremy Stephens [aut, cre], Kirill Simonov [aut], Yihui Xie [ctb],
   Zhuoer Dong [ctb], Hadley Wickham [ctb], Jeffrey Horner [ctb], reikoch [ctb],
   Will Beasley [ctb], Brendan O'Connor [ctb], Gregory R. Warnes [ctb],
   Michael Quinn [ctb], Zhian N. Kamvar [ctb]

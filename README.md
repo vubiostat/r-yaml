@@ -433,4 +433,3 @@ Warnings are displayed if the `DESCRIPTION` and `CHANGELOG` files are not
 properly updated when creating a tarball. This is to help prevent problems
 during the CRAN submission process.
 
-

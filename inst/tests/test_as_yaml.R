@@ -450,6 +450,11 @@ test_quotes_for_string <- function() {
   checkEquals(expected, result)
 }
 
+test_no_dots_at_end <- function()
+{
+  result <- yaml::as.yaml(list(eol = "\n", a = 1), line.sep = "\n")
+  checkEquals("eol: |2+\n\na: 1.0\n", result)
+}
 
 # UTF-8 testing
 test_latin1_strings <- function() {
@@ -464,3 +469,6 @@ test_latin1_strings <- function() {
 #  names(latin1_in) <- c("\xAB", "\xBF")
 #  as.yaml(latin1_in)
 # }
+
+
+

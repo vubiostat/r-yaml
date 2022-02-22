@@ -1,5 +1,7 @@
 ### Release Notes
 
+v2.3.5 Patch to put back in libyaml modifications that as.yaml relied on.
+
 v2.3.4
   - Added read_yaml parameter readLines.warn that defaults to TRUE for overrriding warnings about incomplete files.
 

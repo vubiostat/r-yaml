@@ -98,11 +98,11 @@ Ryaml_set_class(s_obj, name)
 }
 
 /* Get the type part of the tag, throw away any !'s */
-static char *
+static const char *
 process_tag(tag)
-  char *tag;
+  const char *tag;
 {
-  char *retval = tag;
+  const char *retval = tag;
 
   if (strncmp(retval, "tag:yaml.org,2002:", 18) == 0) {
     retval = retval + 18;
@@ -1119,7 +1119,8 @@ possibly_record_alias(s_anchor, s_aliases_tail, s_obj)
 
 SEXP
 Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
-    s_eval_expr, s_eval_warning, s_merge_precedence, s_merge_warning)
+    s_eval_expr, s_eval_warning, s_merge_precedence, s_merge_warning, 
+    s_pristine)
   SEXP s_string;
   SEXP s_as_named_list;
   SEXP s_handlers;
@@ -1128,6 +1129,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   SEXP s_eval_warning;
   SEXP s_merge_precedence;
   SEXP s_merge_warning;
+  SEXP s_pristine;
 {
   SEXP s_retval = NULL, s_stack_head = NULL, s_stack_tail = NULL,
        s_aliases_head = NULL, s_aliases_tail = NULL, s_anchor = NULL;

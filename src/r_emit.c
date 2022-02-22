@@ -447,7 +447,7 @@ emit_nil(emitter, event, s_obj)
 }
 
 static int
-emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
+emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, sequence_style)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
@@ -455,6 +455,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
   int column_major;
   int precision;
   SEXP s_handlers;
+  int sequence_style;
 {
   SEXP s_chr = NULL, s_names = NULL, s_elt = NULL, s_type = NULL,
        s_classes = NULL, s_class = NULL, s_tmp = NULL, s_inspect = NULL,
@@ -565,7 +566,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
         /* Apply tag to sequence */
         tag_applied = 1;
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-            implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+            implicit_tag, sequence_style);
 
         result = yaml_emitter_emit(emitter, event);
 
@@ -651,7 +652,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
         PROTECT(s_names = GET_NAMES(s_obj));
 
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-            implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+            implicit_tag, sequence_style);
         result = yaml_emitter_emit(emitter, event);
 
         if (!result) {
@@ -682,7 +683,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
             PROTECT(s_elt = VECTOR_ELT(s_obj, j));
             PROTECT(s_tmp = Ryaml_yoink(s_elt, i));
             result = emit_object(emitter, event, s_tmp, omap, column_major,
-                precision, s_handlers);
+                precision, s_handlers, sequence_style);
             UNPROTECT(2);
 
             if (!result) {
@@ -715,7 +716,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
           }
 
           yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-              implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+              implicit_tag, sequence_style);
 
           result = yaml_emitter_emit(emitter, event);
         }
@@ -754,7 +755,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
 
           PROTECT(s_elt = VECTOR_ELT(s_obj, i));
           result = emit_object(emitter, event, s_elt, omap, column_major,
-              precision, s_handlers);
+              precision, s_handlers, sequence_style);
           UNPROTECT(1);
 
           if (result && omap) {
@@ -782,7 +783,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
       }
       else {
         yaml_sequence_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-            implicit_tag, YAML_ANY_SEQUENCE_STYLE);
+            implicit_tag, sequence_style);
         result = yaml_emitter_emit(emitter, event);
 
         if (!result) {
@@ -792,7 +793,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
         for (i = 0; i < length(s_obj); i++) {
           PROTECT(s_elt = VECTOR_ELT(s_obj, i));
           result = emit_object(emitter, event, s_elt, omap, column_major,
-              precision, s_handlers);
+              precision, s_handlers, sequence_style);
           UNPROTECT(1);
 
           if (!result) {
@@ -827,7 +828,8 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
 
 SEXP
 Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
-    s_unicode, s_precision, s_indent_mapping_sequence, s_handlers)
+    s_unicode, s_precision, s_indent_mapping_sequence, s_handlers,
+    s_default_flow_style)
   SEXP s_obj;
   SEXP s_line_sep;
   SEXP s_indent;
@@ -837,13 +839,15 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
   SEXP s_precision;
   SEXP s_indent_mapping_sequence;
   SEXP s_handlers;
+  SEXP s_default_flow_style;
 {
   SEXP s_retval = NULL;
   yaml_emitter_t emitter;
   yaml_event_t event;
   s_emitter_output output;
   int status = 0, line_sep = 0, indent = 0, omap = 0, column_major = 0,
-      unicode = 0, precision = 0, indent_mapping_sequence = 0;
+      unicode = 0, precision = 0, indent_mapping_sequence = 0,
+      default_flow_style = 0;
   const char *c_line_sep = NULL;
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
@@ -885,6 +889,13 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
     return R_NilValue;
   }
   omap = LOGICAL(s_omap)[0];
+  
+  if (!isLogical(s_default_flow_style) || length(s_default_flow_style) != 1)
+  {
+    error("argument `default_flow_style` must be either TRUE or FALSE");
+    return R_NilValue;
+  }
+  default_flow_style = LOGICAL(s_default_flow_style)[0];
 
   if (!isLogical(s_column_major) || length(s_column_major) != 1) {
     error("argument `column.major` must be either TRUE or FALSE");
@@ -941,7 +952,9 @@ Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
   if (!status)
     goto done;
 
-  status = emit_object(&emitter, &event, s_obj, omap, column_major, precision, s_handlers);
+  status = emit_object(&emitter, &event, s_obj, omap, column_major, precision, s_handlers, 
+                       (default_flow_style ? YAML_FLOW_SEQUENCE_STYLE : YAML_ANY_SEQUENCE_STYLE)
+                      );
   if (!status)
     goto done;
 

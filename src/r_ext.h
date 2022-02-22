@@ -38,7 +38,8 @@ int Ryaml_run_handler(SEXP s_handler, SEXP s_arg, SEXP *s_result);
 /* Exported functions */
 SEXP Ryaml_serialize_to_yaml(SEXP s_obj, SEXP s_line_sep, SEXP s_indent, SEXP s_omap,
     SEXP s_column_major, SEXP s_unicode, SEXP s_precision,
-    SEXP s_indent_mapping_sequence, SEXP s_handlers);
+    SEXP s_indent_mapping_sequence, SEXP s_handlers,
+    SEXP s_default_flow_style);
 
 SEXP Ryaml_unserialize_from_yaml(SEXP s_string, SEXP s_as_named_list,
     SEXP s_handlers, SEXP s_error_label, SEXP s_eval_expr,

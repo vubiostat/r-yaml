@@ -455,3 +455,12 @@ test_no_dots_at_end <- function()
   result <- yaml::as.yaml(list(eol = "\n", a = 1), line.sep = "\n")
   checkEquals("eol: |2+\n\na: 1.0\n", result)
 }
+
+test_default_flow_change <- function()
+{
+  orig <- "steps: ~
++ - name: gcr.io/cloud-builders/docker
++   args: [build, -t, 'gcr.io/[PROJECT_ID]/[IMAGE]', '.']\n"
+  foo <- yaml.load(orig) 
+  checkEquals(orig, as.yaml(foo, default_flow_style=TRUE))
+}

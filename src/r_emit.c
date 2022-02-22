@@ -335,13 +335,19 @@ emit_char(emitter, event, s_obj, tag, implicit_tag, scalar_style)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
-  char *tag;
+  const char *tag;
   int implicit_tag;
   yaml_scalar_style_t scalar_style;
 {
+#ifdef DEBUG
+  Rprintf("emit_char length=%d\n", LENGTH(s_obj));
+#endif
+  const void *vmax=vmaxget();
+  const char *trans=Rf_translateCharUTF8(s_obj);
   yaml_scalar_event_initialize(event, NULL, (yaml_char_t *)tag,
-      (yaml_char_t *)Rf_translateCharUTF8(s_obj), LENGTH(s_obj),
+      (yaml_char_t *)trans, strlen(trans),
       implicit_tag, implicit_tag, scalar_style);
+  vmaxset(vmax);
 
   return yaml_emitter_emit(emitter, event);
 }
@@ -351,7 +357,7 @@ emit_string(emitter, event, s_obj, tag, implicit_tag)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
-  char *tag;
+  const char *tag;
   int implicit_tag;
 {
   SEXP s_new_obj = NULL, s_chr = NULL, quoted = NULL;
@@ -396,7 +402,7 @@ emit_factor(emitter, event, s_obj, tag, implicit_tag)
   yaml_emitter_t *emitter;
   yaml_event_t *event;
   SEXP s_obj;
-  char *tag;
+  const char *tag;
   int implicit_tag;
 {
   SEXP s_levels = NULL, s_level_chr = NULL;
@@ -466,6 +472,7 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers)
 #if DEBUG
   Rprintf("=== Emitting ===\n");
   PrintValue(s_obj);
+  Rprintf("TYPEOF: %d\n", TYPEOF(s_obj));
 #endif
 
   /* Look for custom handler by class */

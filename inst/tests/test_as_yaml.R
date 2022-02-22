@@ -457,18 +457,38 @@ test_no_dots_at_end <- function()
 }
 
 # UTF-8 testing
-test_latin1_strings <- function() {
- latin1_in <- list("\xAB", "\xBF")
- as.yaml(latin1_in)
+test_latin1_strings_no_enc <- function() {
+ latin1_in <- list("\xAB\xF4", "\xBF\xE9")
+ checkEquals("- <ab><f4>\n- <bf><e9>\n",  as.yaml(latin1_in))
 }
 
-# This cause a full crash
-#
-# test_latin1_names <- function() {
-#  latin1_in <- list("a", "b")
-#  names(latin1_in) <- c("\xAB", "\xBF")
-#  as.yaml(latin1_in)
-# }
+test_latin1_names_no_enc <- function() {
+ latin1_in <- list("a", "b")
+ names(latin1_in) <- c("\xE9", "\xF4")
+ as.yaml(latin1_in)
+ checkEquals("<e9>: a\n<f4>: b\n",  as.yaml(latin1_in))
+}
+
+test_latin1_strings_enc <- function() {
+ x <- "\xAB\xF4"
+ y <- "\xBF\xE9"
+ Encoding(x) <- "latin1"
+ Encoding(y) <- "latin1"
+ latin1_in <- list(x,y)
+ 
+ checkEquals("- «ô\n- ¿é\n",  as.yaml(latin1_in))
+}
+
+test_latin1_names_enc <- function() {
+ latin1_in <- list("a", "b")
+ x <- "\xAB\xF4"
+ y <- "\xBF\xE9"
+ Encoding(x) <- "latin1"
+ Encoding(y) <- "latin1"
+ names(latin1_in) <- c(x,y)
+
+ checkEquals("«ô: a\n¿é: b\n",  as.yaml(latin1_in))
+}
 
 
 

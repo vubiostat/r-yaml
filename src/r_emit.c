@@ -340,7 +340,7 @@ emit_char(emitter, event, s_obj, tag, implicit_tag, scalar_style)
   yaml_scalar_style_t scalar_style;
 {
   yaml_scalar_event_initialize(event, NULL, (yaml_char_t *)tag,
-      (yaml_char_t *)CHAR(s_obj), LENGTH(s_obj),
+      (yaml_char_t *)Rf_translateCharUTF8(s_obj), LENGTH(s_obj),
       implicit_tag, implicit_tag, scalar_style);
 
   return yaml_emitter_emit(emitter, event);

@@ -668,3 +668,21 @@ test_builtin_as_handler_works <- function() {
   checkEquals(class(results$a), "numeric")
   checkEquals(0, length(warnings))
 }
+
+test_coerce_seq_can_be_turned_off <- function()
+{
+  x <- "key: value\narray1:\n  - item\narray2:\n  - item1\n  - item2"
+  
+  y <- yaml.load(x)
+  checkEquals(class(y$array1), "character")
+  
+  y <- yaml.load(x, coerce.seq=FALSE)
+  checkEquals(class(y$array1), "list")
+}
+
+test_coerce_seq_ignored_when_custom_handler <- function()
+{
+  x <- "key: value\narray1:\n  - item\narray2:\n  - item1\n  - item2"
+  y <- yaml.load(x, coerce.seq=TRUE, handlers=list(seq=function(x) x))
+  checkEquals(class(y$array1), "list")
+}

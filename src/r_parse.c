@@ -416,12 +416,13 @@ handle_structure_start(event, s_stack_tail, is_map)
 }
 
 static int
-handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
+handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, coerce_seq)
   yaml_event_t *event;
   SEXP s_stack_head;
   SEXP *s_stack_tail;
   SEXP s_handlers;
   int coerce_keys;
+  int coerce_seq;
 {
   SEXP s_curr = NULL, s_obj = NULL, s_sequence_start = NULL, s_list = NULL,
        s_handler = NULL, s_new_obj = NULL, s_keys = NULL, s_key = NULL,
@@ -506,7 +507,7 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   if (!handled) {
     /* default handlers, ordered by most-used */
 
-    if (strcmp(tag, "seq") == 0) {
+    if (strcmp(tag, "seq") == 0 && coerce_seq) {
       /* Let's try to coerce this list! */
       switch (type) {
         case LGLSXP:
@@ -1120,7 +1121,7 @@ possibly_record_alias(s_anchor, s_aliases_tail, s_obj)
 SEXP
 Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
     s_eval_expr, s_eval_warning, s_merge_precedence, s_merge_warning, 
-    s_pristine)
+    s_coerce_seq)
   SEXP s_string;
   SEXP s_as_named_list;
   SEXP s_handlers;
@@ -1129,7 +1130,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   SEXP s_eval_warning;
   SEXP s_merge_precedence;
   SEXP s_merge_warning;
-  SEXP s_pristine;
+  SEXP s_coerce_seq;
 {
   SEXP s_retval = NULL, s_stack_head = NULL, s_stack_tail = NULL,
        s_aliases_head = NULL, s_aliases_tail = NULL, s_anchor = NULL;
@@ -1139,7 +1140,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   char *error_msg_copy = NULL;
   long len = 0;
   int as_named_list = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0,
-      merge_override = 0, merge_warning = 0;
+      merge_override = 0, merge_warning = 0, coerce_seq = 0;
 
   if (!isString(s_string) || length(s_string) != 1) {
     error("string argument must be a character vector of length 1");
@@ -1193,6 +1194,12 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
     error("merge.warning argument must be a logical vector of length 1");
     return R_NilValue;
   }
+  
+  if (!isLogical(s_coerce_seq) || length(s_coerce_seq) != 1)
+  {
+    error("coercet argument must be a logical vector of length 1");
+    return R_NilValue;
+  }
 
   PROTECT(s_handlers = Ryaml_sanitize_handlers(s_handlers));
 
@@ -1202,6 +1209,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
   eval_expr = LOGICAL(s_eval_expr)[0];
   eval_warning = LOGICAL(s_eval_warning)[0];
   merge_warning = LOGICAL(s_merge_warning)[0];
+  coerce_seq = LOGICAL(s_coerce_seq)[0];
 
   yaml_parser_initialize(&parser);
   yaml_parser_set_input_string(&parser, (const unsigned char *)string, len);
@@ -1250,7 +1258,7 @@ Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label
 #if DEBUG
           Rprintf("SEQUENCE END\n");
 #endif
-          err = handle_sequence(&event, s_stack_head, &s_stack_tail, s_handlers, as_named_list);
+          err = handle_sequence(&event, s_stack_head, &s_stack_tail, s_handlers, as_named_list, coerce_seq);
           if (!err) {
             s_anchor = CADR(TAG(s_stack_tail));
             possibly_record_alias(s_anchor, &s_aliases_tail, CAR(s_stack_tail));

@@ -446,6 +446,30 @@ emit_nil(emitter, event, s_obj)
   return yaml_emitter_emit(emitter, event);
 }
 
+int any_non_atomic(s_obj)
+  SEXP s_obj;
+{
+  SEXP s_elt;
+  int len = length(s_obj);
+  int i;
+    
+  for (i=0; i < length(s_obj); i++)
+  {
+     PROTECT(s_elt = VECTOR_ELT(s_obj, i));
+    
+     if(TYPEOF(s_elt) == VECSXP)
+     {
+        UNPROTECT(1);
+        return(1);
+     }
+    
+     UNPROTECT(1);
+  }
+  
+  
+  return(0);
+}
+
 static int
 emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, default_flow_style)
   yaml_emitter_t *emitter;
@@ -649,6 +673,10 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, de
       break;
 
     case VECSXP:
+      mapping_style = (default_flow_style == NA_LOGICAL && 
+                 !any_non_atomic(s_obj) ?
+                    YAML_FLOW_MAPPING_STYLE :
+                    mapping_style);
       if (Ryaml_has_class(s_obj, "data.frame") && length(s_obj) > 0 && !column_major) {
         rows = length(VECTOR_ELT(s_obj, 0));
         cols = length(s_obj);
@@ -663,9 +691,10 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, de
           break;
         }
 
+
         for (i = 0; i < rows; i++) {
           yaml_mapping_start_event_initialize(event, NULL, NULL, 1,
-              (default_flow_style == NA_LOGICAL ? YAML_FLOW_MAPPING_STYLE : mapping_style));
+              mapping_style);
           result = yaml_emitter_emit(emitter, event);
 
           if (!result) {
@@ -725,8 +754,8 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, de
         }
         else {
           yaml_mapping_start_event_initialize(event, NULL, (yaml_char_t *)tag,
-              implicit_tag, mapping_style);
-
+              implicit_tag, (default_flow_style == TRUE ? YAML_FLOW_MAPPING_STYLE  : YAML_ANY_MAPPING_STYLE ));
+/* FIXME ^^^^ This is the problem spot */
           result = yaml_emitter_emit(emitter, event);
         }
 

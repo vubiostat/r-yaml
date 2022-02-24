@@ -475,7 +475,9 @@ test_default_flow_change_NA <- function()
   foo <- yaml.load(s) 
   checkEquals("sequence: [a, b]\nmapping: {a: 1, b: 2}\nnested sequence:\n- [a, b]\nnested mapping:\n  top: {a: 1, b: 2}\n",
     as.yaml(foo, default_flow_style=NA))
-  
+  #ss <- as.yaml(foo, default_flow_style=NA)
+  #cat(ss)
+  # cat(as.yaml(foo, default_flow_style=NA))
 }
 
 test_default_flow_change_TRUE <- function()

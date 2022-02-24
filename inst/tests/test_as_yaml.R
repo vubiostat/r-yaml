@@ -456,11 +456,37 @@ test_no_dots_at_end <- function()
   checkEquals("eol: |2+\n\na: 1.0\n", result)
 }
 
-test_default_flow_change <- function()
+test_default_flow_style_FALSE <- function()
+{
+  s <- "---\nsequence:\n- a\n- b\nmapping:\n  a: 1\n  b: 2\nnested sequence:\n- - a\n  - b\nnested mapping:\n  top:\n    a: 1\n    b: 2\n"
+  foo <- yaml.load(s) 
+  checkEquals(s, paste0("---\n",as.yaml(foo)))
+}
+
+test_default_flow_change_NA <- function()
 {
   orig <- "steps: ~
 + - name: gcr.io/cloud-builders/docker
 +   args: [build, -t, 'gcr.io/[PROJECT_ID]/[IMAGE]', '.']\n"
   foo <- yaml.load(orig) 
+  checkEquals(orig, as.yaml(foo, default_flow_style=NA))
+  
+  s <- "---\nsequence:\n- a\n- b\nmapping:\n  a: 1\n  b: 2\nnested sequence:\n- - a\n  - b\nnested mapping:\n  top:\n    a: 1\n    b: 2\n"
+  foo <- yaml.load(s) 
+  checkEquals("sequence: [a, b]\nmapping: {a: 1, b: 2}\nnested sequence:\n- [a, b]\nnested mapping:\n  top: {a: 1, b: 2}\n",
+    as.yaml(foo, default_flow_style=NA))
+  
+}
+
+test_default_flow_change_TRUE <- function()
+{
+  orig <- "{steps: ~, + - name: gcr.io/cloud-builders/docker, +   args: [build, -t, 'gcr.io/[PROJECT_ID]/[IMAGE]',\n    '.']}\n"
+  foo <- yaml.load(orig) 
   checkEquals(orig, as.yaml(foo, default_flow_style=TRUE))
+  
+  s <- "---\nsequence:\n- a\n- b\nmapping:\n  a: 1\n  b: 2\nnested sequence:\n- - a\n  - b\nnested mapping:\n  top:\n    a: 1\n    b: 2\n"
+  foo <- yaml.load(s) 
+  checkEquals("{sequence: [a, b], mapping: {a: 1, b: 2}, nested sequence: [[a, b]], nested mapping: {\n    top: {a: 1, b: 2}}}\n",
+    as.yaml(foo, default_flow_style=TRUE))
+  
 }

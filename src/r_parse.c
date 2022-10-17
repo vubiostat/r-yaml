@@ -10,10 +10,7 @@ extern char Ryaml_error_msg[ERROR_MSG_SIZE];
 
 /* Compare two R objects (with the R identical function).
  * Returns 0 or 1 */
-static int
-Ryaml_cmp(s_first, s_second)
-  SEXP s_first;
-  SEXP s_second;
+static int Ryaml_cmp(SEXP s_first, SEXP s_second)
 {
   int i = 0, retval = 0, *arr = NULL;
   SEXP s_call = NULL, s_result = NULL, s_bool = NULL;
@@ -35,12 +32,11 @@ Ryaml_cmp(s_first, s_second)
 }
 
 /* Returns the index of the first instance of needle in haystack */
-static int
-Ryaml_index(s_haystack, s_needle, character, upper_bound)
-  SEXP s_haystack;
-  SEXP s_needle;
-  int character;
-  int upper_bound;
+static int Ryaml_index(
+  SEXP s_haystack,
+  SEXP s_needle,
+  int character,
+  int upper_bound)
 {
   int i = 0;
 
@@ -63,9 +59,7 @@ Ryaml_index(s_haystack, s_needle, character, upper_bound)
 }
 
 /* Returns true if obj is a list with a keys attribute */
-static int
-Ryaml_is_pseudo_hash(s_obj)
-  SEXP s_obj;
+static int Ryaml_is_pseudo_hash(SEXP s_obj)
 {
   SEXP s_keys = NULL;
   if (TYPEOF(s_obj) != VECSXP)
@@ -76,11 +70,7 @@ Ryaml_is_pseudo_hash(s_obj)
 }
 
 /* Set a character attribute on an R object */
-static void
-Ryaml_set_str_attrib(s_obj, s_sym, str)
-  SEXP s_obj;
-  SEXP s_sym;
-  char *str;
+static void Ryaml_set_str_attrib(SEXP s_obj, SEXP s_sym, char *str)
 {
   SEXP s_val = NULL;
   PROTECT(s_val = ScalarString(mkCharCE(str, CE_UTF8)));
@@ -89,20 +79,15 @@ Ryaml_set_str_attrib(s_obj, s_sym, str)
 }
 
 /* Set the R object's class attribute */
-static void
-Ryaml_set_class(s_obj, name)
-  SEXP s_obj;
-  char *name;
+static void Ryaml_set_class(SEXP s_obj, char *name)
 {
   Ryaml_set_str_attrib(s_obj, R_ClassSymbol, name);
 }
 
 /* Get the type part of the tag, throw away any !'s */
-static char *
-process_tag(tag)
-  char *tag;
+static const char *process_tag(const char *tag)
 {
-  char *retval = tag;
+  const char *retval = tag;
 
   if (strncmp(retval, "tag:yaml.org,2002:", 18) == 0) {
     retval = retval + 18;
@@ -115,11 +100,10 @@ process_tag(tag)
   return retval;
 }
 
-static int
-handle_alias(event, s_stack_tail, s_aliases_head)
-  yaml_event_t *event;
-  SEXP *s_stack_tail;
-  SEXP s_aliases_head;
+static int handle_alias(
+  yaml_event_t *event,
+  SEXP *s_stack_tail,
+  SEXP s_aliases_head)
 {
   SEXP s_curr = NULL, s_obj = NULL;
   int handled = 0;
@@ -156,13 +140,12 @@ handle_alias(event, s_stack_tail, s_aliases_head)
   return 0;
 }
 
-static int
-handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
-  yaml_event_t *event;
-  SEXP *s_stack_tail;
-  SEXP s_handlers;
-  int eval_expr;
-  int eval_warning;
+static int handle_scalar(
+  yaml_event_t *event,
+  SEXP *s_stack_tail,
+  SEXP s_handlers,
+  int eval_expr,
+  int eval_warning)
 {
   SEXP s_obj = NULL, s_handler = NULL, s_new_obj = NULL, s_expr = NULL;
   const char *value = NULL, *tag = NULL, *nptr = NULL;
@@ -374,11 +357,10 @@ handle_scalar(event, s_stack_tail, s_handlers, eval_expr, eval_warning)
   return 0;
 }
 
-static void
-handle_structure_start(event, s_stack_tail, is_map)
-  yaml_event_t *event;
-  SEXP *s_stack_tail;
-  int is_map;
+static void handle_structure_start(
+  yaml_event_t *event,
+  SEXP *s_stack_tail,
+  int is_map)
 {
   SEXP s_sym = NULL, s_tag_obj = NULL, s_anchor_obj = NULL, s_tag = NULL;
   yaml_char_t *tag = NULL, *anchor = NULL;
@@ -415,13 +397,12 @@ handle_structure_start(event, s_stack_tail, is_map)
   SET_TAG(*s_stack_tail, s_tag);
 }
 
-static int
-handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
-  yaml_event_t *event;
-  SEXP s_stack_head;
-  SEXP *s_stack_tail;
-  SEXP s_handlers;
-  int coerce_keys;
+static int handle_sequence(
+  yaml_event_t *event,
+  SEXP s_stack_head,
+  SEXP *s_stack_tail,
+  SEXP s_handlers,
+  int coerce_keys)
 {
   SEXP s_curr = NULL, s_obj = NULL, s_sequence_start = NULL, s_list = NULL,
        s_handler = NULL, s_new_obj = NULL, s_keys = NULL, s_key = NULL,
@@ -647,11 +628,10 @@ handle_sequence(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys)
   return 0;
 }
 
-static SEXP
-find_map_entry(s_map_head, s_key, character)
-  SEXP s_map_head;
-  SEXP s_key;
-  int character;
+static SEXP find_map_entry(
+  SEXP s_map_head,
+  SEXP s_key,
+  int character)
 {
   SEXP s_curr = NULL;
 
@@ -676,13 +656,12 @@ find_map_entry(s_map_head, s_key, character)
   return NULL;
 }
 
-static int
-expand_merge(s_merge_list, s_map_head, s_map_tail, coerce_keys, merge_warning)
-  SEXP s_merge_list;
-  SEXP s_map_head;
-  SEXP *s_map_tail;
-  int coerce_keys;
-  int merge_warning;
+static int expand_merge(
+  SEXP s_merge_list,
+  SEXP s_map_head,
+  SEXP *s_map_tail,
+  int coerce_keys,
+  int merge_warning)
 {
   SEXP s_merge_keys = NULL, s_value = NULL, s_key = NULL, s_result = NULL,
        s_inspect = NULL;
@@ -731,24 +710,20 @@ expand_merge(s_merge_list, s_map_head, s_map_tail, coerce_keys, merge_warning)
   return count;
 }
 
-static int
-is_mergeable(s_merge_list, coerce_keys)
-  SEXP s_merge_list;
-  int coerce_keys;
+static int is_mergeable(SEXP s_merge_list, int coerce_keys)
 {
   return (coerce_keys && Ryaml_is_named_list(s_merge_list)) ||
-    (!coerce_keys && Ryaml_is_pseudo_hash(s_merge_list));
+         (!coerce_keys && Ryaml_is_pseudo_hash(s_merge_list));
 }
 
 /* Return -1 on error or number of entries added to map. */
-static int
-handle_map_entry(s_key, s_value, s_map_head, s_map_tail, coerce_keys, merge_warning)
-  SEXP s_key;
-  SEXP s_value;
-  SEXP s_map_head;
-  SEXP *s_map_tail;
-  int coerce_keys;
-  int merge_warning;
+static int handle_map_entry(
+  SEXP s_key,
+  SEXP s_value,
+  SEXP s_map_head,
+  SEXP *s_map_tail,
+  int coerce_keys,
+  int merge_warning)
 {
   SEXP s_result = NULL, s_tag = NULL, s_inspect = NULL;
   const char *inspect = NULL;
@@ -810,13 +785,12 @@ handle_map_entry(s_key, s_value, s_map_head, s_map_tail, coerce_keys, merge_warn
 }
 
 /* Return -1 on error or number of entries added to map. */
-static int
-handle_merge(s_value, s_map_head, s_map_tail, coerce_keys, merge_warning)
-  SEXP s_value;
-  SEXP s_map_head;
-  SEXP *s_map_tail;
-  int coerce_keys;
-  int merge_warning;
+static int handle_merge(
+  SEXP s_value,
+  SEXP s_map_head,
+  SEXP *s_map_tail,
+  int coerce_keys,
+  int merge_warning)
 {
   SEXP s_obj = NULL, s_inspect = NULL;
   const char *inspect = NULL;
@@ -877,15 +851,14 @@ handle_merge(s_value, s_map_head, s_map_tail, coerce_keys, merge_warning)
   return count;
 }
 
-static int
-handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_override, merge_warning)
-  yaml_event_t *event;
-  SEXP s_stack_head;
-  SEXP *s_stack_tail;
-  SEXP s_handlers;
-  int coerce_keys;
-  int merge_override;
-  int merge_warning;
+static int handle_map(
+  yaml_event_t *event,
+  SEXP s_stack_head,
+  SEXP *s_stack_tail,
+  SEXP s_handlers,
+  int coerce_keys,
+  int merge_override,
+  int merge_warning)
 {
   SEXP s_list = NULL, s_keys = NULL, s_key = NULL, s_value = NULL,
        s_prev = NULL, s_curr = NULL, s_mapping_start = NULL,
@@ -1104,11 +1077,10 @@ handle_map(event, s_stack_head, s_stack_tail, s_handlers, coerce_keys, merge_ove
   return 0;
 }
 
-static void
-possibly_record_alias(s_anchor, s_aliases_tail, s_obj)
-  SEXP s_anchor;
-  SEXP *s_aliases_tail;
-  SEXP s_obj;
+static void possibly_record_alias(
+  SEXP s_anchor,
+  SEXP *s_aliases_tail,
+  SEXP s_obj)
 {
   if (s_anchor == NULL || TYPEOF(s_anchor) != CHARSXP) return;
 
@@ -1117,17 +1089,15 @@ possibly_record_alias(s_anchor, s_aliases_tail, s_obj)
   SET_TAG(*s_aliases_tail, s_anchor);
 }
 
-SEXP
-Ryaml_unserialize_from_yaml(s_string, s_as_named_list, s_handlers, s_error_label,
-    s_eval_expr, s_eval_warning, s_merge_precedence, s_merge_warning)
-  SEXP s_string;
-  SEXP s_as_named_list;
-  SEXP s_handlers;
-  SEXP s_error_label;
-  SEXP s_eval_expr;
-  SEXP s_eval_warning;
-  SEXP s_merge_precedence;
-  SEXP s_merge_warning;
+SEXP Ryaml_unserialize_from_yaml(
+  SEXP s_string,
+  SEXP s_as_named_list,
+  SEXP s_handlers,
+  SEXP s_error_label,
+  SEXP s_eval_expr,
+  SEXP s_eval_warning,
+  SEXP s_merge_precedence,
+  SEXP s_merge_warning)
 {
   SEXP s_retval = NULL, s_stack_head = NULL, s_stack_tail = NULL,
        s_aliases_head = NULL, s_aliases_tail = NULL, s_anchor = NULL;

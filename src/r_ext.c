@@ -15,8 +15,7 @@ SEXP Ryaml_MappingStart = NULL;
 SEXP Ryaml_MappingEnd = NULL;
 char Ryaml_error_msg[ERROR_MSG_SIZE];
 
-void
-Ryaml_set_error_msg(const char *format, ...)
+void Ryaml_set_error_msg(const char *format, ...)
 {
   va_list args;
   int result;
@@ -34,9 +33,7 @@ Ryaml_set_error_msg(const char *format, ...)
 }
 
 /* Returns true if obj is a named list */
-int
-Ryaml_is_named_list(s_obj)
-  SEXP s_obj;
+int Ryaml_is_named_list(SEXP s_obj)
 {
   SEXP s_names = NULL;
   if (TYPEOF(s_obj) != VECSXP)
@@ -47,10 +44,9 @@ Ryaml_is_named_list(s_obj)
 }
 
 /* Call R's paste() function with collapse */
-SEXP
-Ryaml_collapse(s_obj, collapse)
-  SEXP s_obj;
-  char *collapse;
+SEXP Ryaml_collapse(
+  SEXP s_obj,
+  char *collapse)
 {
   SEXP s_call = NULL, s_retval = NULL;
 
@@ -63,9 +59,7 @@ Ryaml_collapse(s_obj, collapse)
 }
 
 /* Return a string representation of the object for error messages */
-SEXP
-Ryaml_inspect(s_obj)
-  SEXP s_obj;
+SEXP Ryaml_inspect(SEXP s_obj)
 {
   SEXP s_call = NULL, s_str = NULL, s_result = NULL;
 
@@ -84,9 +78,7 @@ Ryaml_inspect(s_obj)
   return s_result;
 }
 
-SEXP
-Ryaml_get_classes(s_obj)
-  SEXP s_obj;
+SEXP Ryaml_get_classes(SEXP s_obj)
 {
   SEXP s_call = NULL, s_result = NULL;
 
@@ -98,10 +90,7 @@ Ryaml_get_classes(s_obj)
 }
 
 /* Return 1 if obj is of the specified class */
-int
-Ryaml_has_class(s_obj, name)
-  SEXP s_obj;
-  char *name;
+int Ryaml_has_class(SEXP s_obj, char *name)
 {
   SEXP s_classes = NULL;
   int i = 0, len = 0, result = 0;
@@ -121,9 +110,7 @@ Ryaml_has_class(s_obj, name)
   return result;
 }
 
-SEXP
-Ryaml_sanitize_handlers(s_handlers)
-  SEXP s_handlers;
+SEXP Ryaml_sanitize_handlers(SEXP s_handlers)
 {
   SEXP s_handlers_2 = NULL, s_handler = NULL, s_names = NULL, s_names_2 = NULL,
        s_name = NULL;
@@ -190,10 +177,7 @@ Ryaml_sanitize_handlers(s_handlers)
   return s_handlers_2;
 }
 
-SEXP
-Ryaml_find_handler(s_handlers, name)
-  SEXP s_handlers;
-  const char *name;
+SEXP Ryaml_find_handler(SEXP s_handlers, const char *name)
 {
   SEXP s_names = NULL, s_name = NULL, s_retval = R_NilValue;
   const char *handler_name = NULL;
@@ -222,11 +206,7 @@ Ryaml_find_handler(s_handlers, name)
   return s_retval;
 }
 
-int
-Ryaml_run_handler(s_handler, s_arg, s_result)
-  SEXP s_handler;
-  SEXP s_arg;
-  SEXP *s_result;
+int Ryaml_run_handler(SEXP s_handler, SEXP s_arg, SEXP *s_result)
 {
   SEXP s_cmd = NULL;
   int err = 0;

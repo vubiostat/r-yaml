@@ -1,5 +1,7 @@
 ### Release Notes
 
+v2.3.6 C deprecated functions with no prototypes, these were added.
+
 v2.3.5 Patch to put back in libyaml modifications that as.yaml relied on.
 
 v2.3.4

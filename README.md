@@ -61,7 +61,7 @@ You can install this package directly from CRAN by running (from within R):
 ### Zip/Tarball
 
 1. Download the appropriate zip file or tar.gz file from the
-[Github releases](https://github.com/viking/r-yaml/releases) page.
+[Github releases](https://github.com/vubiostat/r-yaml/releases) page.
 2. Run `R CMD INSTALL <filename>`
 
 ### Git (via devtools)
@@ -70,7 +70,7 @@ You can install this package directly from CRAN by running (from within R):
 2. In R, run the following:
     ```R
     library(devtools)
-    install_github('viking/r-yaml')
+    install_github('vubiostat/r-yaml')
     ```
 
 ## Usage

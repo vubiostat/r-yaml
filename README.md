@@ -417,6 +417,62 @@ installed.
 | `tarball`       | Create tarball suitable for CRAN submission |
 | `all`           | Default target, runs `compile` and `test`   |
 
+### Local development and testing in Docker
+
+If you'd like to set up a local development and testing environment using Docker,
+you can follow these instructions:
+
+* clone the repository
+
+```
+git clone git@github.com:vubiostat/r-yaml.git
+cd r-yaml
+```
+
+* Start Docker container called r-yaml
+
+```
+docker run -it --name r-yaml --workdir /opt -v$(pwd):/opt r-base:4.2.3 bash
+```
+
+* Install external dependencies
+
+```
+apt-get update
+apt-get install -y texlive-latex-base texlive-fonts-extra texlive-latex-recommended texlive-fonts-recommended
+```
+
+* Install RUint
+
+```
+Rscript -e 'install.packages("RUnit")'
+```
+
+* Run the tests
+
+```
+make check
+make test
+```
+
+* Exit from Docker container
+
+```
+exit
+```
+
+* Restart Docker container
+
+```
+docker container start -i r-yaml
+```
+
+* Remove Docker container
+
+```
+docker rm r-yaml
+```
+
 ### Implicit tag discovery
 
 The algorithm used whenever there is no YAML tag explicitly provided is located

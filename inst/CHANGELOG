@@ -1,5 +1,9 @@
 ### Release Notes
 
+v3.0.0 Added YAML1.2 support for transforming 'yes'/'no' as strings and not as logical.
+
+### Release Notes
+
 v2.3.7 clang deprecated sprintf. Changed in included clib to snprintf
 
 v2.3.6 C deprecated functions with no prototypes, these were added.

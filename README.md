@@ -414,7 +414,6 @@ installed.
 | `test`          | Run unit tests                              |
 | `gdb-test`      | Run unit tests with gdb                     |
 | `valgrind-test` | Run unit tests with valgrind                |
-| `tarball`       | Create tarball suitable for CRAN submission |
 | `all`           | Default target, runs `compile` and `test`   |
 
 ### Local development and testing in Docker

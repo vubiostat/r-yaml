@@ -408,7 +408,7 @@ installed.
 
 | Target name     | Description                                 |
 | --------------- | ------------------------------------------- |
-| `compile`       | Compile the source files                    |
+| `yaml_<version>.tar.gz``       | Compile a source tarball                    |
 | `check`         | Run CRAN checks                             |
 | `gct-check`     | Run CRAN checks with gctorture              |
 | `test`          | Run unit tests                              |

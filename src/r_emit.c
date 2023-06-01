@@ -188,10 +188,10 @@ static SEXP Ryaml_format_logical(SEXP s_obj)
       SET_STRING_ELT(s_retval, i, mkCharCE(".na", CE_UTF8));
     }
     else if (val == 0) {
-      SET_STRING_ELT(s_retval, i, mkCharCE("no", CE_UTF8));
+      SET_STRING_ELT(s_retval, i, mkCharCE("false", CE_UTF8));
     }
     else {
-      SET_STRING_ELT(s_retval, i, mkCharCE("yes", CE_UTF8));
+      SET_STRING_ELT(s_retval, i, mkCharCE("true", CE_UTF8));
     }
   }
   UNPROTECT(1);

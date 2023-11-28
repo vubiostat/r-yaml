@@ -821,7 +821,6 @@ SEXP Ryaml_serialize_to_yaml(
   int status = 0, line_sep = 0, indent = 0, omap = 0, column_major = 0,
       unicode = 0, precision = 0, indent_mapping_sequence = 0;
   const char *c_line_sep = NULL;
-  const char *error_msg = &Ryaml_error_msg[0];
 
   c_line_sep = CHAR(STRING_ELT(s_line_sep, 0));
   if (c_line_sep[0] == '\n') {
@@ -955,7 +954,7 @@ done:
     free(output.buffer);
   }
   else {
-    error(error_msg);
+    error("%s", Ryaml_error_msg);
   }
 
   return s_retval;

@@ -1108,8 +1108,6 @@ SEXP Ryaml_unserialize_from_yaml(
   long len = 0;
   int as_named_list = 0, done = 0, err = 0, eval_expr = 0, eval_warning = 0,
       merge_override = 0, merge_warning = 0;
-  const char *error_msg = &Ryaml_error_msg[0];
-  
 
   if (!isString(s_string) || length(s_string) != 1) {
     error("string argument must be a character vector of length 1");
@@ -1342,7 +1340,7 @@ SEXP Ryaml_unserialize_from_yaml(
         free(error_msg_copy);
       }
     }
-    error(error_msg);
+    error("%s", Ryaml_error_msg);
   }
 
   UNPROTECT(3); /* s_stack_head, s_aliases_head, s_handlers */

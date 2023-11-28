@@ -39,6 +39,7 @@ SRCS = src/yaml_private.h \
 	R/as.yaml.R \
 	R/read_yaml.R \
 	R/write_yaml.R \
+	R/verbatim_logical.R \
 	NAMESPACE
 
 BUILD_SRCS = build/yaml/src/yaml_private.h \
@@ -81,6 +82,7 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/R/as.yaml.R \
 	build/yaml/R/read_yaml.R \
 	build/yaml/R/write_yaml.R \
+	build/yaml/R/verbatim_logical.R \
 	build/yaml/NAMESPACE
 
 ifdef DEBUG

@@ -1340,7 +1340,7 @@ SEXP Ryaml_unserialize_from_yaml(
         free(error_msg_copy);
       }
     }
-    error(Ryaml_error_msg);
+    error("%s", Ryaml_error_msg);
   }
 
   UNPROTECT(3); /* s_stack_head, s_aliases_head, s_handlers */

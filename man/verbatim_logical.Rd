@@ -14,7 +14,7 @@ verbatim_logical(x)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-
+	logical values to convert to \code{true} or \code{false}.
 }
 }
 \details{

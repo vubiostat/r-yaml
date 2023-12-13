@@ -954,7 +954,7 @@ done:
     free(output.buffer);
   }
   else {
-    error(Ryaml_error_msg);
+    error("%s", Ryaml_error_msg);
   }
 
   return s_retval;

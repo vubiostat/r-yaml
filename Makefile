@@ -20,6 +20,7 @@ SRCS = src/yaml_private.h \
 	man/yaml.load.Rd \
 	man/write_yaml.Rd \
 	man/read_yaml.Rd \
+	man/verbatim_logical.Rd \
 	inst/THANKS \
 	inst/CHANGELOG \
 	tests/RUnit.R \
@@ -39,6 +40,7 @@ SRCS = src/yaml_private.h \
 	R/as.yaml.R \
 	R/read_yaml.R \
 	R/write_yaml.R \
+	R/verbatim_logical.R \
 	NAMESPACE
 
 BUILD_SRCS = build/yaml/src/yaml_private.h \
@@ -61,6 +63,7 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/man/yaml.load.Rd \
 	build/yaml/man/write_yaml.Rd \
 	build/yaml/man/read_yaml.Rd \
+	build/yaml/man/verbatim_logical.Rd \
 	build/yaml/inst/THANKS \
 	build/yaml/inst/CHANGELOG \
 	build/yaml/inst/implicit.re \
@@ -81,6 +84,7 @@ BUILD_SRCS = build/yaml/src/yaml_private.h \
 	build/yaml/R/as.yaml.R \
 	build/yaml/R/read_yaml.R \
 	build/yaml/R/write_yaml.R \
+	build/yaml/R/verbatim_logical.R \
 	build/yaml/NAMESPACE
 
 ifdef DEBUG

@@ -57,9 +57,9 @@
 
   There is a built-in handler that will evaluate expressions that are tagged
   with the \sQuote{!expr} tag.  Currently this handler is disabled by default
-  for security reasons.  If a \sQuote{!expr} tag exists and this is set to 
+  for security reasons.  If a \sQuote{!expr} tag exists and this is set to
   FALSE a warning will occur. Alternately, you can set the option named
-  \sQuote{yaml.eval.expr} via the \code{options} function to turn on 
+  \sQuote{yaml.eval.expr} via the \code{options} function to turn on
   evaluation.
 
   The \code{merge.precedence} parameter controls how merge keys are handled.
@@ -115,7 +115,7 @@
   # handling custom types
   yaml.load("!sqrt 555", handlers=list(sqrt=function(x) { sqrt(as.integer(x)) }))
   yaml.load("!foo\n- 1\n- 2", handlers=list(foo=function(x) { as.integer(x) + 1 }))
-  yaml.load("!bar\none: 1\ntwo: 2", handlers=list(foo=function(x) { x$one <- "one"; x }))
+  yaml.load("!bar\none: 1\ntwo: 2", handlers=list(bar=function(x) { x$one <- "one"; x }))
 
   # loading R expressions
   # NOTE: this will not be done by default in the near future

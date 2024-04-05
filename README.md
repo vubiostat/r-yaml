@@ -340,7 +340,7 @@ class names (i.e., 'numeric', 'data.frame', 'list', etc).  The function(s) you
 provide will be passed one argument (the R object) and can return any R object.
 The returned object will be emitted normally.
 
-##### YAML 1.2(-ish) Logical Handeling
+##### YAML 1.2(-ish) Logical Handling
 
 To get YAML 1.2 like behavior for logical vectors, you can use the 
 `verbatim_logical` handler function passed as the logical element of the 

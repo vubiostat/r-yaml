@@ -7,4 +7,3 @@ yaml_*.tar.gz
 *.so
 .Rproj.user
 *.Rproj
-.Rbuildignore

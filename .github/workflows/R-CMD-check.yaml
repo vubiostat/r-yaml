@@ -59,9 +59,6 @@ jobs:
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
-        run: |
-          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "error")
-        shell: Rscript {0}
         with:
           extra-packages: any::rcmdcheck
           needs: check

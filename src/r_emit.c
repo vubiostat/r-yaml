@@ -11,6 +11,22 @@ typedef struct {
   size_t capa;
 } s_emitter_output;
 
+#if R_VERSION < R_Version(4, 5, 0)
+
+# define R_ClosureFormals(x) FORMALS(x)
+# define R_ClosureBody(x) BODY(x)
+# define R_ClosureEnv(x) CLOENV(x)
+
+static inline SEXP R_mkClosure(SEXP formals, SEXP body, SEXP env) {
+  SEXP fun = Rf_allocSExp(CLOSXP);
+  SET_FORMALS(fun, formals);
+  SET_BODY(fun, body);
+  SET_CLOENV(fun, env);
+  return fun;
+}
+
+#endif
+
 static SEXP Ryaml_deparse_function(SEXP s_obj)
 {
   SEXP s_new_obj = NULL, s_call = NULL, s_result = NULL, s_chr = NULL;
@@ -20,10 +36,7 @@ static SEXP Ryaml_deparse_function(SEXP s_obj)
   /* Copy function without any attributes */
   if (TYPEOF(s_obj) == CLOSXP) {
     PROTECT(s_obj);
-    PROTECT(s_new_obj = allocSExp(CLOSXP));
-    SET_FORMALS(s_new_obj, FORMALS(s_obj));
-    SET_BODY(s_new_obj, BODY(s_obj));
-    SET_CLOENV(s_new_obj, CLOENV(s_obj));
+    PROTECT(s_new_obj = R_mkClosure(R_ClosureFormals(s_obj), R_ClosureBody(s_obj), R_ClosureEnv(s_obj)));
     SET_OBJECT(s_new_obj, OBJECT(s_obj));
     UNPROTECT(2);
     s_obj = s_new_obj;

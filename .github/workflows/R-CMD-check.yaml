@@ -58,7 +58,12 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Check
+        env:
+          _R_CHECK_CRAN_INCOMING_REMOTE_: false
+        run: |
+          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "error")
+        shell: Rscript {0}
         with:
           extra-packages: any::rcmdcheck
           needs: check

@@ -1,4 +1,5 @@
 
+#include <stdio.h> // snprintf
 #include "yaml_private.h"
 
 /*

@@ -4,3 +4,5 @@
 ^src/implicit\.re$
 ^misc$
 ^VERSION$
+^.*\.Rproj$
+^\.Rproj\.user$

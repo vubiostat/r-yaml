@@ -11,9 +11,23 @@ typedef struct {
   size_t capa;
 } s_emitter_output;
 
-static SEXP
-Ryaml_deparse_function(s_obj)
-  SEXP s_obj;
+#if R_VERSION < R_Version(4, 5, 0)
+
+# define R_ClosureFormals(x) FORMALS(x)
+# define R_ClosureBody(x) BODY(x)
+# define R_ClosureEnv(x) CLOENV(x)
+
+static inline SEXP R_mkClosure(SEXP formals, SEXP body, SEXP env) {
+  SEXP fun = Rf_allocSExp(CLOSXP);
+  SET_FORMALS(fun, formals);
+  SET_BODY(fun, body);
+  SET_CLOENV(fun, env);
+  return fun;
+}
+
+#endif
+
+static SEXP Ryaml_deparse_function(SEXP s_obj)
 {
   SEXP s_new_obj = NULL, s_call = NULL, s_result = NULL, s_chr = NULL;
   int i = 0, j = 0, res_len = 0, chr_len = 0, str_len = 0, str_end = 0;
@@ -22,10 +36,7 @@ Ryaml_deparse_function(s_obj)
   /* Copy function without any attributes */
   if (TYPEOF(s_obj) == CLOSXP) {
     PROTECT(s_obj);
-    PROTECT(s_new_obj = allocSExp(CLOSXP));
-    SET_FORMALS(s_new_obj, FORMALS(s_obj));
-    SET_BODY(s_new_obj, BODY(s_obj));
-    SET_CLOENV(s_new_obj, CLOENV(s_obj));
+    PROTECT(s_new_obj = R_mkClosure(R_ClosureFormals(s_obj), R_ClosureBody(s_obj), R_ClosureEnv(s_obj)));
     SET_OBJECT(s_new_obj, OBJECT(s_obj));
     UNPROTECT(2);
     s_obj = s_new_obj;
@@ -82,10 +93,7 @@ Ryaml_deparse_function(s_obj)
 }
 
 /* Format a vector of reals for emitting */
-static SEXP
-Ryaml_format_real(s_obj, precision)
-  SEXP s_obj;
-  int precision;
+static SEXP Ryaml_format_real(SEXP s_obj, int precision)
 {
   SEXP s_retval = NULL;
   int i = 0, j = 0, k = 0, n = 0, suffix_len = 0;
@@ -164,9 +172,7 @@ Ryaml_format_real(s_obj, precision)
 }
 
 /* Format a vector of ints for emitting. Handle NAs. */
-static SEXP
-Ryaml_format_int(s_obj)
-  SEXP s_obj;
+static SEXP Ryaml_format_int(SEXP s_obj)
 {
   SEXP s_retval = NULL;
   int i = 0;
@@ -183,9 +189,7 @@ Ryaml_format_int(s_obj)
 }
 
 /* Format a vector of logicals for emitting. Handle NAs. */
-static SEXP
-Ryaml_format_logical(s_obj)
-  SEXP s_obj;
+static SEXP Ryaml_format_logical(SEXP s_obj)
 {
   SEXP s_retval = NULL;
   int i = 0, val = 0;
@@ -209,9 +213,7 @@ Ryaml_format_logical(s_obj)
 }
 
 /* Format a vector of strings for emitting. Handle NAs. */
-static SEXP
-Ryaml_format_string(s_obj)
-  SEXP s_obj;
+static SEXP Ryaml_format_string(SEXP s_obj)
 {
   SEXP s_retval = NULL;
   int i = 0;
@@ -228,9 +230,7 @@ Ryaml_format_string(s_obj)
 }
 
 /* Take a CHARSXP, return a scalar style (for emitting) */
-static yaml_scalar_style_t
-Ryaml_string_style(s_obj)
-  SEXP s_obj;
+static yaml_scalar_style_t Ryaml_string_style(SEXP s_obj)
 {
   char *tag = NULL;
   const char *chr = CHAR(s_obj);
@@ -260,10 +260,7 @@ Ryaml_string_style(s_obj)
 }
 
 /* Take a vector and an index and return another vector of size 1 */
-static SEXP
-Ryaml_yoink(s_vec, index)
-  SEXP s_vec;
-  int index;
+static SEXP Ryaml_yoink(SEXP s_vec, int index)
 {
   SEXP s_tmp = NULL, s_levels = NULL;
   int type = 0, factor = 0, level_idx = 0;
@@ -309,11 +306,7 @@ Ryaml_yoink(s_vec, index)
   return s_tmp;
 }
 
-static int
-Ryaml_serialize_to_yaml_write_handler(data, buffer, size)
-  void *data;
-  unsigned char *buffer;
-  size_t size;
+static int Ryaml_serialize_to_yaml_write_handler(void *data, unsigned char* buffer, size_t size)
 {
   s_emitter_output *output = (s_emitter_output *)data;
   if (output->size + size > output->capa) {
@@ -330,14 +323,13 @@ Ryaml_serialize_to_yaml_write_handler(data, buffer, size)
   return 1;
 }
 
-static int
-emit_char(emitter, event, s_obj, tag, implicit_tag, scalar_style)
-  yaml_emitter_t *emitter;
-  yaml_event_t *event;
-  SEXP s_obj;
-  char *tag;
-  int implicit_tag;
-  yaml_scalar_style_t scalar_style;
+static int emit_char(
+  yaml_emitter_t *emitter,
+  yaml_event_t *event,
+  SEXP s_obj,
+  const char *tag,
+  int implicit_tag,
+  yaml_scalar_style_t scalar_style)
 {
   yaml_scalar_event_initialize(event, NULL, (yaml_char_t *)tag,
       (yaml_char_t *)CHAR(s_obj), LENGTH(s_obj),
@@ -346,13 +338,12 @@ emit_char(emitter, event, s_obj, tag, implicit_tag, scalar_style)
   return yaml_emitter_emit(emitter, event);
 }
 
-static int
-emit_string(emitter, event, s_obj, tag, implicit_tag)
-  yaml_emitter_t *emitter;
-  yaml_event_t *event;
-  SEXP s_obj;
-  char *tag;
-  int implicit_tag;
+static int emit_string(
+  yaml_emitter_t *emitter,
+  yaml_event_t *event,
+  SEXP s_obj,
+  const char *tag,
+  int implicit_tag)
 {
   SEXP s_new_obj = NULL, s_chr = NULL, quoted = NULL;
   int result = 0, i = 0, verbatim = 0, quote_it = 0;
@@ -391,13 +382,12 @@ emit_string(emitter, event, s_obj, tag, implicit_tag)
   return result;
 }
 
-static int
-emit_factor(emitter, event, s_obj, tag, implicit_tag)
-  yaml_emitter_t *emitter;
-  yaml_event_t *event;
-  SEXP s_obj;
-  char *tag;
-  int implicit_tag;
+static int emit_factor(
+  yaml_emitter_t *emitter,
+  yaml_event_t *event,
+  SEXP s_obj,
+  const char *tag,
+  int implicit_tag)
 {
   SEXP s_levels = NULL, s_level_chr = NULL;
   yaml_scalar_style_t *scalar_styles = NULL, scalar_style;
@@ -434,11 +424,10 @@ emit_factor(emitter, event, s_obj, tag, implicit_tag)
   return result;
 }
 
-static int
-emit_nil(emitter, event, s_obj)
-  yaml_emitter_t *emitter;
-  yaml_event_t *event;
-  SEXP s_obj;
+static int emit_nil(
+  yaml_emitter_t *emitter,
+  yaml_event_t *event,
+  SEXP s_obj)
 {
   yaml_scalar_event_initialize(event, NULL, NULL, (yaml_char_t *)"~", 1, 1, 1,
       YAML_ANY_SCALAR_STYLE);
@@ -446,8 +435,7 @@ emit_nil(emitter, event, s_obj)
   return yaml_emitter_emit(emitter, event);
 }
 
-int any_non_atomic(s_obj)
-  SEXP s_obj;
+int any_non_atomic(SEXP s_obj)
 {
   SEXP s_elt;
   int len = length(s_obj);
@@ -466,20 +454,18 @@ int any_non_atomic(s_obj)
      UNPROTECT(1);
   }
   
-  
   return(0);
 }
 
-static int
-emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, default_flow_style)
-  yaml_emitter_t *emitter;
-  yaml_event_t *event;
-  SEXP s_obj;
-  int omap;
-  int column_major;
-  int precision;
-  SEXP s_handlers;
-  int default_flow_style;
+static int emit_object(
+  yaml_emitter_t *emitter,
+  yaml_event_t *event,
+  SEXP s_obj,
+  int omap,
+  int column_major,
+  int precision,
+  SEXP s_handlers,
+  int default_flow_style)
 {
   SEXP s_chr = NULL, s_names = NULL, s_elt = NULL, s_type = NULL,
        s_classes = NULL, s_class = NULL, s_tmp = NULL, s_inspect = NULL,
@@ -858,20 +844,17 @@ emit_object(emitter, event, s_obj, omap, column_major, precision, s_handlers, de
   return result;
 }
 
-SEXP
-Ryaml_serialize_to_yaml(s_obj, s_line_sep, s_indent, s_omap, s_column_major,
-    s_unicode, s_precision, s_indent_mapping_sequence, s_handlers,
-    s_default_flow_style)
-  SEXP s_obj;
-  SEXP s_line_sep;
-  SEXP s_indent;
-  SEXP s_omap;
-  SEXP s_column_major;
-  SEXP s_unicode;
-  SEXP s_precision;
-  SEXP s_indent_mapping_sequence;
-  SEXP s_handlers;
-  SEXP s_default_flow_style;
+SEXP Ryaml_serialize_to_yaml(
+  SEXP s_obj,
+  SEXP s_line_sep,
+  SEXP s_indent,
+  SEXP s_omap,
+  SEXP s_column_major,
+  SEXP s_unicode,
+  SEXP s_precision,
+  SEXP s_indent_mapping_sequence,
+  SEXP s_handlers,
+  SEXP s_default_flow_style)
 {
   SEXP s_retval = NULL;
   yaml_emitter_t emitter;
@@ -1027,7 +1010,7 @@ done:
     free(output.buffer);
   }
   else {
-    error(Ryaml_error_msg);
+    error("%s", Ryaml_error_msg);
   }
 
   return s_retval;

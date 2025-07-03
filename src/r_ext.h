@@ -12,6 +12,7 @@
 #include <limits.h>
 #include "R.h"
 #include "Rdefines.h"
+#include "Rversion.h"
 #include "R_ext/Rdynload.h"
 #include "R_ext/Parse.h"
 #include "R_ext/Print.h"

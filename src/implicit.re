@@ -1,9 +1,6 @@
 #include "yaml.h"
 
-char *
-Ryaml_find_implicit_tag(str, len)
-  const char *str;
-  size_t len;
+char *Ryaml_find_implicit_tag(const char *str, size_t len)
 {
   /* This bit was taken from implicit.re, which is in the Syck library.
    *

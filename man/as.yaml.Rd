@@ -90,12 +90,7 @@
   # custom handler with verbatim output to change how logical vectors are
   # emitted
   as.yaml(c(TRUE, FALSE), handlers = list(
-    logical = function(x) {
-      result <- ifelse(x, "true", "false")
-      class(result) <- "verbatim"
-      return(result)
-    }
-  ))
+    logical = verbatim_logical))
 
   # force quotes around a string
   port_def <- "80:80"

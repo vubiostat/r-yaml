@@ -3,6 +3,7 @@ R YAML package
 ==============
 
 [![](https://cranlogs.r-pkg.org/badges/yaml)](https://cran.r-project.org/package=yaml)
+[![R-CMD-check](https://github.com/vubiostat/r-yaml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/vubiostat/r-yaml/actions/workflows/R-CMD-check.yaml)
 
 The R [YAML](http://yaml.org) package implements the
 [libyaml](https://pyyaml.org/wiki/LibYAML) YAML parser and emitter for R.
@@ -61,7 +62,7 @@ You can install this package directly from CRAN by running (from within R):
 ### Zip/Tarball
 
 1. Download the appropriate zip file or tar.gz file from the
-[Github releases](https://github.com/viking/r-yaml/releases) page.
+[Github releases](https://github.com/vubiostat/r-yaml/releases) page.
 2. Run `R CMD INSTALL <filename>`
 
 ### Git (via devtools)
@@ -70,7 +71,7 @@ You can install this package directly from CRAN by running (from within R):
 2. In R, run the following:
     ```R
     library(devtools)
-    install_github('viking/r-yaml')
+    install_github('vubiostat/r-yaml')
     ```
 
 ## Usage
@@ -340,6 +341,16 @@ class names (i.e., 'numeric', 'data.frame', 'list', etc).  The function(s) you
 provide will be passed one argument (the R object) and can return any R object.
 The returned object will be emitted normally.
 
+##### YAML 1.2(-ish) Logical Handling
+
+To get YAML 1.2 like behavior for logical vectors, you can use the 
+`verbatim_logical` handler function passed as the logical element of the 
+handlers list.
+
+```r
+as.yaml(c(TRUE, FALSE) , handlers = list(logical=verbatim_logical))
+```
+
 #### Special features
 
 ##### Verbatim(-ish) text
@@ -416,6 +427,62 @@ installed.
 | `valgrind-test` | Run unit tests with valgrind                |
 | `tarball`       | Create tarball suitable for CRAN submission |
 | `all`           | Default target, runs `compile` and `test`   |
+
+### Local development and testing in Docker
+
+If you'd like to set up a local development and testing environment using Docker,
+you can follow these instructions:
+
+* clone the repository
+
+```
+git clone git@github.com:vubiostat/r-yaml.git
+cd r-yaml
+```
+
+* Start Docker container called r-yaml
+
+```
+docker run -it --name r-yaml --workdir /opt -v$(pwd):/opt r-base:4.2.3 bash
+```
+
+* Install external dependencies
+
+```
+apt-get update
+apt-get install -y texlive-latex-base texlive-fonts-extra texlive-latex-recommended texlive-fonts-recommended
+```
+
+* Install RUint
+
+```
+Rscript -e 'install.packages("RUnit")'
+```
+
+* Run the tests
+
+```
+make check
+make test
+```
+
+* Exit from Docker container
+
+```
+exit
+```
+
+* Restart Docker container
+
+```
+docker container start -i r-yaml
+```
+
+* Remove Docker container
+
+```
+docker rm r-yaml
+```
 
 ### Implicit tag discovery
 

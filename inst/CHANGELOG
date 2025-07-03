@@ -1,6 +1,16 @@
 ### Release Notes
 
-v2.3.6 Address Issue #77 and allow for flow style sequence
+v2.4.0 Address Issue #77 and allow for flow style sequence
+
+v2.3.10 Added necessary includes for stdio.h and stddef.h
+
+v2.3.9 Edited documentation
+
+v2.3.8 added verbatim_logical helper function
+
+v2.3.7 clang deprecated sprintf. Changed in included clib to snprintf
+
+v2.3.6 C deprecated functions with no prototypes, these were added.
 
 v2.3.5 Patch to put back in libyaml modifications that as.yaml relied on.
 

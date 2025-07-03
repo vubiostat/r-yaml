@@ -1,0 +1,8 @@
+^\.gitignore$
+^\.github$
+^Makefile$
+^src/implicit\.re$
+^misc$
+^VERSION$
+^.*\.Rproj$
+^\.Rproj\.user$

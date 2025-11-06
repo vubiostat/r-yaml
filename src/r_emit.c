@@ -37,7 +37,6 @@ static SEXP Ryaml_deparse_function(SEXP s_obj)
   if (TYPEOF(s_obj) == CLOSXP) {
     PROTECT(s_obj);
     PROTECT(s_new_obj = R_mkClosure(R_ClosureFormals(s_obj), R_ClosureBody(s_obj), R_ClosureEnv(s_obj)));
-    SET_OBJECT(s_new_obj, OBJECT(s_obj));
     UNPROTECT(2);
     s_obj = s_new_obj;
   }

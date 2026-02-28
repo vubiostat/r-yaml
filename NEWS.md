@@ -1,5 +1,9 @@
 # yaml (development version)
 
+* Apply handlers also with `column.major = FALSE` (#164, @krlmlr).
+
+# yaml 2.3.12
+
 * Fixes for C API compliance.
 
 * Switched from `CHANGELOG` to `NEWS.md`.

@@ -9,3 +9,4 @@ yaml_*.tar.gz
 *.Rproj
 docs
 inst/doc
+_codeql_detected_source_root

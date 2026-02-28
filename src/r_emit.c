@@ -261,31 +261,18 @@ static yaml_scalar_style_t Ryaml_string_style(SEXP s_obj)
 /* Take a vector and an index and return another vector of size 1 */
 static SEXP Ryaml_yoink(SEXP s_vec, int index)
 {
-  SEXP s_tmp = NULL, s_levels = NULL;
-  int type = 0, factor = 0, level_idx = 0;
+  SEXP s_tmp = NULL;
+  int type = 0;
 
   type = TYPEOF(s_vec);
-  factor = type == INTSXP && Ryaml_has_class(s_vec, "factor");
-  PROTECT(s_tmp = allocVector(factor ? STRSXP : type, 1));
+  PROTECT(s_tmp = allocVector(type, 1));
 
   switch(type) {
     case LGLSXP:
       LOGICAL(s_tmp)[0] = LOGICAL(s_vec)[index];
       break;
     case INTSXP:
-      if (factor) {
-        s_levels = getAttrib(s_vec, R_LevelsSymbol);
-        level_idx = INTEGER(s_vec)[index];
-        if (level_idx == NA_INTEGER || level_idx < 1 || level_idx > LENGTH(s_levels)) {
-          SET_STRING_ELT(s_tmp, 0, NA_STRING);
-        }
-        else {
-          SET_STRING_ELT(s_tmp, 0, STRING_ELT(s_levels, level_idx - 1));
-        }
-      }
-      else {
-        INTEGER(s_tmp)[0] = INTEGER(s_vec)[index];
-      }
+      INTEGER(s_tmp)[0] = INTEGER(s_vec)[index];
       break;
     case REALSXP:
       REAL(s_tmp)[0] = REAL(s_vec)[index];
@@ -300,6 +287,7 @@ static SEXP Ryaml_yoink(SEXP s_vec, int index)
       RAW(s_tmp)[0] = RAW(s_vec)[index];
       break;
   }
+  copyMostAttrib(s_vec, s_tmp);
   UNPROTECT(1);
 
   return s_tmp;

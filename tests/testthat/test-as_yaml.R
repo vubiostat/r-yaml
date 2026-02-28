@@ -479,3 +479,27 @@ test_that("no dots at end", {
   result <- yaml::as.yaml(list(eol = "\n", a = 1), line.sep = "\n")
   expect_equal(result, "eol: |2+\n\na: 1.0\n")
 })
+
+test_that("Date handler works with column.major = FALSE", {
+  x <- data.frame(date = as.Date(c("2012-10-10", "2014-03-28")))
+  handler <- list(Date = function(x) as.character(x))
+
+  result_col <- as.yaml(x, handlers = handler, column.major = TRUE)
+  result_row <- as.yaml(x, handlers = handler, column.major = FALSE)
+
+  expect_equal(result_col, "date:\n- '2012-10-10'\n- '2014-03-28'\n")
+  expect_equal(result_row, "- date: '2012-10-10'\n- date: '2014-03-28'\n")
+})
+
+test_that("POSIXct handler works with column.major = FALSE", {
+  x <- data.frame(
+    time = as.POSIXct(c("2012-10-10", "2014-03-28"), tz = "UTC")
+  )
+  handler <- list(POSIXct = function(x) format(x, "%Y-%m-%d"))
+
+  result_col <- as.yaml(x, handlers = handler, column.major = TRUE)
+  result_row <- as.yaml(x, handlers = handler, column.major = FALSE)
+
+  expect_equal(result_col, "time:\n- '2012-10-10'\n- '2014-03-28'\n")
+  expect_equal(result_row, "- time: '2012-10-10'\n- time: '2014-03-28'\n")
+})

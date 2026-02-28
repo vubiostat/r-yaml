@@ -300,6 +300,9 @@ static SEXP Ryaml_yoink(SEXP s_vec, int index)
       RAW(s_tmp)[0] = RAW(s_vec)[index];
       break;
   }
+  if (!factor) {
+    copyMostAttrib(s_vec, s_tmp);
+  }
   UNPROTECT(1);
 
   return s_tmp;

@@ -503,3 +503,16 @@ test_that("POSIXct handler works with column.major = FALSE", {
   expect_equal(result_col, "time:\n- '2012-10-10'\n- '2014-03-28'\n")
   expect_equal(result_row, "- time: '2012-10-10'\n- time: '2014-03-28'\n")
 })
+
+test_that("factor column works with column.major = FALSE", {
+  x <- data.frame(x = factor(c("a", "b", "c")))
+  result <- as.yaml(x, column.major = FALSE)
+  expect_equal(result, "- x: a\n- x: b\n- x: c\n")
+})
+
+test_that("factor handler works with column.major = FALSE", {
+  x <- data.frame(x = factor(c("a", "b", "c")))
+  handler <- list(factor = function(x) paste0("level_", x))
+  result <- as.yaml(x, handlers = handler, column.major = FALSE)
+  expect_equal(result, "- x: level_a\n- x: level_b\n- x: level_c\n")
+})
